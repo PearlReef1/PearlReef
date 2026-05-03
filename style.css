@@ -162,3 +162,40 @@ input {
     font-size: 0.8rem !important;
     cursor: pointer;
 }
+/* Colores por rareza */
+.rarity-badge {
+    position: absolute;
+    top: -10px;
+    right: 10px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: white;
+}
+
+.rarity-comun { border: 2px solid #95a5a6; }
+.rarity-comun .rarity-badge { background: #95a5a6; }
+
+.rarity-raro { border: 2px solid #3498db; }
+.rarity-raro .rarity-badge { background: #3498db; }
+
+.rarity-legendario { border: 2px solid #f1c40f; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+.rarity-legendario .rarity-badge { background: #f1c40f; color: #000; }
+
+.btn-hatch {
+    background: #e67e22;
+    animation: pulse 1.5s infinite;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
