@@ -1,43 +1,64 @@
-const SUPABASE_URL = 'https://hqmwdcfbqhugokqhxfhd.supabase.co/rest/v1/';
+// CONFIGURACIÓN SUPABASE - Usamos 'client' para evitar el choque de nombres
+const SUPABASE_URL = 'https://hqmwdcfbqhugokqhxfhd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_q5fCEu3VFtZs8cvmdLSoRQ__4USW-cl';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let activeFishId = null;
 
 // Al cargar la página
 window.onload = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // Verificar si hay una sesión activa
+    const { data: { user }, error } = await client.auth.getUser();
+    
+    if (error || !user) {
         window.location.href = 'index.html';
         return;
     }
+    
     currentUser = user;
-    loadProfile();
-    loadFish();
+    await loadProfile();
+    await loadFish();
 };
 
 async function loadProfile() {
-    const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-    document.getElementById('user-name').innerText = data.username;
-    document.getElementById('pearl-balance').innerText = data.pearls_balance;
+    const { data, error } = await client
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+    
+    if (data) {
+        document.getElementById('user-name').innerText = data.username;
+        document.getElementById('pearl-balance').innerText = data.pearls_balance;
+    }
 }
 
 async function loadFish() {
-    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
+    const { data, error } = await client
+        .from('user_fish')
+        .select('*')
+        .eq('user_id', currentUser.id);
+    
+    if (error) {
+        console.error("Error cargando peces:", error);
+        return;
+    }
+
     const aquarium = document.getElementById('aquarium');
     aquarium.innerHTML = '';
 
     data.forEach(fish => {
         const card = document.createElement('div');
         card.className = 'fish-card';
+        
         // Lógica visual: Si es huevo o pez
         const img = fish.is_egg ? 'huevo.png' : 'pez_comun.png'; 
         const status = fish.is_egg ? 'Eclosionando...' : `Nivel ${fish.level}`;
         const vitPercent = (fish.vitality_days / 90) * 100;
 
         card.innerHTML = `
-            <img src="${img}">
+            <img src="${img}" onerror="this.src='https://via.placeholder.com/100?text=Pez'">
             <p><strong>${fish.rarity}</strong></p>
             <small>${status}</small>
             <div class="vitality-bar"><div class="vitality-fill" style="width:${vitPercent}%"></div></div>
@@ -49,27 +70,48 @@ async function loadFish() {
 
 // Lógica para comprar huevos
 async function buyEgg(type, cost) {
-    // 1. Verificar saldo
-    const { data: profile } = await supabase.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
+    // 1. Verificar saldo actual
+    const { data: profile, error: profileError } = await client
+        .from('profiles')
+        .select('pearls_balance')
+        .eq('id', currentUser.id)
+        .single();
     
     if (profile.pearls_balance < cost) {
-        alert("No tienes suficientes perlas. ¡Contacta al admin para recargar!");
+        alert("Saldo insuficiente en Perlas ($PRL).");
         return;
     }
 
-    // 2. Restar saldo y Crear Huevo
-    await supabase.from('profiles').update({ pearls_balance: profile.pearls_balance - cost }).eq('id', currentUser.id);
-    
-    await supabase.from('user_fish').insert([{
-        user_id: currentUser.id,
-        rarity: type === 'Arrecife' ? 'Comun' : (type === 'Abisal' ? 'Raro' : 'Legendario'),
-        is_egg: true,
-        vitality_days: 90
-    }]);
+    // 2. Restar saldo
+    const { error: updateError } = await client
+        .from('profiles')
+        .update({ pearls_balance: profile.pearls_balance - cost })
+        .eq('id', currentUser.id);
 
-    alert(`¡Huevo ${type} comprado!`);
-    loadProfile();
-    loadFish();
+    if (updateError) {
+        alert("Error al procesar el pago.");
+        return;
+    }
+
+    // 3. Crear el Huevo en la tabla user_fish
+    const { error: insertError } = await client
+        .from('user_fish')
+        .insert([{
+            user_id: currentUser.id,
+            rarity: type === 'Arrecife' ? 'Comun' : (type === 'Abisal' ? 'Raro' : 'Legendario'),
+            is_egg: true,
+            vitality_days: 90,
+            daily_yield: type === 'Arrecife' ? 35 : (type === 'Abisal' ? 85 : 205)
+        }]);
+
+    if (insertError) {
+        console.error(insertError);
+        alert("Error al crear el huevo.");
+    } else {
+        alert(`¡Huevo ${type} adquirido exitosamente!`);
+        loadProfile();
+        loadFish();
+    }
 }
 
 function startFeeding(fishId) {
@@ -78,13 +120,16 @@ function startFeeding(fishId) {
 }
 
 async function completeFeeding() {
-    // Aquí iría la lógica de sumar PRL según la rareza (ej. 35 PRL para común)
-    alert("¡Pez alimentado! +35 PRL"); 
+    // Sumar 35 PRL fijos por ahora como prueba
+    const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
+    await client.from('profiles').update({ pearls_balance: profile.pearls_balance + 35 }).eq('id', currentUser.id);
+    
+    alert("¡Pez alimentado! Ganaste 35 PRL"); 
     document.getElementById('minigame-modal').style.display = 'none';
-    // Nota: Aquí falta la función SQL para sumar el saldo y actualizar 'last_fed'
+    loadProfile();
 }
 
 async function handleLogout() {
-    await supabase.auth.signOut();
+    await client.auth.signOut();
     window.location.href = 'index.html';
 }
