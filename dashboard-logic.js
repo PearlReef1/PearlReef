@@ -5,6 +5,7 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let activeFishId = null;
+let currentYield = 0;
 
 // RUTA BASE PARA TUS IMÁGENES EN GITHUB (RAW)
 const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/";
@@ -59,7 +60,7 @@ async function loadFish() {
         const card = document.createElement('div');
         card.className = 'fish-card';
         
-        // Lógica de imágenes usando tus archivos de GitHub
+        // Lógica de imágenes RAW de GitHub
         let imgSrc = RAW_BASE + "pez_huevo.png"; 
         
         if (!fish.is_egg) {
@@ -82,7 +83,7 @@ async function loadFish() {
     });
 }
 
-// Lógica para comprar huevos
+// Comprar huevos (Precios actualizados a 10, 25, 60)
 async function buyEgg(type, cost) {
     const { data: profile } = await client
         .from('profiles')
@@ -98,7 +99,7 @@ async function buyEgg(type, cost) {
     // Restar saldo
     await client.from('profiles').update({ pearls_balance: profile.pearls_balance - cost }).eq('id', currentUser.id);
 
-    // Crear el Huevo
+    // Crear el Huevo con yield dinámico
     const { error: insertError } = await client.from('user_fish').insert([{
         user_id: currentUser.id,
         rarity: type === 'Arrecife' ? 'Comun' : (type === 'Abisal' ? 'Raro' : 'Legendario'),
@@ -117,7 +118,6 @@ async function buyEgg(type, cost) {
 }
 
 // Alimentación
-let currentYield = 0;
 function startFeeding(fishId, yieldAmount) {
     activeFishId = fishId;
     currentYield = yieldAmount;
@@ -127,7 +127,6 @@ function startFeeding(fishId, yieldAmount) {
 async function completeFeeding() {
     const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
     
-    // Sumamos el yield específico de cada pez
     const nuevoSaldo = profile.pearls_balance + (currentYield || 35);
     
     await client.from('profiles').update({ pearls_balance: nuevoSaldo }).eq('id', currentUser.id);
@@ -137,29 +136,26 @@ async function completeFeeding() {
     loadProfile();
 }
 
-// Botón de salir
+// Salir
 async function handleLogout() {
-    const { error } = await client.auth.signOut();
-    if (!error) {
-        window.location.href = 'index.html';
-    } else {
-        alert("Error al cerrar sesión");
-    }
+    await client.auth.signOut();
+    window.location.href = 'index.html';
 }
 
-// Revisión de eclosión
+// REVISIÓN DE ECLOSIÓN - TIEMPOS REDUCIDOS PARA PRUEBAS
 async function checkHatching() {
     const { data: eggs } = await client.from('user_fish').select('*').eq('user_id', currentUser.id).eq('is_egg', true);
     if (!eggs || eggs.length === 0) return;
 
     const now = new Date();
     for (let egg of eggs) {
-        const birthDate = new Date(egg.birth_date);
+        const birthDate = new Date(egg.created_at); // Usamos created_at de Supabase
         const diffInMinutes = (now - birthDate) / 1000 / 60;
 
-        let hatchTime = 60; // 1 hora
-        if (egg.rarity === 'Raro') hatchTime = 180; 
-        if (egg.rarity === 'Legendario') hatchTime = 360;
+        // TIEMPOS DE PRUEBA (MINUTOS)
+        let hatchTime = 1; // Arrecife: 1 min
+        if (egg.rarity === 'Raro') hatchTime = 2; // Abisal: 2 min
+        if (egg.rarity === 'Legendario') hatchTime = 3; // Ancestral: 3 min
 
         if (diffInMinutes >= hatchTime) {
             await client.from('user_fish').update({ is_egg: false }).eq('id', egg.id);
@@ -169,4 +165,5 @@ async function checkHatching() {
     }
 }
 
-setInterval(checkHatching, 30000);
+// Revisar cada 15 segundos para que sea más rápido
+setInterval(checkHatching, 15000);
