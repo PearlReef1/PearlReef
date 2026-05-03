@@ -78,47 +78,45 @@ async function loadFish() {
 }
 
 async function buyEgg(type, cost) {
+    // 1. Obtener balance real de 'profiles'
     const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
     if (profile.pearls_balance < cost) return alert("Saldo insuficiente");
 
-    // Lógica de probabilidades mejorada
-    let rarity = 'Comun';
-    let yield = 35;
-    if (type === 'Abisal') {
-        rarity = Math.random() > 0.3 ? 'Raro' : 'Comun';
-        yield = rarity === 'Raro' ? 85 : 35;
+    let rarity, yieldAmount;
+    const roll = Math.random() * 100;
+
+    // 2. Lógica de Gacha por Tipo de Huevo
+    if (type === 'Arrecife') {
+        if (roll < 85) { rarity = 'Comun'; yieldAmount = 38; }
+        else { rarity = 'Poco Comun'; yieldAmount = 55; }
+    } else if (type === 'Abisal') {
+        if (roll < 80) { rarity = 'Raro'; yieldAmount = 120; }
+        else { rarity = 'Legendario'; yieldAmount = 320; }
     } else if (type === 'Ancestral') {
-        rarity = Math.random() > 0.2 ? 'Legendario' : 'Raro';
-        yield = rarity === 'Legendario' ? 205 : 85;
+        if (roll < 90) { rarity = 'Legendario'; yieldAmount = 320; }
+        else { rarity = 'Mitico'; yieldAmount = 500; }
     }
 
-    // 1. Restamos saldo en perlas (1 USDT = 100 PRL)
-    const { error: balanceError } = await client.from('profiles')
+    // 3. Transacción: Restar saldo e Insertar pez
+    const { error: payError } = await client.from('profiles')
         .update({ pearls_balance: profile.pearls_balance - cost })
         .eq('id', currentUser.id);
 
-    if (balanceError) return alert("Error al procesar pago");
-
-    // 2. Insertamos el pez usando birth_date para que no falle
-    const { error: insertError } = await client.from('user_fish').insert([{
-        user_id: currentUser.id,
-        rarity: rarity,
-        is_egg: true,
-        daily_yield: yield,
-        birth_date: new Date().toISOString() // Sincronizado con tu columna birth_date
-    }]);
-
-    if (!insertError) {
+    if (!payError) {
+        await client.from('user_fish').insert([{
+            user_id: currentUser.id,
+            rarity: rarity,
+            daily_yield: yieldAmount,
+            is_egg: true,
+            birth_date: new Date().toISOString(), // Usando birth_date de tu tabla
+            level: 1
+        }]);
+        
         await loadProfile();
-        alert(`¡Huevo ${type} adquirido!`);
+        loadFish();
+        alert(`¡Compraste un Huevo ${type}! Te salió: ${rarity}`);
     }
 }
-
-async function hatchFish(id) {
-    await client.from('user_fish').update({ is_egg: false }).eq('id', id);
-    loadFish();
-}
-
 function startFeeding(fishId, yieldAmount) {
     // Aquí va tu lógica de alimentación existente...
     alert("Iniciando minijuego para ganar " + yieldAmount + " PRL");
