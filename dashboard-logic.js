@@ -1,3 +1,4 @@
+// CONFIGURACIÓN SUPABASE
 const SUPABASE_URL = 'https://hqmwdcfbqhugokqhxfhd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_q5fCEu3VFtZs8cvmdLSoRQ__4USW-cl';
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -10,9 +11,8 @@ window.onload = async () => {
     if (!user) { window.location.href = 'index.html'; return; }
     currentUser = user;
     await loadProfile();
-    setInterval(() => {
-        loadFish();
-    }, 1000);
+    // Actualización constante para el cronómetro
+    setInterval(loadFish, 1000);
 };
 
 async function loadProfile() {
@@ -24,15 +24,24 @@ async function loadProfile() {
 }
 
 async function loadFish() {
-    const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-    if (!data) return;
+    // Solo pedimos las columnas que existen para evitar el error 400
+    const { data, error } = await client.from('user_fish')
+        .select('id, rarity, is_egg, daily_yield, created_at')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+    
+    if (error) {
+        console.error("Error cargando peces:", error.message);
+        return;
+    }
 
     const aquarium = document.getElementById('aquarium');
     aquarium.innerHTML = '';
 
     data.forEach(fish => {
         const card = document.createElement('div');
-        card.className = `fish-card rarity-${fish.rarity.toLowerCase()}`;
+        const rarityKey = fish.rarity.toLowerCase();
+        card.className = `fish-card rarity-${rarityKey}`;
         
         let imgSrc = RAW_BASE + "pez_huevo.png";
         let statusHtml = "";
@@ -40,8 +49,13 @@ async function loadFish() {
         if (fish.is_egg) {
             const now = new Date();
             const birthDate = new Date(fish.created_at);
-            // TIEMPOS: Arrecife 60min, Abisal 180min, Ancestral 360min (Cambiado a minutos para prueba)
-            let hatchMinutes = fish.egg_type === 'Arrecife' ? 60 : (fish.egg_type === 'Abisal' ? 180 : 360);
+            
+            // Definimos el tiempo de eclosión según la rareza (ya que no hay egg_type)
+            // Tiempos reales: Comun 1h, Raro 3h, Legendario 6h
+            let hatchMinutes = 60; 
+            if (fish.rarity === 'Raro') hatchMinutes = 180;
+            if (fish.rarity === 'Legendario') hatchMinutes = 360;
+
             const hatchTime = new Date(birthDate.getTime() + hatchMinutes * 60000);
             const diff = hatchTime - now;
 
@@ -50,19 +64,18 @@ async function loadFish() {
                 const s = Math.floor((diff % 60000) / 1000);
                 statusHtml = `<span class="timer-display">⏳ ${m}m ${s}s</span>`;
             } else {
-                statusHtml = `<button class="btn-hatch" onclick="hatchFish('${fish.id}')">¡ABRIR HUEVO!</button>`;
+                statusHtml = `<button class="btn-hatch" onclick="hatchFish('${fish.id}')">¡ABRIR!</button>`;
             }
         } else {
-            const type = fish.rarity === 'Comun' ? 'comun' : (fish.rarity === 'Raro' ? 'raro' : 'legendario');
-            imgSrc = `${RAW_BASE}pez_${type}.png`;
-            statusHtml = `<b>+${fish.daily_yield} PRL/día</b>`;
+            imgSrc = `${RAW_BASE}pez_${rarityKey}.png`;
+            statusHtml = `<b>Produciendo: ${fish.daily_yield} PRL</b>`;
         }
 
         card.innerHTML = `
             <div class="rarity-badge">${fish.rarity}</div>
-            <img src="${imgSrc}">
+            <img src="${imgSrc}" onerror="this.src='${RAW_BASE}pez_huevo.png'">
             <p><small>ID: #${fish.id.substring(0,5)}</small></p>
-            <div>${statusHtml}</div>
+            <div class="status-box">${statusHtml}</div>
             ${!fish.is_egg ? `<button class="btn-feed" onclick="startFeeding('${fish.id}', ${fish.daily_yield})">Alimentar</button>` : ''}
         `;
         aquarium.appendChild(card);
@@ -70,43 +83,72 @@ async function loadFish() {
 }
 
 async function buyEgg(type, cost) {
-    // 1. Obtener perfil fresco
     const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
-    
     if (profile.pearls_balance < cost) return alert("Saldo insuficiente");
 
-    // 2. Restar saldo primero
-    const newBalance = profile.pearls_balance - cost;
-    const { error: updateError } = await client.from('profiles').update({ pearls_balance: newBalance }).eq('id', currentUser.id);
-
-    if (updateError) return alert("Error al procesar pago");
-
-    // 3. Lógica de rareza según el huevo
+    // LÓGICA DE PROBABILIDADES
     let rarity = 'Comun';
     let yield = 35;
 
     if (type === 'Abisal') {
-        rarity = Math.random() > 0.3 ? 'Raro' : 'Comun'; // 70% Raro
+        // 70% Raro, 30% Comun
+        rarity = Math.random() > 0.3 ? 'Raro' : 'Comun';
         yield = rarity === 'Raro' ? 85 : 35;
     } else if (type === 'Ancestral') {
-        rarity = Math.random() > 0.2 ? 'Legendario' : 'Raro'; // 80% Legendario
+        // 80% Legendario, 20% Raro
+        rarity = Math.random() > 0.2 ? 'Legendario' : 'Raro';
         yield = rarity === 'Legendario' ? 205 : 85;
     }
 
-    // 4. Insertar con el tipo de huevo guardado para el cronómetro
-    await client.from('user_fish').insert([{
+    // 1. Restamos saldo
+    const { error: balanceError } = await client.from('profiles')
+        .update({ pearls_balance: profile.pearls_balance - cost })
+        .eq('id', currentUser.id);
+
+    if (balanceError) return alert("Error al procesar pago");
+
+    // 2. Insertamos el pez/huevo
+    const { error: insertError } = await client.from('user_fish').insert([{
         user_id: currentUser.id,
         rarity: rarity,
-        egg_type: type, // Nueva columna necesaria en Supabase o usa rarity
         is_egg: true,
         daily_yield: yield
     }]);
 
-    await loadProfile();
-    alert(`¡Huevo ${type} adquirido!`);
+    if (insertError) {
+        alert("Error en la compra");
+    } else {
+        await loadProfile();
+        alert(`¡Huevo ${type} comprado! Te salió un huevo nivel: ${rarity}`);
+    }
 }
 
 async function hatchFish(id) {
-    await client.from('user_fish').update({ is_egg: false }).eq('id', id);
-    loadFish();
+    const { error } = await client.from('user_fish').update({ is_egg: false }).eq('id', id);
+    if (!error) loadFish();
+}
+
+// FUNCIONES DE ALIMENTACIÓN (Asegúrate de que existan)
+let activeFishId = null;
+let currentYield = 0;
+
+function startFeeding(fishId, yieldAmount) {
+    activeFishId = fishId;
+    currentYield = yieldAmount;
+    document.getElementById('minigame-modal').style.display = 'flex';
+}
+
+async function completeFeeding() {
+    const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
+    const nuevoSaldo = profile.pearls_balance + currentYield;
+    
+    await client.from('profiles').update({ pearls_balance: nuevoSaldo }).eq('id', currentUser.id);
+    document.getElementById('minigame-modal').style.display = 'none';
+    alert(`¡Ganaste ${currentYield} PRL!`);
+    loadProfile();
+}
+
+async function handleLogout() {
+    await client.auth.signOut();
+    window.location.href = 'index.html';
 }
