@@ -3,71 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pearl Reef - Mi Arrecife</title>
+    <title>Pearl Reef - Mi Acuario Vivo</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* Ajustes rápidos para evitar el colapso visual */
-        .shop-bar {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            padding: 15px;
-            height: auto;
-            align-items: stretch;
-        }
-        .shop-bar button {
-            width: 100%;
-            padding: 10px 5px;
-            font-size: 0.85rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            line-height: 1.2;
-        }
-        .timer-display {
-            font-family: 'Courier New', Courier, monospace;
-            background: rgba(0,0,0,0.3);
-            border-radius: 5px;
-            padding: 2px 5px;
-            color: #ffb703;
-            font-weight: bold;
-            display: block;
-            margin-top: 5px;
-        }
-    </style>
 </head>
 <body>
-    <div class="header-stats">
-        <div>🌊 <span id="user-name">Cargando...</span></div>
-        <div class="pearl-count">⚪ <span id="pearl-balance">0</span> PRL</div>
-        <button onclick="handleLogout()" class="btn-logout">Salir</button>
+    <div id="aquarium-bg" class="aquarium-canvas"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="logo-text">Pearl Reef</h2>
+            <div class="user-pill">
+                <span id="user-name">...</span>
+                <div class="balance-display">⚪ <span id="pearl-balance">0</span> PRL</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <button class="nav-btn active" onclick="switchTab('acuario', this)">🌊 Acuario</button>
+            <button class="nav-btn" onclick="switchTab('inventario', this)">🎒 Inventario</button>
+            <button class="nav-btn" onclick="switchTab('tienda', this)">🛒 Tienda</button>
+        </nav>
+
+        <button onclick="handleLogout()" class="btn-logout">Salir del Mar</button>
+    </aside>
+
+    <main class="content-panel" id="content-panel" style="display: none;">
+        <div class="panel-header">
+            <h2 id="panel-title">Inventario</h2>
+            <button class="close-panel" onclick="closeAllPanels()">×</button>
+        </div>
+        <div id="panel-body" class="panel-body">
+            </div>
+    </main>
+
+    <div id="minigame-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h2>¡Hora de comer!</h2>
+            <p>Haz clic rápido en la comida</p>
+            <div id="game-target" class="food-icon" onclick="completeFeeding()">🦐</div>
+        </div>
     </div>
 
-    <div id="aquarium" class="aquarium-grid"></div>
-
-    <div class="shop-bar">
-        <button onclick="buyEgg('Arrecife', 1000)">
-            <b>Arrecife</b>
-            <span>1,000 PRL</span>
-            <small>+$35/día</small>
-        </button>
-        <button onclick="buyEgg('Abisal', 2500)" style="background: #fb8500;">
-            <b>Abisal</b>
-            <span>2,500 PRL</span>
-            <small>+$85/día</small>
-        </button>
-        <button onclick="buyEgg('Ancestral', 6000)" style="background: #ffb703;">
-            <b>Ancestral</b>
-            <span>6,000 PRL</span>
-            <small>+$205/día</small>
-        </button>
-    </div>
-
-    <div id="minigame-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; z-index:2000;">
-        <h2>¡Hora de comer!</h2>
-        <div id="game-target" style="font-size: 6rem; cursor:pointer;" onclick="completeFeeding()">拉</div>
-    </div>
+    <div id="egg-info-tooltip" class="egg-tooltip"></div>
 
     <script src="dashboard-logic.js"></script>
 </body>
