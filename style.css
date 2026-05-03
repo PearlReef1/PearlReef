@@ -190,3 +190,32 @@ body {
     cursor: pointer;
     font-weight: bold;
 }
+/* Efecto de flotación suave (arriba y abajo) */
+@keyframes float {
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(2deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+}
+
+/* Efecto de nado errático (de izquierda a derecha) */
+@keyframes swim {
+    0% { left: -10%; }
+    50% { left: 110%; transform: scaleX(1); } /* Mira a la derecha */
+    51% { transform: scaleX(-1); }             /* Gira a la izquierda */
+    100% { left: -10%; transform: scaleX(-1); }
+}
+
+/* Aplicar la animación a la imagen del pez */
+.fish-card img {
+    width: 100px;
+    height: auto;
+    animation: float 3s ease-in-out infinite; /* Flota por defecto */
+    transition: all 0.5s ease;
+}
+
+/* Si quieres que se muevan por toda la pantalla, 
+   necesitamos que las tarjetas tengan posición absoluta */
+.fish-card {
+    position: relative;
+    /* ... resto de tus estilos ... */
+}
