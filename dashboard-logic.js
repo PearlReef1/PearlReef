@@ -26,11 +26,18 @@ async function loadProfile() {
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
-        .single();
+        .maybeSingle(); // Usamos maybeSingle para que no de error 406 si no existe
     
+    if (error) {
+        console.error("Error en perfil:", error);
+        return;
+    }
+
     if (data) {
-        document.getElementById('user-name').innerText = data.username;
+        document.getElementById('user-name').innerText = data.username || "Jugador";
         document.getElementById('pearl-balance').innerText = data.pearls_balance;
+    } else {
+        console.log("El perfil no existe todavía.");
     }
 }
 
