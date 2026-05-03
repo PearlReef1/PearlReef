@@ -38,7 +38,7 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 25px;
     padding: 30px;
-    padding-bottom: 180px; /* Espacio para que la tienda no tape los peces */
+    padding-bottom: 200px; /* Espacio extra para la tienda mejorada */
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -47,7 +47,7 @@ body {
 .fish-card {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 20px;
-    padding: 25px 15px 15px 15px; /* Más espacio superior para el badge */
+    padding: 30px 15px 15px 15px;
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
@@ -57,24 +57,26 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    min-height: 250px;
+    min-height: 280px;
 }
 
 .fish-card:hover {
     transform: translateY(-8px);
     background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
 
 .fish-card img {
-    width: 110px;
-    height: 110px;
+    width: 100px;
+    height: 100px;
     object-fit: contain;
     filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4));
     margin: 10px 0;
+    /* La animación se asigna dinámicamente desde JS, pero dejamos el float base */
+    animation: float 3s ease-in-out infinite;
 }
 
-/* --- BADGES DE RAREZA --- */
+/* --- BADGES DE RAREZA (5 CATEGORÍAS) --- */
 .rarity-badge {
     position: absolute;
     top: -12px;
@@ -88,134 +90,158 @@ body {
     letter-spacing: 1px;
     white-space: nowrap;
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    z-index: 10;
 }
 
+/* Colores por Clase de Rareza */
 .rarity-comun { border: 2px solid #95a5a6; }
 .rarity-comun .rarity-badge { background: #95a5a6; color: white; }
+
+.rarity-poco-comun { border: 2px solid #27ae60; }
+.rarity-poco-comun .rarity-badge { background: #27ae60; color: white; }
 
 .rarity-raro { border: 2px solid #3498db; }
 .rarity-raro .rarity-badge { background: #3498db; color: white; }
 
-.rarity-legendario { border: 2px solid #ffb703; box-shadow: 0 0 15px rgba(255, 183, 3, 0.3); }
-.rarity-legendario .rarity-badge { background: #ffb703; color: #023e8a; }
+.rarity-legendario { border: 2px solid #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.3); }
+.rarity-legendario .rarity-badge { background: #f39c12; color: #023e8a; }
+
+.rarity-mitico { border: 2px solid #9b59b6; box-shadow: 0 0 20px rgba(155, 89, 182, 0.5); }
+.rarity-mitico .rarity-badge { background: linear-gradient(45deg, #8e44ad, #9b59b6); color: white; }
 
 /* --- CRONÓMETRO Y ESTADOS --- */
 .timer-display {
     font-family: 'Courier New', monospace;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.6);
     color: #ffb703;
-    padding: 4px 10px;
+    padding: 5px 12px;
     border-radius: 8px;
     font-size: 0.9rem;
     font-weight: bold;
     display: inline-block;
     margin: 10px 0;
+    border: 1px solid rgba(255, 183, 3, 0.3);
 }
 
 .status-box {
     margin: 10px 0;
-    font-size: 0.85rem;
-    min-height: 40px;
+    font-size: 0.9rem;
+    min-height: 45px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    width: 100%;
 }
 
-/* --- BARRA DE TIENDA (SHOP) --- */
+/* --- BARRA DE TIENDA (SHOP) MEJORADA --- */
 .shop-bar {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-    background: #023e8a;
+    background: rgba(2, 62, 138, 0.98);
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    padding: 15px;
+    gap: 15px;
+    padding: 20px;
     border-top: 4px solid #ffb703;
     z-index: 1000;
     box-sizing: border-box;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+}
+
+.shop-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .shop-bar button {
-    background: #ffb703;
+    background: linear-gradient(145deg, #ffb703, #fb8500);
     border: none;
-    border-radius: 12px;
+    border-radius: 15px;
     color: #023e8a;
-    padding: 12px 5px;
+    padding: 15px 10px;
     cursor: pointer;
-    box-shadow: 0 4px 0 #fb8500;
-    transition: all 0.1s;
+    box-shadow: 0 4px 0 #bc6c03;
+    transition: all 0.2s;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
 }
 
-.shop-bar button:active {
-    transform: translateY(3px);
-    box-shadow: 0 1px 0 #fb8500;
+.shop-bar button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 0 #bc6c03;
 }
 
-.shop-bar button strong { font-size: 0.9rem; }
-.shop-bar button small { font-size: 0.7rem; opacity: 0.9; }
+.shop-bar button:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #bc6c03;
+}
+
+.shop-bar button strong { font-size: 1rem; text-transform: uppercase; }
+.shop-bar button small { font-size: 0.75rem; font-weight: bold; margin-top: 4px; }
+
+/* Tooltip de información (aparece al pasar mouse) */
+.egg-tooltip {
+    position: fixed;
+    bottom: 110px;
+    background: #002855;
+    border: 2px solid #ffb703;
+    padding: 12px;
+    border-radius: 12px;
+    display: none;
+    z-index: 2000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    pointer-events: none;
+    width: 200px;
+}
 
 /* --- BOTONES DE ACCIÓN --- */
 .btn-feed, .btn-hatch {
     width: 100%;
-    padding: 8px;
-    border-radius: 10px;
+    padding: 10px;
+    border-radius: 12px;
     border: none;
     font-weight: bold;
     cursor: pointer;
     transition: 0.2s;
+    margin-top: 10px;
 }
 
-.btn-feed { background: #4caf50; color: white; }
-.btn-hatch { background: #ff8500; color: white; animation: pulse 1.5s infinite; }
+.btn-feed { background: #2ecc71; color: white; box-shadow: 0 3px 0 #27ae60; }
+.btn-feed:hover { background: #27ae60; }
+
+.btn-hatch { background: #fb8500; color: white; animation: pulse 1.5s infinite; box-shadow: 0 3px 0 #d35400; }
 
 @keyframes pulse {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 133, 0, 0.7); }
-    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 133, 0, 0); }
+    0% { transform: scale(1); }
+    70% { transform: scale(1.03); box-shadow: 0 0 15px rgba(251, 133, 0, 0.6); }
     100% { transform: scale(1); }
 }
 
-.btn-logout {
-    background: #e63946;
-    color: white;
-    padding: 6px 12px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    font-weight: bold;
-}
-/* Efecto de flotación suave (arriba y abajo) */
+/* --- ANIMACIONES DE PECES --- */
 @keyframes float {
     0% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-15px) rotate(2deg); }
+    50% { transform: translateY(-12px) rotate(3deg); }
     100% { transform: translateY(0px) rotate(0deg); }
 }
 
-/* Efecto de nado errático (de izquierda a derecha) */
-@keyframes swim {
-    0% { left: -10%; }
-    50% { left: 110%; transform: scaleX(1); } /* Mira a la derecha */
-    51% { transform: scaleX(-1); }             /* Gira a la izquierda */
-    100% { left: -10%; transform: scaleX(-1); }
+/* --- OTROS --- */
+.btn-logout {
+    background: #e63946;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
 }
-
-/* Aplicar la animación a la imagen del pez */
-.fish-card img {
-    width: 100px;
-    height: auto;
-    animation: float 3s ease-in-out infinite; /* Flota por defecto */
-    transition: all 0.5s ease;
-}
-
-/* Si quieres que se muevan por toda la pantalla, 
-   necesitamos que las tarjetas tengan posición absoluta */
-.fish-card {
-    position: relative;
-    /* ... resto de tus estilos ... */
-}
+.btn-logout:hover { background: #c1121f; }
