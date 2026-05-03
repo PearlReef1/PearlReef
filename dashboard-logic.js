@@ -8,8 +8,7 @@ const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/as
 const FEED_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 Horas
 
 // --- CONFIGURACIÓN DE ASSETS ---
-const DECOR_ASSETS = ['background_rock_b.png', 'seaweed_green_a_outline.png', 'seaweed_green_d_outline.png'];
-const SAND_ASSETS = ['terrain_sand_c.png', 'terrain_sand_d.png', 'terrain_sand_top_a_outline.png', 'terrain_sand_top_b.png'];
+const AQUARIUM_BG_IMG = 'fondo_acuario.jpg';
 
 window.onload = async () => {
     const { data: { user } } = await client.auth.getUser();
@@ -38,39 +37,16 @@ async function initAquarium() {
     const container = document.getElementById('aquarium-bg');
     container.innerHTML = ''; 
 
-    // 1. Capa de Fondo: Arena y Decoración
-    createSeaFloor();
-    placeDecorations();
+    // 1. Establecer Imagen de Fondo Fija
+    container.style.backgroundImage = `url('${RAW_BASE}${AQUARIUM_BG_IMG}')`;
+    container.style.backgroundSize = 'cover';
+    container.style.backgroundPosition = 'center';
+    container.style.backgroundRepeat = 'no-repeat';
 
     // 2. Capa de Peces
     allFish.forEach(fish => {
         if (!fish.is_egg) createSwimmingFish(fish);
     });
-}
-
-// --- DECORACIÓN DEL ACUARIO ---
-function createSeaFloor() {
-    const bg = document.getElementById('aquarium-bg');
-    for (let x = 0; x < 110; x += 10) {
-        const sand = document.createElement('img');
-        sand.src = `${RAW_BASE}${SAND_ASSETS[Math.floor(Math.random() * SAND_ASSETS.length)]}`;
-        sand.className = 'sand-tile';
-        sand.style.left = x + "vw";
-        bg.appendChild(sand);
-    }
-}
-
-function placeDecorations() {
-    const bg = document.getElementById('aquarium-bg');
-    for (let i = 0; i < 8; i++) {
-        const decor = document.createElement('img');
-        decor.src = `${RAW_BASE}${DECOR_ASSETS[Math.floor(Math.random() * DECOR_ASSETS.length)]}`;
-        decor.className = 'aquarium-decor';
-        decor.style.left = (Math.random() * 95) + "vw";
-        const scale = 0.6 + Math.random() * 0.7;
-        decor.style.setProperty('--scale', scale);
-        bg.appendChild(decor);
-    }
 }
 
 // --- LÓGICA DE PECES ---
@@ -90,15 +66,16 @@ function createSwimmingFish(fish) {
         <img src="${RAW_BASE}pez_${rarityAsset}.png" class="fish-img">
     `;
     
+    // Posición inicial aleatoria (ajustada para el nuevo fondo)
     fishGroup.style.left = Math.random() * 80 + "vw";
-    fishGroup.style.top = Math.random() * 80 + "vh";
+    fishGroup.style.top = (Math.random() * 60 + 10) + "vh"; // Evitar que toquen mucho los bordes superior/inferior
     document.getElementById('aquarium-bg').appendChild(fishGroup);
     moveFishRandomly(fishGroup);
 }
 
 function moveFishRandomly(element) {
     const targetX = Math.random() * 85;
-    const targetY = Math.random() * 70; // Mantenerlos un poco lejos de la arena profunda
+    const targetY = Math.random() * 60 + 10; // Mantenerlos en la zona media
     const currentX = parseFloat(element.style.left);
     const img = element.querySelector('.fish-img');
     
