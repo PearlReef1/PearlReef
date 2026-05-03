@@ -1,25 +1,30 @@
+/* --- ESTILOS GENERALES --- */
 body {
     margin: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(180deg, #0077b6 0%, #00b4d8 100%);
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    min-height: 100vh;
     color: white;
 }
 
+/* --- PÁGINA DE LOGIN/REGISTRO --- */
+/* Solo se aplica cuando estamos en el index.html */
 .auth-container {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     padding: 2rem;
     border-radius: 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    width: 350px;
+    width: 320px;
     text-align: center;
+    /* Centrado absoluto para el login */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
-h1 { font-size: 2.5rem; text-shadow: 2px 2px #023e8a; }
+h1 { font-size: 2.5rem; text-shadow: 2px 2px #023e8a; margin-bottom: 1rem; }
 
 input {
     width: 90%;
@@ -28,10 +33,11 @@ input {
     border: none;
     border-radius: 10px;
     background: white;
+    color: #333;
 }
 
 button {
-    width: 95%;
+    width: 100%;
     padding: 12px;
     background: #ffb703;
     border: none;
@@ -40,10 +46,95 @@ button {
     font-weight: bold;
     cursor: pointer;
     transition: 0.3s;
+    margin-top: 10px;
 }
 
-button:hover { background: #fb8500; transform: scale(1.05); }
+button:hover { background: #fb8500; transform: scale(1.02); }
 
-.error-msg { color: #ff4d4d; font-size: 0.9rem; margin-top: 10px; }
+.error-msg { color: #ffb7b7; font-size: 0.9rem; margin-top: 10px; font-weight: bold; }
 
 a { color: #caf0f8; text-decoration: none; font-weight: bold; }
+
+/* --- ESTILOS DEL DASHBOARD (EL ACUARIO) --- */
+
+.header-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(2, 62, 138, 0.95);
+    padding: 15px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 3px solid #ffb703;
+}
+
+.pearl-count { color: #ffb703; font-weight: bold; font-size: 1.1rem; }
+
+.aquarium-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columnas en móvil */
+    gap: 15px;
+    padding: 20px;
+    padding-bottom: 140px; /* Espacio para que el menú de abajo no tape los peces */
+}
+
+.fish-card {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 15px;
+    padding: 15px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.fish-card img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.vitality-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    margin: 10px 0;
+    overflow: hidden;
+}
+
+.vitality-fill {
+    height: 100%;
+    background: #4caf50; /* Verde salud */
+    border-radius: 10px;
+}
+
+/* Barra de Tienda Inferior */
+.shop-bar {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #023e8a;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 15px 0;
+    border-top: 4px solid #ffb703;
+    z-index: 1000;
+}
+
+.shop-bar button {
+    width: 28%;
+    font-size: 0.7rem;
+    padding: 8px 5px;
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* Responsividad para pantallas más grandes */
+@media (min-width: 768px) {
+    .aquarium-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .auth-container { width: 400px; }
+}
