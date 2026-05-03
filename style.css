@@ -160,4 +160,5 @@ input {
     padding: 5px 15px !important;
     width: auto !important;
     font-size: 0.8rem !important;
+    cursor: pointer;
 }
