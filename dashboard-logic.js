@@ -66,23 +66,42 @@ function createSwimmingFish(fish) {
         <img src="${RAW_BASE}pez_${rarityAsset}.png" class="fish-img">
     `;
     
-    // Posición inicial aleatoria (ajustada para el nuevo fondo)
-    fishGroup.style.left = Math.random() * 80 + "vw";
-    fishGroup.style.top = (Math.random() * 60 + 10) + "vh"; // Evitar que toquen mucho los bordes superior/inferior
+    // Posición inicial aleatoria
+    const startX = Math.random() * 80;
+    const startY = Math.random() * 60 + 15;
+    
+    fishGroup.style.left = startX + "vw";
+    fishGroup.style.top = startY + "vh";
+    
     document.getElementById('aquarium-bg').appendChild(fishGroup);
-    moveFishRandomly(fishGroup);
+    
+    // Iniciar movimiento
+    setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
 
 function moveFishRandomly(element) {
-    const targetX = Math.random() * 85;
-    const targetY = Math.random() * 60 + 10; // Mantenerlos en la zona media
+    if (!element) return;
+
+    // Límites de nado para el nuevo fondo
+    const targetX = Math.random() * 80 + 5; 
+    const targetY = Math.random() * 55 + 15; 
+    
     const currentX = parseFloat(element.style.left);
     const img = element.querySelector('.fish-img');
     
-    if (img) img.style.transform = targetX > currentX ? "scaleX(1)" : "scaleX(-1)";
+    // GESTIÓN DE DIRECCIÓN: Voltear imagen según destino
+    if (img) {
+        if (targetX > currentX) {
+            img.style.transform = "scaleX(1)"; // Mirar derecha
+        } else {
+            img.style.transform = "scaleX(-1)"; // Mirar izquierda
+        }
+    }
     
     element.style.left = targetX + "vw";
     element.style.top = targetY + "vh";
+    
+    // El pez decide su siguiente movimiento en 8 segundos
     setTimeout(() => moveFishRandomly(element), 8000);
 }
 
@@ -105,8 +124,13 @@ function switchTab(tab, btn) {
 }
 
 function renderInventory(container) {
-    container.innerHTML = '<h3>Mis Especies</h3>';
+    container.innerHTML = '<h3>Gestión de Especies</h3>';
     const now = new Date();
+
+    if (allFish.length === 0) {
+        container.innerHTML += '<p style="text-align:center; color:#666; margin-top:20px;">No tienes especies aún. Ve a la tienda.</p>';
+        return;
+    }
 
     allFish.forEach(fish => {
         const div = document.createElement('div');
@@ -122,11 +146,11 @@ function renderInventory(container) {
             const remaining = hatchTime - now;
 
             if (remaining <= 0) {
-                statusHTML = '<span class="ready-text">¡LISTO PARA NACER!</span>';
-                actionHTML = `<button class="btn-hatch-mini" onclick="hatchFish('${fish.id}')">🐣 ABRIR</button>`;
+                statusHTML = '<span class="ready-text">🐣 ¡LISTO PARA NACER!</span>';
+                actionHTML = `<button class="btn-hatch-mini" onclick="hatchFish('${fish.id}')">ABRIR</button>`;
             } else {
-                statusHTML = `<span class="timer-display">⏳ ${formatTime(remaining)}</span>`;
-                actionHTML = `<button class="btn-disabled" disabled>INCUBANDO</button>`;
+                statusHTML = `<span class="timer-display">Incubando: ${formatTime(remaining)}</span>`;
+                actionHTML = `<button class="btn-disabled" disabled>EN PROCESO</button>`;
             }
         } else {
             const lastFed = fish.last_fed ? new Date(fish.last_fed) : new Date(0);
@@ -134,18 +158,18 @@ function renderInventory(container) {
 
             statusHTML = `Producción: <strong>${fish.daily_yield} PRL</strong>`;
             if (canFeed) {
-                actionHTML = `<button class="btn-feed-mini" onclick="startFeeding('${fish.id}')">🍴 ALIMENTAR</button>`;
+                actionHTML = `<button class="btn-feed-mini" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>`;
             } else {
                 const nextFeed = new Date(lastFed.getTime() + FEED_COOLDOWN_MS);
-                actionHTML = `<div class="cooldown-tag">Próxima comida:<br>${formatTime(nextFeed - now)}</div>`;
+                actionHTML = `<div class="cooldown-tag">Próximo:<br>${formatTime(nextFeed - now)}</div>`;
             }
         }
 
         div.innerHTML = `
-            <img src="${RAW_BASE}${isEgg ? 'pez_huevo.png' : 'pez_'+rarityFile+'.png'}">
+            <img src="${RAW_BASE}${isEgg ? 'pez_huevo.png' : 'pez_'+rarityFile+'.png'}" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2))">
             <div style="flex-grow:1">
-                <strong>${fish.rarity}</strong> <small>#${fish.id.substring(0,4)}</small><br>
-                ${statusHTML}
+                <strong style="color:var(--primary)">${fish.rarity}</strong> <small>#${fish.id.substring(0,4)}</small><br>
+                <div style="font-size: 0.85rem; margin-top:4px;">${statusHTML}</div>
             </div>
             <div class="action-zone">${actionHTML}</div>
         `;
@@ -154,6 +178,7 @@ function renderInventory(container) {
 }
 
 function formatTime(ms) {
+    if (ms < 0) return "0s";
     const s = Math.floor(ms / 1000);
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -165,7 +190,8 @@ function formatTime(ms) {
 async function hatchFish(fishId) {
     const { error } = await client.from('user_fish').update({ is_egg: false }).eq('id', fishId);
     if (!error) {
-        alert("¡Bienvenido al arrecife!");
+        const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+        allFish = data;
         await initAquarium();
         renderInventory(document.getElementById('panel-body'));
     }
@@ -187,33 +213,34 @@ async function completeFeeding() {
         const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
         renderInventory(document.getElementById('panel-body'));
-        alert("¡Pez alimentado con éxito!");
+        alert("¡Pez alimentado! Has recolectado tus perlas diarias.");
     }
 }
 
 function updateAquariumState() {
     const panel = document.getElementById('content-panel');
-    if (panel.style.display !== 'none' && document.getElementById('panel-title').innerText === 'Inventario') {
+    const title = document.getElementById('panel-title');
+    if (panel.style.display !== 'none' && title.innerText === 'Inventario') {
         renderInventory(document.getElementById('panel-body'));
     }
 }
 
-// --- TIENDA Y OTROS ---
+// --- TIENDA ---
 function renderShop(container) {
     container.innerHTML = `
         <div class="shop-item">
             <h4>Huevo Arrecife</h4>
-            <p>💰 1,000 PRL<br><small>Prob: Común / Poco Común</small></p>
+            <p>💰 1,000 PRL<br><small>Común (85%) / Poco Común (15%)</small></p>
             <button class="btn-buy" onclick="buyEgg('Arrecife', 1000)">Comprar</button>
         </div>
         <div class="shop-item">
             <h4>Huevo Abisal</h4>
-            <p>💰 2,500 PRL<br><small>Prob: Raro / Legendario</small></p>
+            <p>💰 2,500 PRL<br><small>Raro (80%) / Legendario (20%)</small></p>
             <button class="btn-buy" onclick="buyEgg('Abisal', 2500)">Comprar</button>
         </div>
         <div class="shop-item">
             <h4>Huevo Ancestral</h4>
-            <p>💰 6,000 PRL<br><small>Prob: Legendario / Mítico</small></p>
+            <p>💰 6,000 PRL<br><small>Legendario (90%) / Mítico (10%)</small></p>
             <button class="btn-buy" onclick="buyEgg('Ancestral', 6000)">Comprar</button>
         </div>
     `;
@@ -221,7 +248,7 @@ function renderShop(container) {
 
 async function buyEgg(type, cost) {
     const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
-    if (profile.pearls_balance < cost) return alert("Perlas insuficientes ⚪");
+    if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
 
     let rarity, yieldAmount, hatchHours = 3; 
 
@@ -259,7 +286,7 @@ async function buyEgg(type, cost) {
         const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
         renderInventory(document.getElementById('panel-body'));
-        alert(`¡Has comprado un huevo ${type}! Eclosiona en ${hatchHours}h.`);
+        alert(`¡Huevo ${type} adquirido! Revisa tu inventario.`);
     }
 }
 
