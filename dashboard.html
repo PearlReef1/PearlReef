@@ -6,73 +6,36 @@
     <title>Pearl Reef - Mi Arrecife</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* Estilos específicos para el Dashboard */
-        .header-stats {
-            display: flex;
-            justify-content: space-around;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 15px;
-            border-radius: 0 0 20px 20px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .pearl-count { color: #ffb703; font-weight: bold; font-size: 1.2rem; }
-        
-        .aquarium-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 20px;
-            padding: 20px;
-            margin-bottom: 100px;
-        }
-
-        .fish-card {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 10px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .fish-card img { width: 100px; height: 100px; object-fit: contain; }
-        
-        .shop-bar {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background: #023e8a;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-            border-top: 3px solid #ffb703;
-        }
-
-        .btn-feed { background: #8ecae6; color: #023e8a; margin-top: 5px; font-size: 0.8rem; }
-        .vitality-bar { height: 5px; background: #eee; border-radius: 5px; margin: 10px 0; overflow: hidden;}
-        .vitality-fill { height: 100%; background: #4caf50; }
-    </style>
 </head>
 <body>
     <div class="header-stats">
         <div>🌊 <span id="user-name">Cargando...</span></div>
         <div class="pearl-count">⚪ <span id="pearl-balance">0</span> PRL</div>
-        <button onclick="handleLogout()" style="width: auto; padding: 5px 10px; font-size: 0.7rem; background: #d00000; color: white;">Salir</button>
+        <button onclick="handleLogout()" class="btn-logout">Salir</button>
     </div>
 
     <div id="aquarium" class="aquarium-grid">
         </div>
 
     <div class="shop-bar">
-        <button onclick="buyEgg('Arrecife', 1000)" style="width: 30%;">🥚 $10<br><small>Arrecife</small></button>
-        <button onclick="buyEgg('Abisal', 2500)" style="width: 30%; background: #fb8500;">🥚 $25<br><small>Abisal</small></button>
-        <button onclick="buyEgg('Ancestral', 6000)" style="width: 30%; background: #ffb703;">🥚 $60<br><small>Ancestral</small></button>
+        <button onclick="buyEgg('Arrecife', 10)">
+            🥚 10 PRL<br>
+            <small>Gana: 35/día</small>
+        </button>
+        <button onclick="buyEgg('Abisal', 25)" style="background: #fb8500;">
+            🥚 25 PRL<br>
+            <small>Gana: 85/día</small>
+        </button>
+        <button onclick="buyEgg('Ancestral', 60)" style="background: #ffb703;">
+            🥚 60 PRL<br>
+            <small>Gana: 205/día</small>
+        </button>
     </div>
 
-    <div id="minigame-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; flex-direction:column; z-index:1000;">
-        <h2 id="game-task">Haz clic en el Cangrejo para alimentar</h2>
-        <div id="game-target" style="font-size: 5rem; cursor:pointer;" onclick="completeFeeding()">🦀</div>
+    <div id="minigame-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; z-index:2000; text-align: center;">
+        <h2 id="game-task" style="margin-bottom: 20px;">¡Hora de comer!</h2>
+        <p>Haz clic en el Cangrejo para alimentar a tu pez</p>
+        <div id="game-target" style="font-size: 6rem; cursor:pointer; transition: transform 0.1s;" onclick="completeFeeding()">🦀</div>
     </div>
 
     <script src="dashboard-logic.js"></script>
