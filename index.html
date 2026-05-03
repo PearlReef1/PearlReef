@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pearl Reef - Iniciar Sesión</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="auth-container">
+        <h1>PEARL REEF</h1>
+        <div id="auth-forms">
+            <div id="login-form">
+                <h2>Bienvenido de nuevo</h2>
+                <input type="email" id="login-email" placeholder="Correo electrónico">
+                <input type="password" id="login-password" placeholder="Contraseña">
+                <button onclick="handleLogin()">Entrar al Arrecife</button>
+                <p>¿No tienes cuenta? <a href="#" onclick="toggleAuth()">Regístrate aquí</a></p>
+            </div>
+
+            <div id="register-form" style="display: none;">
+                <h2>Crea tu cuenta</h2>
+                <input type="text" id="reg-username" placeholder="Nombre de usuario">
+                <input type="email" id="reg-email" placeholder="Correo electrónico">
+                <input type="password" id="reg-password" placeholder="Contraseña">
+                <button onclick="handleRegister()">Registrarse</button>
+                <p>¿Ya tienes cuenta? <a href="#" onclick="toggleAuth()">Inicia sesión</a></p>
+            </div>
+        </div>
+        <p id="auth-error" class="error-msg"></p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
