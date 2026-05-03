@@ -6,6 +6,36 @@
     <title>Pearl Reef - Mi Arrecife</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Ajustes rápidos para evitar el colapso visual */
+        .shop-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 15px;
+            height: auto;
+            align-items: stretch;
+        }
+        .shop-bar button {
+            width: 100%;
+            padding: 10px 5px;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            line-height: 1.2;
+        }
+        .timer-display {
+            font-family: 'Courier New', Courier, monospace;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            padding: 2px 5px;
+            color: #ffb703;
+            font-weight: bold;
+            display: block;
+            margin-top: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="header-stats">
@@ -14,31 +44,29 @@
         <button onclick="handleLogout()" class="btn-logout">Salir</button>
     </div>
 
-    <div id="aquarium" class="aquarium-grid">
-        </div>
+    <div id="aquarium" class="aquarium-grid"></div>
 
     <div class="shop-bar">
         <button onclick="buyEgg('Arrecife', 1000)">
-            <strong>Huevo Arrecife</strong><br>
-            🥚 1,000 PRL ($10)<br>
-            <small>Ganancia: 35 PRL/día</small>
+            <b>Arrecife</b>
+            <span>1,000 PRL</span>
+            <small>+$35/día</small>
         </button>
         <button onclick="buyEgg('Abisal', 2500)" style="background: #fb8500;">
-            <strong>Huevo Abisal</strong><br>
-            🥚 2,500 PRL ($25)<br>
-            <small>Ganancia: 85 PRL/día</small>
+            <b>Abisal</b>
+            <span>2,500 PRL</span>
+            <small>+$85/día</small>
         </button>
         <button onclick="buyEgg('Ancestral', 6000)" style="background: #ffb703;">
-            <strong>Huevo Ancestral</strong><br>
-            🥚 6,000 PRL ($60)<br>
-            <small>Ganancia: 205 PRL/día</small>
+            <b>Ancestral</b>
+            <span>6,000 PRL</span>
+            <small>+$205/día</small>
         </button>
     </div>
 
-    <div id="minigame-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; z-index:2000; text-align: center;">
-        <h2 id="game-task" style="margin-bottom: 20px;">¡Hora de comer!</h2>
-        <p>Haz clic en el Cangrejo para alimentar a tu pez</p>
-        <div id="game-target" style="font-size: 6rem; cursor:pointer; transition: transform 0.1s;" onclick="completeFeeding()">🦀</div>
+    <div id="minigame-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; z-index:2000;">
+        <h2>¡Hora de comer!</h2>
+        <div id="game-target" style="font-size: 6rem; cursor:pointer;" onclick="completeFeeding()">拉</div>
     </div>
 
     <script src="dashboard-logic.js"></script>
