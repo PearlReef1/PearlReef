@@ -1,247 +1,127 @@
-/* --- RESET GENERAL --- */
+:root {
+    --primary: #023e8a;
+    --accent: #ffb703;
+    --danger: #e63946;
+    --sidebar-width: 260px;
+}
+
 body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background: #023e8a;
-    background: linear-gradient(180deg, #023e8a 0%, #0077b6 50%, #00b4d8 100%);
-    background-attachment: fixed;
-    min-height: 100vh;
-    color: white;
-    overflow-x: hidden;
+    margin: 0; padding: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #0077b6;
+    overflow: hidden; /* Evita scroll en el acuario */
+    height: 100vh;
 }
 
-/* --- BARRA SUPERIOR (HEADER) --- */
-.header-stats {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(2, 62, 138, 0.95);
-    padding: 12px 20px;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    border-bottom: 3px solid #ffb703;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+/* --- ACUARIO VIVO --- */
+.aquarium-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: linear-gradient(180deg, #023e8a 0%, #0077b6 100%);
+    z-index: 1;
 }
 
-.pearl-count {
-    color: #ffb703;
-    font-weight: bold;
-    font-size: 1.3rem;
-    text-shadow: 1px 1px 2px black;
-}
-
-/* --- EL ACUARIO (GRID) --- */
-.aquarium-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 25px;
-    padding: 30px;
-    padding-bottom: 200px; /* Espacio extra para la tienda mejorada */
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-/* --- TARJETA DE CADA PEZ --- */
-.fish-card {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 30px 15px 15px 15px;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 280px;
-}
-
-.fish-card:hover {
-    transform: translateY(-8px);
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-}
-
-.fish-card img {
-    width: 100px;
-    height: 100px;
-    object-fit: contain;
-    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4));
-    margin: 10px 0;
-    /* La animación se asigna dinámicamente desde JS, pero dejamos el float base */
-    animation: float 3s ease-in-out infinite;
-}
-
-/* --- BADGES DE RAREZA (5 CATEGORÍAS) --- */
-.rarity-badge {
+/* Peces Nadando */
+.fish-swim {
     position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 4px 15px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    white-space: nowrap;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    z-index: 10;
+    width: 100px;
+    height: auto;
+    z-index: 2;
+    transition: left 8s linear, top 8s linear, transform 0.5s ease;
+    cursor: pointer;
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3));
 }
 
-/* Colores por Clase de Rareza */
-.rarity-comun { border: 2px solid #95a5a6; }
-.rarity-comun .rarity-badge { background: #95a5a6; color: white; }
-
-.rarity-poco-comun { border: 2px solid #27ae60; }
-.rarity-poco-comun .rarity-badge { background: #27ae60; color: white; }
-
-.rarity-raro { border: 2px solid #3498db; }
-.rarity-raro .rarity-badge { background: #3498db; color: white; }
-
-.rarity-legendario { border: 2px solid #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.3); }
-.rarity-legendario .rarity-badge { background: #f39c12; color: #023e8a; }
-
-.rarity-mitico { border: 2px solid #9b59b6; box-shadow: 0 0 20px rgba(155, 89, 182, 0.5); }
-.rarity-mitico .rarity-badge { background: linear-gradient(45deg, #8e44ad, #9b59b6); color: white; }
-
-/* --- CRONÓMETRO Y ESTADOS --- */
-.timer-display {
-    font-family: 'Courier New', monospace;
-    background: rgba(0, 0, 0, 0.6);
-    color: #ffb703;
-    padding: 5px 12px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    display: inline-block;
-    margin: 10px 0;
-    border: 1px solid rgba(255, 183, 3, 0.3);
-}
-
-.status-box {
-    margin: 10px 0;
-    font-size: 0.9rem;
-    min-height: 45px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-}
-
-/* --- BARRA DE TIENDA (SHOP) MEJORADA --- */
-.shop-bar {
+/* --- SIDEBAR --- */
+.sidebar {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: rgba(2, 62, 138, 0.98);
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
+    left: 0; top: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: rgba(2, 62, 138, 0.9);
+    backdrop-filter: blur(15px);
+    z-index: 100;
+    border-right: 2px solid var(--accent);
     padding: 20px;
-    border-top: 4px solid #ffb703;
-    z-index: 1000;
     box-sizing: border-box;
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
-}
-
-.shop-item {
-    position: relative;
     display: flex;
     flex-direction: column;
 }
 
-.shop-bar button {
-    background: linear-gradient(145deg, #ffb703, #fb8500);
-    border: none;
+.logo-text { color: var(--accent); margin: 0 0 20px 0; font-size: 1.8rem; }
+
+.user-pill {
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
     border-radius: 15px;
-    color: #023e8a;
-    padding: 15px 10px;
+    margin-bottom: 30px;
+}
+
+.balance-display { color: var(--accent); font-weight: bold; font-size: 1.2rem; margin-top: 5px; }
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-size: 1.1rem;
     cursor: pointer;
-    box-shadow: 0 4px 0 #bc6c03;
-    transition: all 0.2s;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: 0.3s;
+}
+
+.nav-btn:hover, .nav-btn.active {
+    background: var(--accent);
+    color: var(--primary);
+    font-weight: bold;
+}
+
+/* --- PANELES DE CONTENIDO --- */
+.content-panel {
+    position: fixed;
+    right: 20px; top: 20px; bottom: 20px;
+    width: 400px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 20px;
+    z-index: 101;
+    color: #333;
     display: flex;
     flex-direction: column;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.3);
+    animation: slideIn 0.4s ease-out;
+}
+
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+.panel-header {
+    padding: 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
 }
 
-.shop-bar button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 0 #bc6c03;
-}
+.panel-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
 
-.shop-bar button:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 #bc6c03;
-}
-
-.shop-bar button strong { font-size: 1rem; text-transform: uppercase; }
-.shop-bar button small { font-size: 0.75rem; font-weight: bold; margin-top: 4px; }
-
-/* Tooltip de información (aparece al pasar mouse) */
-.egg-tooltip {
-    position: fixed;
-    bottom: 110px;
-    background: #002855;
-    border: 2px solid #ffb703;
-    padding: 12px;
+/* Estilos de Cartas en Inventario */
+.mini-card {
+    background: #f0f4f8;
     border-radius: 12px;
-    display: none;
-    z-index: 2000;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-    font-size: 0.8rem;
-    line-height: 1.4;
-    pointer-events: none;
-    width: 200px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
+.mini-card img { width: 60px; }
 
-/* --- BOTONES DE ACCIÓN --- */
-.btn-feed, .btn-hatch {
-    width: 100%;
-    padding: 10px;
-    border-radius: 12px;
-    border: none;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.2s;
-    margin-top: 10px;
-}
+.btn-logout { margin-top: auto; padding: 10px; background: var(--danger); border: none; color: white; border-radius: 8px; cursor: pointer; }
 
-.btn-feed { background: #2ecc71; color: white; box-shadow: 0 3px 0 #27ae60; }
-.btn-feed:hover { background: #27ae60; }
-
-.btn-hatch { background: #fb8500; color: white; animation: pulse 1.5s infinite; box-shadow: 0 3px 0 #d35400; }
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    70% { transform: scale(1.03); box-shadow: 0 0 15px rgba(251, 133, 0, 0.6); }
-    100% { transform: scale(1); }
-}
-
-/* --- ANIMACIONES DE PECES --- */
-@keyframes float {
-    0% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-12px) rotate(3deg); }
-    100% { transform: translateY(0px) rotate(0deg); }
-}
-
-/* --- OTROS --- */
-.btn-logout {
-    background: #e63946;
-    color: white;
-    padding: 8px 15px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background 0.2s;
-}
-.btn-logout:hover { background: #c1121f; }
+/* Modal y Food */
+.modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; display:flex; justify-content:center; align-items:center; }
+.modal-content { background: white; padding: 30px; border-radius: 20px; text-align:center; color: #333; }
+.food-icon { font-size: 5rem; cursor:pointer; transition: transform 0.1s; }
+.food-icon:active { transform: scale(0.8); }
