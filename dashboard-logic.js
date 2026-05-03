@@ -140,3 +140,41 @@ async function handleLogout() {
     await client.auth.signOut();
     window.location.href = 'index.html';
 }
+
+// Función para revisar si los huevos ya deben abrirse
+async function checkHatching() {
+    const { data: eggs } = await client
+        .from('user_fish')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('is_egg', true);
+
+    if (!eggs) return;
+
+    const now = new Date();
+
+    for (let egg of eggs) {
+        // Calculamos cuánto tiempo ha pasado desde que nació (birth_date)
+        const birthDate = new Date(egg.birth_date);
+        const diffInMinutes = (now - birthDate) / 1000 / 60;
+
+        // Definimos el tiempo según la rareza (en minutos para probar rápido)
+        let hatchTime = 60; // 1 hora por defecto (Arrecife)
+        if (egg.rarity === 'Raro') hatchTime = 180; // 3 horas (Abisal)
+        if (egg.rarity === 'Legendario') hatchTime = 360; // 6 horas (Ancestral)
+
+        if (diffInMinutes >= hatchTime) {
+            // ¡EL HUEVO DEBE ABRIRSE!
+            await client
+                .from('user_fish')
+                .update({ is_egg: false })
+                .eq('id', egg.id);
+            
+            alert(`¡Tu huevo ${egg.rarity} ha eclosionado!`);
+            loadFish();
+        }
+    }
+}
+
+// Ejecutar la revisión cada 30 segundos
+setInterval(checkHatching, 30000);
