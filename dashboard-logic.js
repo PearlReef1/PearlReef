@@ -5,9 +5,11 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 let allFish = [];
 const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/";
-const FEED_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 Horas
 
-// --- CONFIGURACIÓN DE ASSETS ---
+// --- CONFIGURACIÓN COIN TO FISH ---
+const FEED_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 Horas por ración
+const MAX_HUNGER_UNITS = 2; // Máximo 2 raciones (24h total)
+
 const AQUARIUM_BG_IMG = 'fondo_acuario.jpg';
 
 window.onload = async () => {
@@ -18,7 +20,6 @@ window.onload = async () => {
     await loadProfile();
     await initAquarium();
     
-    // Actualización de contadores cada segundo
     setInterval(updateAquariumState, 1000);
 };
 
@@ -28,7 +29,6 @@ async function loadProfile() {
         document.getElementById('pearl-balance').innerText = data.pearls_balance;
         document.getElementById('user-name').innerText = data.username || "Jugador";
         
-        // Actualización de stock de comida en la UI (si tienes los IDs en el HTML)
         const foodBasicEl = document.getElementById('food-basic-count');
         const foodRareEl = document.getElementById('food-rare-count');
         if(foodBasicEl) foodBasicEl.innerText = data.food_basic || 0;
@@ -54,7 +54,6 @@ async function initAquarium() {
     }
 }
 
-// --- LÓGICA DE PECES (MOVIMIENTO Y RENDERIZADO) ---
 function createSwimmingFish(fish) {
     const fishGroup = document.createElement('div');
     fishGroup.className = 'fish-container';
@@ -73,7 +72,6 @@ function createSwimmingFish(fish) {
     
     const startX = Math.random() * 70 + 10;
     const startY = Math.random() * 50 + 20;
-    
     fishGroup.style.left = startX + "vw";
     fishGroup.style.top = startY + "vh";
     
@@ -99,7 +97,6 @@ function moveFishRandomly(element) {
     setTimeout(() => moveFishRandomly(element), 8000);
 }
 
-// --- GESTIÓN DE INTERFAZ (TABS) ---
 function switchTab(tab, btn) {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
@@ -125,7 +122,7 @@ function renderInventory(container) {
     const now = new Date();
 
     if (allFish.length === 0) {
-        container.innerHTML += '<p style="text-align:center; color:#666; margin-top:20px;">No tienes especies aún. Ve a la tienda.</p>';
+        container.innerHTML += '<p style="text-align:center; color:#666; margin-top:20px;">No tienes especies aún.</p>';
         return;
     }
 
@@ -150,41 +147,48 @@ function renderInventory(container) {
             }
         } else {
             const lastFed = fish.last_fed ? new Date(fish.last_fed) : new Date(0);
-            const hoursSinceFed = (now - lastFed) / (1000 * 60 * 60);
+            const msSinceFed = now - lastFed;
             
-            // --- CÁLCULO DE HAMBRE (Vaciado en 24h) ---
-            const hungerPercent = Math.max(0, 100 - (hoursSinceFed * 4.16));
-            
+            // LÓGICA COIN TO FISH: 2 unidades de carga
+            let hungerUnits = 0;
+            if (msSinceFed < FEED_COOLDOWN_MS) hungerUnits = 2; // Menos de 12h
+            else if (msSinceFed < FEED_COOLDOWN_MS * 2) hungerUnits = 1; // Entre 12h y 24h
+            else hungerUnits = 0; // Más de 24h (Hambriento)
+
+            const isProducing = hungerUnits > 0;
             const currentXP = fish.current_xp || 0;
             const nextXP = fish.next_level_xp || 100;
             const xpPercent = Math.min((currentXP / nextXP) * 100, 100);
 
             statusHTML = `
-                <div style="font-size: 0.8rem; margin-bottom:4px;">Nivel: <strong>${fish.level || 1}</strong> | Prod: <strong>${fish.daily_yield} PRL</strong></div>
+                <div style="font-size: 0.8rem; margin-bottom:4px;">
+                    Nivel: <strong>${fish.level || 1}</strong> | 
+                    Prod: <strong style="color:${isProducing ? '#2ecc71' : '#e63946'}">${isProducing ? fish.daily_yield + ' PRL' : '¡HAMBRIENTO!'}</strong>
+                </div>
                 
                 <small style="font-size:0.6rem; color:#64748b">EXPERIENCIA (${currentXP}/${nextXP})</small>
                 <div style="width:100%; height:6px; background:#e2e8f0; border-radius:3px; margin-bottom:8px; overflow:hidden;">
-                    <div style="width:${xpPercent}%; height:100%; background:#4ade80; transition: width 0.5s;"></div>
+                    <div style="width:${xpPercent}%; height:100%; background:#4ade80;"></div>
                 </div>
 
-                <small style="font-size:0.6rem; color:#64748b">HAMBRE (${Math.round(hungerPercent)}%)</small>
-                <div style="width:100%; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
-                    <div style="width:${hungerPercent}%; height:100%; background:${hungerPercent < 20 ? '#ef4444' : '#3b82f6'}; transition: width 0.5s;"></div>
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <small style="font-size:0.6rem; color:#64748b">HAMBRE:</small>
+                    <span style="font-size:1rem; letter-spacing: 2px;">${'🍖'.repeat(hungerUnits)}${'⚪'.repeat(MAX_HUNGER_UNITS - hungerUnits)}</span>
                 </div>
             `;
 
-            if (hoursSinceFed >= 24) {
+            if (hungerUnits < MAX_HUNGER_UNITS) {
                 actionHTML = `<button class="btn-feed-mini" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>`;
             } else {
-                const nextFeed = new Date(lastFed.getTime() + FEED_COOLDOWN_MS);
-                actionHTML = `<div class="cooldown-tag">Listo en:<br>${formatTime(nextFeed - now)}</div>`;
+                const nextDrop = new Date(lastFed.getTime() + FEED_COOLDOWN_MS);
+                actionHTML = `<div class="cooldown-tag" style="font-size:0.65rem">Satisfecho<br>Baja en: ${formatTime(nextDrop - now)}</div>`;
             }
         }
 
         div.innerHTML = `
-            <img src="${RAW_BASE}${isEgg ? 'pez_huevo.png' : 'pez_'+rarityFile+'.png'}" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2))" width="60">
+            <img src="${RAW_BASE}${isEgg ? 'pez_huevo.png' : 'pez_'+rarityFile+'.png'}" style="width:60px; filter:${!isEgg && (now - (new Date(fish.last_fed || 0)) > FEED_COOLDOWN_MS * 2) ? 'grayscale(0.8) contrast(0.5)' : 'none'}">
             <div style="flex-grow:1; margin-left:12px;">
-                <strong style="color:var(--primary)">${fish.rarity}</strong> <small>#${fish.id.substring(0,4)}</small><br>
+                <strong style="color:var(--primary)">${fish.rarity}</strong><br>
                 <div style="margin-top:6px;">${statusHTML}</div>
             </div>
             <div class="action-zone">${actionHTML}</div>
@@ -202,7 +206,6 @@ function formatTime(ms) {
     return `${h}h ${m}m ${seg}s`;
 }
 
-// --- ACCIONES DE JUEGO (HATCH, FEED, XP) ---
 async function hatchFish(fishId) {
     const { error } = await client.from('user_fish').update({ is_egg: false }).eq('id', fishId);
     if (!error) {
@@ -215,33 +218,28 @@ async function hatchFish(fishId) {
 
 async function startFeeding(fishId) {
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
-    
     if ((profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
-        alert("¡No tienes comida! Ve a la tienda a comprar suministros.");
+        alert("¡No tienes comida! Ve a la tienda.");
         switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
         return;
     }
-
     sessionStorage.setItem('feeding_fish_id', fishId);
-    
-    // Consumo automático de comida básica para iniciar el proceso
-    const { error } = await client.from('profiles')
-        .update({ food_basic: Math.max(0, profile.food_basic - 1) })
-        .eq('id', currentUser.id);
-
-    if (!error) {
-        document.getElementById('minigame-modal').style.display = 'flex';
-        await loadProfile();
-    }
+    document.getElementById('minigame-modal').style.display = 'flex';
 }
 
 async function completeFeeding() {
     const fishId = sessionStorage.getItem('feeding_fish_id');
+    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
     const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
     
-    if (!fish) return;
+    if (!fish || !profile) return;
 
-    const xpGained = 5; 
+    // Consumo de comida (prioriza básica)
+    let updateProfile = {};
+    if (profile.food_basic > 0) updateProfile.food_basic = profile.food_basic - 1;
+    else updateProfile.food_rare = profile.food_rare - 1;
+
+    const xpGained = 10; 
     let newXp = (fish.current_xp || 0) + xpGained;
     let newLevel = fish.level || 1;
     let newNextLevelXp = fish.next_level_xp || 100;
@@ -252,9 +250,10 @@ async function completeFeeding() {
         newXp = 0;
         newNextLevelXp = Math.floor(newNextLevelXp * 1.5);
         newYield = Math.floor(newYield * 1.05);
-        alert(`⭐ ¡SUBIDA DE NIVEL! Tu pez ahora es nivel ${newLevel}`);
     }
 
+    // Actualizamos perfil (comida) y pez (XP + Tiempo)
+    await client.from('profiles').update(updateProfile).eq('id', currentUser.id);
     const { error } = await client.from('user_fish')
         .update({ 
             last_fed: new Date().toISOString(),
@@ -267,6 +266,7 @@ async function completeFeeding() {
 
     if (!error) {
         document.getElementById('minigame-modal').style.display = 'none';
+        await loadProfile();
         const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
         renderInventory(document.getElementById('panel-body'));
@@ -281,7 +281,6 @@ function updateAquariumState() {
     }
 }
 
-// --- TIENDA (UI MEJORADA + LÓGICA ORIGINAL) ---
 function renderShop(container) {
     container.innerHTML = `
         <div class="shop-wrapper">
@@ -291,25 +290,25 @@ function renderShop(container) {
                 ${renderEggCard('Abisal', '2,500', 'Raro (80%) / Legendario (20%)', '6h')}
                 ${renderEggCard('Ancestral', '6,000', 'Legendario (90%) / Mítico (10%)', '12h')}
             </div>
-
             <h4 style="color:var(--primary); margin:25px 0 15px 0; border-bottom:1px solid #eee; padding-bottom:5px;">Suministros</h4>
             <div class="shop-row food-row">
                 <div class="shop-card">
                     <div style="font-size:2rem;">🌿</div>
                     <h5>Pack Algas (x10)</h5>
-                    <p style="font-size:0.75rem; color:#666;">+5 XP por unidad</p>
+                    <p style="font-size:0.75rem; color:#666;">+10 XP por unidad</p>
                     <button class="btn-buy" onclick="buyFood('basic', 100, 10)">💰 100 PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">🦐</div>
                     <h5>Cebo Especial (x5)</h5>
-                    <p style="font-size:0.75rem; color:#666;">+12 XP por unidad</p>
+                    <p style="font-size:0.75rem; color:#666;">+25 XP por unidad</p>
                     <button class="btn-buy" onclick="buyFood('rare', 250, 5)">💰 250 PRL</button>
                 </div>
             </div>
         </div>
     `;
 }
+
 function renderEggCard(type, price, odds, time) {
     const pValue = price.replace(',', '');
     return `
@@ -324,17 +323,13 @@ function renderEggCard(type, price, odds, time) {
 
 async function buyFood(type, cost, quantity) {
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
-    
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
-
     const updateData = { pearls_balance: profile.pearls_balance - cost };
     if (type === 'basic') updateData.food_basic = (profile.food_basic || 0) + quantity;
     else updateData.food_rare = (profile.food_rare || 0) + quantity;
-
     const { error } = await client.from('profiles').update(updateData).eq('id', currentUser.id);
-
     if (!error) {
-        alert(`¡Compra exitosa! Se añadieron ${quantity} unidades.`);
+        alert(`¡Compra exitosa!`);
         await loadProfile();
         renderShop(document.getElementById('panel-body'));
     }
@@ -343,9 +338,7 @@ async function buyFood(type, cost, quantity) {
 async function buyEgg(type, cost) {
     const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
-
     let rarity, yieldAmount, hatchHours = 3; 
-
     const roll = Math.random() * 100;
     if (type === 'Arrecife') {
         if (roll < 85) { rarity = 'Comun'; yieldAmount = 38; }
@@ -359,34 +352,27 @@ async function buyEgg(type, cost) {
         else { rarity = 'Mitico'; yieldAmount = 500; }
         hatchHours = 12;
     }
-
     const hatchDate = new Date();
     hatchDate.setHours(hatchDate.getHours() + hatchHours);
-
-    const { error: payError } = await client.from('profiles')
-        .update({ pearls_balance: profile.pearls_balance - cost })
-        .eq('id', currentUser.id);
-
-    if (!payError) {
-        await client.from('user_fish').insert([{
-            user_id: currentUser.id,
-            rarity: rarity,
-            daily_yield: yieldAmount,
-            is_egg: true,
-            egg_hatch_time: hatchDate.toISOString(),
-            level: 1,
-            current_xp: 0,
-            next_level_xp: 100
-        }]);
-        await loadProfile();
-        const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
-        allFish = data;
-        renderInventory(document.getElementById('panel-body'));
-        alert(`¡Huevo ${type} adquirido! Revisa tu inventario.`);
-    }
+    await client.from('profiles').update({ pearls_balance: profile.pearls_balance - cost }).eq('id', currentUser.id);
+    await client.from('user_fish').insert([{
+        user_id: currentUser.id,
+        rarity: rarity,
+        daily_yield: yieldAmount,
+        is_egg: true,
+        egg_hatch_time: hatchDate.toISOString(),
+        level: 1,
+        current_xp: 0,
+        next_level_xp: 100,
+        last_fed: new Date().toISOString() // Nace lleno
+    }]);
+    await loadProfile();
+    const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+    allFish = data;
+    renderInventory(document.getElementById('panel-body'));
+    alert(`¡Huevo ${type} adquirido!`);
 }
 
-// --- UTILIDADES FINALES ---
 function closeAllPanels() {
     const panel = document.getElementById('content-panel');
     if (panel) panel.style.display = 'none';
