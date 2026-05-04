@@ -14,8 +14,8 @@
 body {
     margin: 0; padding: 0;
     font-family: 'Segoe UI', sans-serif;
-    background: #023e8a; /* Color base oscuro */
-    overflow: hidden; 
+    background: #023e8a; 
+    overflow: hidden;  
     height: 100vh;
 }
 
@@ -25,10 +25,9 @@ body {
     top: 0; left: 0;
     width: 100vw; height: 100vh;
     z-index: 1;
-    /* El fondo se gestiona desde JS con la imagen del arrecife */
 }
 
-/* --- PECES (INTEGRACIÓN VISUAL) --- */
+/* --- PECES (CORRECCIÓN DE OSCURIDAD E INTEGRACIÓN) --- */
 .fish-container {
     position: absolute;
     z-index: 5;
@@ -38,38 +37,39 @@ body {
     transition: left 8s linear, top 8s linear;
     pointer-events: none;
     
-    /* Efecto de inmersión: los colores del fondo se mezclan con el pez */
-    mix-blend-mode: multiply; 
-    filter: brightness(1.1) contrast(1.1);
-    opacity: 0.95;
+    /* Eliminamos multiply para evitar que se vean negros */
+    /* Usamos una opacidad alta y filtros de realce */
+    opacity: 1; 
 }
 
 .fish-img {
-    width: 100px; /* Un poco más grandes para lucirlos */
+    width: 90px; /* Tamaño optimizado */
     height: auto;
-    filter: drop-shadow(0 8px 15px rgba(0,0,0,0.3));
+    /* Drop-shadow más marcado para separarlos del fondo vibrante */
+    filter: drop-shadow(0 5px 12px rgba(0,0,0,0.5)) brightness(1.15) contrast(1.1);
     animation: float 3s ease-in-out infinite;
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); /* Giro suave */
+    /* Giro más rápido (0.3s) para evitar el efecto de nadar hacia atrás */
+    transition: transform 0.3s cubic-bezier(0.45, 0.05, 0.55, 0.95);
     transform-origin: center;
 }
 
-/* Etiqueta sutil (Sin mezcla para que sea legible) */
+/* Etiqueta sutil */
 .fish-label {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(5px);
-    padding: 4px 12px;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    mix-blend-mode: normal; /* Importante: que el texto no se pierda */
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    padding: 3px 10px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 
 .f-id {
     font-size: 0.6rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.9);
     font-family: 'Courier New', monospace;
     line-height: 1;
 }
@@ -78,14 +78,14 @@ body {
     font-size: 0.7rem;
     font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
 /* Colores de rareza */
 .rarity-text-comun { color: var(--comun); }
 .rarity-text-poco-comun { color: var(--poco-comun); }
 .rarity-text-raro { color: var(--raro); }
-.rarity-text-legendario { color: var(--legendary); text-shadow: 0 0 8px rgba(241, 196, 15, 0.5); }
+.rarity-text-legendario { color: var(--legendario); text-shadow: 0 0 8px rgba(241, 196, 15, 0.5); }
 .rarity-text-mitico { color: var(--mitico); text-shadow: 0 0 10px rgba(155, 89, 182, 0.6); }
 
 /* --- SIDEBAR --- */
