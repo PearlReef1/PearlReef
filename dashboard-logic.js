@@ -196,9 +196,29 @@ async function hatchFish(fishId) {
     }
 }
 
-function startFeeding(fishId) {
+async function startFeeding(fishId) {
+    // 1. Verificar si el usuario tiene comida
+    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    
+    if (profile.food_basic <= 0 && profile.food_rare <= 0) {
+        alert("¡No tienes comida! Ve a la tienda a comprar suministros.");
+        switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
+        return;
+    }
+
+    // 2. Guardar qué pez vamos a alimentar
     sessionStorage.setItem('feeding_fish_id', fishId);
-    document.getElementById('minigame-modal').style.display = 'flex';
+    
+    // 3. Abrir el modal pero preguntando qué comida usar (o usar la básica por defecto)
+    // Para simplificar, consumiremos una 'basic' automáticamente al iniciar
+    const { error } = await client.from('profiles')
+        .update({ food_basic: profile.food_basic - 1 })
+        .eq('id', currentUser.id);
+
+    if (!error) {
+        document.getElementById('minigame-modal').style.display = 'flex';
+        await loadProfile();
+    }
 }
 
 async function completeFeeding() {
