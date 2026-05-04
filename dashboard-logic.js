@@ -35,18 +35,17 @@ async function initAquarium() {
     allFish = data || [];
     
     const container = document.getElementById('aquarium-bg');
-    container.innerHTML = ''; 
+    if (container) {
+        container.innerHTML = ''; 
+        container.style.backgroundImage = `url('${RAW_BASE}${AQUARIUM_BG_IMG}')`;
+        container.style.backgroundSize = 'cover';
+        container.style.backgroundPosition = 'center';
+        container.style.backgroundRepeat = 'no-repeat';
 
-    // 1. Establecer Imagen de Fondo Fija
-    container.style.backgroundImage = `url('${RAW_BASE}${AQUARIUM_BG_IMG}')`;
-    container.style.backgroundSize = 'cover';
-    container.style.backgroundPosition = 'center';
-    container.style.backgroundRepeat = 'no-repeat';
-
-    // 2. Capa de Peces
-    allFish.forEach(fish => {
-        if (!fish.is_egg) createSwimmingFish(fish);
-    });
+        allFish.forEach(fish => {
+            if (!fish.is_egg) createSwimmingFish(fish);
+        });
+    }
 }
 
 // --- LÓGICA DE PECES ---
@@ -59,49 +58,53 @@ function createSwimmingFish(fish) {
     const rarityAsset = fish.rarity.toLowerCase().replace(/\s+/g, '_');
     
     fishGroup.innerHTML = `
-        <div class="fish-label rarity-text-${rarityClass}">
+        <div class="fish-label">
             <span class="f-id">#${fish.id.substring(0, 4)}</span>
-            <span class="f-rarity">${fish.rarity}</span>
+            <span class="f-rarity rarity-text-${rarityClass}">${fish.rarity}</span>
         </div>
         <img src="${RAW_BASE}pez_${rarityAsset}.png" class="fish-img">
     `;
     
     // Posición inicial aleatoria
-    const startX = Math.random() * 80;
-    const startY = Math.random() * 60 + 15;
+    const startX = Math.random() * 70 + 10;
+    const startY = Math.random() * 50 + 20;
     
     fishGroup.style.left = startX + "vw";
     fishGroup.style.top = startY + "vh";
     
     document.getElementById('aquarium-bg').appendChild(fishGroup);
     
-    // Iniciar movimiento
+    // Pequeño delay para que la transición CSS inicial no afecte el primer salto
     setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
 
 function moveFishRandomly(element) {
     if (!element) return;
 
-    // Límites de nado para el nuevo fondo
-    const targetX = Math.random() * 80 + 5; 
+    // 1. Definir destino aleatorio dentro de márgenes seguros
+    const targetX = Math.random() * 75 + 10; 
     const targetY = Math.random() * 55 + 15; 
     
-    const currentX = parseFloat(element.style.left);
+    // 2. Calcular dirección comparando con la posición actual REAL en pantalla
+    const rect = element.getBoundingClientRect();
+    const currentXPercent = (rect.left / window.innerWidth) * 100;
+    
     const img = element.querySelector('.fish-img');
     
-    // GESTIÓN DE DIRECCIÓN: Voltear imagen según destino
     if (img) {
-        if (targetX > currentX) {
-            img.style.transform = "scaleX(1)"; // Mirar derecha
+        // Si el objetivo está a la derecha, escala normal. Si está a la izquierda, voltea.
+        if (targetX > currentXPercent) {
+            img.style.transform = "scaleX(1)";
         } else {
-            img.style.transform = "scaleX(-1)"; // Mirar izquierda
+            img.style.transform = "scaleX(-1)";
         }
     }
     
+    // 3. Ejecutar movimiento
     element.style.left = targetX + "vw";
     element.style.top = targetY + "vh";
     
-    // El pez decide su siguiente movimiento en 8 segundos
+    // 4. Repetir ciclo cada 8 segundos (coincide con la duración de la transición CSS)
     setTimeout(() => moveFishRandomly(element), 8000);
 }
 
@@ -114,7 +117,10 @@ function switchTab(tab, btn) {
     const body = document.getElementById('panel-body');
     const title = document.getElementById('panel-title');
 
-    if (tab === 'acuario') { panel.style.display = 'none'; return; }
+    if (tab === 'acuario') { 
+        panel.style.display = 'none'; 
+        return; 
+    }
 
     panel.style.display = 'flex';
     title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
@@ -220,7 +226,7 @@ async function completeFeeding() {
 function updateAquariumState() {
     const panel = document.getElementById('content-panel');
     const title = document.getElementById('panel-title');
-    if (panel.style.display !== 'none' && title.innerText === 'Inventario') {
+    if (panel && panel.style.display !== 'none' && title.innerText === 'Inventario') {
         renderInventory(document.getElementById('panel-body'));
     }
 }
@@ -291,7 +297,8 @@ async function buyEgg(type, cost) {
 }
 
 function closeAllPanels() {
-    document.getElementById('content-panel').style.display = 'none';
+    const panel = document.getElementById('content-panel');
+    if (panel) panel.style.display = 'none';
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
 }
 
