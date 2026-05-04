@@ -65,7 +65,6 @@ function createSwimmingFish(fish) {
         <img src="${RAW_BASE}pez_${rarityAsset}.png" class="fish-img">
     `;
     
-    // Posición inicial aleatoria
     const startX = Math.random() * 70 + 10;
     const startY = Math.random() * 50 + 20;
     
@@ -73,38 +72,24 @@ function createSwimmingFish(fish) {
     fishGroup.style.top = startY + "vh";
     
     document.getElementById('aquarium-bg').appendChild(fishGroup);
-    
-    // Pequeño delay para que la transición CSS inicial no afecte el primer salto
     setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
 
 function moveFishRandomly(element) {
     if (!element) return;
-
-    // 1. Definir destino aleatorio dentro de márgenes seguros
     const targetX = Math.random() * 75 + 10; 
     const targetY = Math.random() * 55 + 15; 
-    
-    // 2. Calcular dirección comparando con la posición actual REAL en pantalla
     const rect = element.getBoundingClientRect();
     const currentXPercent = (rect.left / window.innerWidth) * 100;
-    
     const img = element.querySelector('.fish-img');
     
     if (img) {
-        // Si el objetivo está a la derecha, escala normal. Si está a la izquierda, voltea.
-        if (targetX > currentXPercent) {
-            img.style.transform = "scaleX(1)";
-        } else {
-            img.style.transform = "scaleX(-1)";
-        }
+        if (targetX > currentXPercent) { img.style.transform = "scaleX(1)"; } 
+        else { img.style.transform = "scaleX(-1)"; }
     }
     
-    // 3. Ejecutar movimiento
     element.style.left = targetX + "vw";
     element.style.top = targetY + "vh";
-    
-    // 4. Repetir ciclo cada 8 segundos (coincide con la duración de la transición CSS)
     setTimeout(() => moveFishRandomly(element), 8000);
 }
 
@@ -117,10 +102,7 @@ function switchTab(tab, btn) {
     const body = document.getElementById('panel-body');
     const title = document.getElementById('panel-title');
 
-    if (tab === 'acuario') { 
-        panel.style.display = 'none'; 
-        return; 
-    }
+    if (tab === 'acuario') { panel.style.display = 'none'; return; }
 
     panel.style.display = 'flex';
     title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
@@ -150,7 +132,6 @@ function renderInventory(container) {
         if (isEgg) {
             const hatchTime = new Date(fish.egg_hatch_time);
             const remaining = hatchTime - now;
-
             if (remaining <= 0) {
                 statusHTML = '<span class="ready-text">🐣 ¡LISTO PARA NACER!</span>';
                 actionHTML = `<button class="btn-hatch-mini" onclick="hatchFish('${fish.id}')">ABRIR</button>`;
@@ -161,8 +142,20 @@ function renderInventory(container) {
         } else {
             const lastFed = fish.last_fed ? new Date(fish.last_fed) : new Date(0);
             const canFeed = (now - lastFed) >= FEED_COOLDOWN_MS;
+            
+            // Barra de progreso visual para el nivel
+            const currentXP = fish.current_xp || 0;
+            const nextXP = fish.next_level_xp || 100;
+            const progressPercent = Math.min((currentXP / nextXP) * 100, 100);
 
-            statusHTML = `Producción: <strong>${fish.daily_yield} PRL</strong>`;
+            statusHTML = `
+                Nivel: <strong>${fish.level || 1}</strong> | Prod: <strong>${fish.daily_yield} PRL</strong>
+                <div style="width:100%; height:6px; background:#e2e8f0; border-radius:3px; margin-top:5px; overflow:hidden;">
+                    <div style="width:${progressPercent}%; height:100%; background:#4ade80; border-radius:3px; transition: width 0.5s;"></div>
+                </div>
+                <small style="font-size:0.65rem; color:#64748b">XP: ${currentXP} / ${nextXP}</small>
+            `;
+
             if (canFeed) {
                 actionHTML = `<button class="btn-feed-mini" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>`;
             } else {
@@ -210,8 +203,35 @@ function startFeeding(fishId) {
 
 async function completeFeeding() {
     const fishId = sessionStorage.getItem('feeding_fish_id');
+    
+    // 1. Obtener datos actuales del pez
+    const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
+    if (!fish) return;
+
+    // 2. Lógica de XP y Nivel
+    const xpGained = 25; // XP por cada alimentación
+    let newXp = (fish.current_xp || 0) + xpGained;
+    let newLevel = fish.level || 1;
+    let newNextLevelXp = fish.next_level_xp || 100;
+    let newYield = fish.daily_yield;
+
+    if (newXp >= newNextLevelXp) {
+        newLevel += 1;
+        newXp = 0; // Reinicia XP al subir de nivel
+        newNextLevelXp = Math.floor(newNextLevelXp * 1.5); // Aumenta dificultad 50%
+        newYield = Math.floor(newYield * 1.05); // Aumenta producción 5%
+        alert(`¡Felicidades! Tu pez subió al Nivel ${newLevel}. Su producción aumentó a ${newYield} PRL.`);
+    }
+
+    // 3. Actualizar en Supabase
     const { error } = await client.from('user_fish')
-        .update({ last_fed: new Date().toISOString() })
+        .update({ 
+            last_fed: new Date().toISOString(),
+            current_xp: newXp,
+            level: newLevel,
+            next_level_xp: newNextLevelXp,
+            daily_yield: newYield
+        })
         .eq('id', fishId);
 
     if (!error) {
@@ -219,7 +239,7 @@ async function completeFeeding() {
         const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
         renderInventory(document.getElementById('panel-body'));
-        alert("¡Pez alimentado! Has recolectado tus perlas diarias.");
+        alert("¡Pez alimentado! Has ganado XP y recolectado tus perlas.");
     }
 }
 
@@ -286,7 +306,9 @@ async function buyEgg(type, cost) {
             daily_yield: yieldAmount,
             is_egg: true,
             egg_hatch_time: hatchDate.toISOString(),
-            level: 1
+            level: 1,
+            current_xp: 0,
+            next_level_xp: 100
         }]);
         await loadProfile();
         const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
