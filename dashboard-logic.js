@@ -24,15 +24,23 @@ window.onload = async () => {
 };
 
 async function loadProfile() {
-    const { data } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    const { data, error } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    if (error) {
+        console.error("Error cargando perfil:", error);
+        return;
+    }
+    
     if (data) {
-        document.getElementById('pearl-balance').innerText = data.pearls_balance;
+        // Actualiza Perlas
+        document.getElementById('pearl-balance').innerText = data.pearls_balance || 0;
         document.getElementById('user-name').innerText = data.username || "Jugador";
         
+        // Actualiza contadores de comida en la interfaz
         const foodBasicEl = document.getElementById('food-basic-count');
         const foodRareEl = document.getElementById('food-rare-count');
-        if(foodBasicEl) foodBasicEl.innerText = data.food_basic || 0;
-        if(foodRareEl) foodRareEl.innerText = data.food_rare || 0;
+        
+        if (foodBasicEl) foodBasicEl.innerText = data.food_basic || 0;
+        if (foodRareEl) foodRareEl.innerText = data.food_rare || 0;
     }
 }
 
@@ -227,50 +235,24 @@ async function startFeeding(fishId) {
     document.getElementById('minigame-modal').style.display = 'flex';
 }
 
-async function completeFeeding() {
-    const fishId = sessionStorage.getItem('feeding_fish_id');
-    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
-    const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
+async function startFeeding(fishId) {
+    // Consultamos los datos más frescos de la DB antes de validar
+    const { data: profile, error } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
     
-    if (!fish || !profile) return;
+    if (error || !profile) return;
 
-    // Consumo de comida (prioriza básica)
-    let updateProfile = {};
-    if (profile.food_basic > 0) updateProfile.food_basic = profile.food_basic - 1;
-    else updateProfile.food_rare = profile.food_rare - 1;
+    const hasBasic = (profile.food_basic || 0) > 0;
+    const hasRare = (profile.food_rare || 0) > 0;
 
-    const xpGained = 10; 
-    let newXp = (fish.current_xp || 0) + xpGained;
-    let newLevel = fish.level || 1;
-    let newNextLevelXp = fish.next_level_xp || 100;
-    let newYield = fish.daily_yield;
-
-    if (newXp >= newNextLevelXp) {
-        newLevel += 1;
-        newXp = 0;
-        newNextLevelXp = Math.floor(newNextLevelXp * 1.5);
-        newYield = Math.floor(newYield * 1.05);
+    if (!hasBasic && !hasRare) {
+        alert("¡No tienes comida! Ve a la tienda a comprar suministros.");
+        switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
+        return;
     }
 
-    // Actualizamos perfil (comida) y pez (XP + Tiempo)
-    await client.from('profiles').update(updateProfile).eq('id', currentUser.id);
-    const { error } = await client.from('user_fish')
-        .update({ 
-            last_fed: new Date().toISOString(),
-            current_xp: newXp,
-            level: newLevel,
-            next_level_xp: newNextLevelXp,
-            daily_yield: newYield
-        })
-        .eq('id', fishId);
-
-    if (!error) {
-        document.getElementById('minigame-modal').style.display = 'none';
-        await loadProfile();
-        const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
-        allFish = data;
-        renderInventory(document.getElementById('panel-body'));
-    }
+    // Si tiene comida, guardamos el ID y abrimos el minijuego
+    sessionStorage.setItem('feeding_fish_id', fishId);
+    document.getElementById('minigame-modal').style.display = 'flex';
 }
 
 function updateAquariumState() {
@@ -323,15 +305,28 @@ function renderEggCard(type, price, odds, time) {
 
 async function buyFood(type, cost, quantity) {
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
+
     const updateData = { pearls_balance: profile.pearls_balance - cost };
-    if (type === 'basic') updateData.food_basic = (profile.food_basic || 0) + quantity;
-    else updateData.food_rare = (profile.food_rare || 0) + quantity;
+    
+    // IMPORTANTE: Verifica que los nombres de columna en Supabase sean estos:
+    if (type === 'basic') {
+        updateData.food_basic = (profile.food_basic || 0) + quantity;
+    } else {
+        updateData.food_rare = (profile.food_rare || 0) + quantity;
+    }
+
     const { error } = await client.from('profiles').update(updateData).eq('id', currentUser.id);
+
     if (!error) {
-        alert(`¡Compra exitosa!`);
-        await loadProfile();
+        alert(`¡Compra exitosa! Se añadieron ${quantity} unidades.`);
+        // FORZAMOS LA RECARGA DE DATOS
+        await loadProfile(); 
+        // Si el panel de la tienda está abierto, lo refrescamos
         renderShop(document.getElementById('panel-body'));
+    } else {
+        console.error("Error al comprar:", error);
     }
 }
 
