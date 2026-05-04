@@ -254,24 +254,50 @@ function updateAquariumState() {
 // --- TIENDA ---
 function renderShop(container) {
     container.innerHTML = `
-        <div class="shop-item">
-            <h4>Huevo Arrecife</h4>
-            <p>💰 1,000 PRL<br><small>Común (85%) / Poco Común (15%)</small></p>
-            <button class="btn-buy" onclick="buyEgg('Arrecife', 1000)">Comprar</button>
+        <div class="shop-section">
+            <h3>Especies (Huevos)</h3>
+            <div class="shop-grid">
+                <div class="shop-item">
+                    <h4>Huevo Arrecife</h4>
+                    <p>💰 1,000 PRL</p>
+                    <button class="btn-buy" onclick="buyEgg('Arrecife', 1000)">Comprar</button>
+                </div>
+                </div>
         </div>
-        <div class="shop-item">
-            <h4>Huevo Abisal</h4>
-            <p>💰 2,500 PRL<br><small>Raro (80%) / Legendario (20%)</small></p>
-            <button class="btn-buy" onclick="buyEgg('Abisal', 2500)">Comprar</button>
-        </div>
-        <div class="shop-item">
-            <h4>Huevo Ancestral</h4>
-            <p>💰 6,000 PRL<br><small>Legendario (90%) / Mítico (10%)</small></p>
-            <button class="btn-buy" onclick="buyEgg('Ancestral', 6000)">Comprar</button>
+
+        <div class="shop-section" style="margin-top:20px;">
+            <h3>Suministros (Comida)</h3>
+            <div class="shop-grid">
+                <div class="shop-item">
+                    <h4>Pack Algas (x10)</h4>
+                    <p>💰 100 PRL<br><small>Da 25 XP cada una</small></p>
+                    <button class="btn-buy" onclick="buyFood('basic', 100, 10)">Comprar</button>
+                </div>
+                <div class="shop-item">
+                    <h4>Cebo Especial (x5)</h4>
+                    <p>💰 250 PRL<br><small>Da 60 XP cada una</small></p>
+                    <button class="btn-buy" onclick="buyFood('rare', 250, 5)">Comprar</button>
+                </div>
+            </div>
         </div>
     `;
 }
 
+async function buyFood(type, cost, quantity) {
+    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
+
+    const updateData = { pearls_balance: profile.pearls_balance - cost };
+    if (type === 'basic') updateData.food_basic = (profile.food_basic || 0) + quantity;
+    if (type === 'rare') updateData.food_rare = (profile.food_rare || 0) + quantity;
+
+    const { error } = await client.from('profiles').update(updateData).eq('id', currentUser.id);
+    if (!error) {
+        alert(`¡Has comprado ${quantity} unidades de comida!`);
+        await loadProfile();
+        renderShop(document.getElementById('panel-body'));
+    }
+}
 async function buyEgg(type, cost) {
     const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
