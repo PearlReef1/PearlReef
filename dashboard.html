@@ -16,6 +16,11 @@
             <div class="user-pill">
                 <span id="user-name">...</span>
                 <div class="balance-display">⚪ <span id="pearl-balance">0</span> PRL</div>
+                
+                <div class="food-inventory-mini" style="margin-top: 10px; font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+                    <span title="Algas">🌿 <span id="food-basic-count">0</span></span>
+                    <span style="margin-left: 10px;" title="Cebos">🦐 <span id="food-rare-count">0</span></span>
+                </div>
             </div>
         </div>
 
@@ -33,6 +38,7 @@
             <h2 id="panel-title">Inventario</h2>
             <button class="close-panel" onclick="closeAllPanels()">×</button>
         </div>
+        
         <div id="panel-body" class="panel-body">
             </div>
     </main>
@@ -40,8 +46,10 @@
     <div id="minigame-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2>¡Hora de comer!</h2>
-            <p>Haz clic rápido en la comida</p>
-            <div id="game-target" class="food-icon" onclick="completeFeeding()">🦐</div>
+            <p>Haz clic rápido en la comida para alimentar a tu especie</p>
+            <div class="game-area" style="height: 150px; position: relative; margin-top: 20px;">
+                <div id="game-target" class="food-icon" onclick="completeFeeding()" style="cursor: pointer; font-size: 3rem; user-select: none;">🦐</div>
+            </div>
         </div>
     </div>
 
