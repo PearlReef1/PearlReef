@@ -383,3 +383,48 @@ async function handleLogout() {
     await client.auth.signOut();
     window.location.href = 'index.html';
 }
+async function claimPearls(fishId) {
+    // 1. Obtener datos actuales del pez
+    const { data: fish, error: fishError } = await client
+        .from('user_fish')
+        .select('accumulated_pearls, user_id')
+        .eq('id', fishId)
+        .single();
+
+    if (fishError || fish.accumulated_pearls <= 0) {
+        alert("No hay perlas para recolectar aún.");
+        return;
+    }
+
+    const amountToClaim = fish.accumulated_pearls;
+
+    // 2. Obtener balance actual del perfil
+    const { data: profile } = await client
+        .from('profiles')
+        .select('pearls_balance')
+        .eq('id', currentUser.id)
+        .single();
+
+    const newBalance = (profile.pearls_balance || 0) + amountToClaim;
+
+    // 3. Transacción: Resetear pez y subir balance al perfil
+    const { error: updateError } = await client
+        .from('profiles')
+        .update({ pearls_balance: newBalance })
+        .eq('id', currentUser.id);
+
+    if (!updateError) {
+        await client
+            .from('user_fish')
+            .update({ accumulated_pearls: 0, last_claim: new Date().toISOString() })
+            .eq('id', fishId);
+
+        alert(`¡Has recolectado ${amountToClaim.toFixed(2)} PRL! ⚪`);
+        
+        // Refrescar UI
+        await loadProfile();
+        const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+        allFish = data;
+        renderInventory(document.getElementById('panel-body'));
+    }
+}
