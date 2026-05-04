@@ -223,13 +223,12 @@ async function startFeeding(fishId) {
 
 async function completeFeeding() {
     const fishId = sessionStorage.getItem('feeding_fish_id');
-    
-    // 1. Obtener datos actuales del pez
     const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
+    
     if (!fish) return;
 
-    // 2. Lógica de XP y Nivel
-    const xpGained = 25; // XP por cada alimentación
+    // --- NUEVO BALANCE DE XP ---
+    const xpGained = 5; // Cambiado de 25 a 5 para que el progreso sea real
     let newXp = (fish.current_xp || 0) + xpGained;
     let newLevel = fish.level || 1;
     let newNextLevelXp = fish.next_level_xp || 100;
@@ -237,13 +236,12 @@ async function completeFeeding() {
 
     if (newXp >= newNextLevelXp) {
         newLevel += 1;
-        newXp = 0; // Reinicia XP al subir de nivel
-        newNextLevelXp = Math.floor(newNextLevelXp * 1.5); // Aumenta dificultad 50%
-        newYield = Math.floor(newYield * 1.05); // Aumenta producción 5%
-        alert(`¡Felicidades! Tu pez subió al Nivel ${newLevel}. Su producción aumentó a ${newYield} PRL.`);
+        newXp = 0;
+        newNextLevelXp = Math.floor(newNextLevelXp * 1.5);
+        newYield = Math.floor(newYield * 1.05);
+        alert(`⭐ ¡SUBIDA DE NIVEL! Tu pez ahora es nivel ${newLevel}`);
     }
 
-    // 3. Actualizar en Supabase
     const { error } = await client.from('user_fish')
         .update({ 
             last_fed: new Date().toISOString(),
@@ -259,10 +257,8 @@ async function completeFeeding() {
         const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
         renderInventory(document.getElementById('panel-body'));
-        alert("¡Pez alimentado! Has ganado XP y recolectado tus perlas.");
     }
 }
-
 function updateAquariumState() {
     const panel = document.getElementById('content-panel');
     const title = document.getElementById('panel-title');
@@ -275,47 +271,96 @@ function updateAquariumState() {
 function renderShop(container) {
     container.innerHTML = `
         <div class="shop-section">
-            <h3>Especies (Huevos)</h3>
-            <div class="shop-grid">
-                <div class="shop-item">
-                    <h4>Huevo Arrecife</h4>
-                    <p>💰 1,000 PRL</p>
-                    <button class="btn-buy" onclick="buyEgg('Arrecife', 1000)">Comprar</button>
+            <h3 style="margin-bottom:15px; color:var(--primary);">Especies (Huevos)</h3>
+            <div class="shop-grid" style="display: flex; flex-direction: column; gap: 10px;">
+                
+                <div class="shop-item-full">
+                    <div class="shop-info">
+                        <h4>Huevo Arrecife</h4>
+                        <p><small>Común (85%) / Poco Común (15%)</small></p>
+                    </div>
+                    <div class="shop-action">
+                        <span class="price-tag">💰 1,000 PRL</span>
+                        <button class="btn-buy" onclick="buyEgg('Arrecife', 1000)">Comprar</button>
+                    </div>
                 </div>
+
+                <div class="shop-item-full">
+                    <div class="shop-info">
+                        <h4>Huevo Abisal</h4>
+                        <p><small>Raro (80%) / Legendario (20%)</small></p>
+                    </div>
+                    <div class="shop-action">
+                        <span class="price-tag">💰 2,500 PRL</span>
+                        <button class="btn-buy" onclick="buyEgg('Abisal', 2500)">Comprar</button>
+                    </div>
                 </div>
+
+                <div class="shop-item-full">
+                    <div class="shop-info">
+                        <h4>Huevo Ancestral</h4>
+                        <p><small>Legendario (90%) / Mítico (10%)</small></p>
+                    </div>
+                    <div class="shop-action">
+                        <span class="price-tag">💰 6,000 PRL</span>
+                        <button class="btn-buy" onclick="buyEgg('Ancestral', 6000)">Comprar</button>
+                    </div>
+                </div>
+
+            </div>
         </div>
 
-        <div class="shop-section" style="margin-top:20px;">
-            <h3>Suministros (Comida)</h3>
-            <div class="shop-grid">
-                <div class="shop-item">
-                    <h4>Pack Algas (x10)</h4>
-                    <p>💰 100 PRL<br><small>Da 25 XP cada una</small></p>
-                    <button class="btn-buy" onclick="buyFood('basic', 100, 10)">Comprar</button>
+        <div class="shop-section" style="margin-top:30px;">
+            <h3 style="margin-bottom:15px; color:var(--primary);">Suministros (Comida)</h3>
+            <div class="shop-grid" style="display: flex; flex-direction: column; gap: 10px;">
+                
+                <div class="shop-item-full">
+                    <div class="shop-info">
+                        <h4>Pack Algas (x10)</h4>
+                        <p><small>Aporte: +5 XP por unidad</small></p>
+                    </div>
+                    <div class="shop-action">
+                        <span class="price-tag">💰 100 PRL</span>
+                        <button class="btn-buy" onclick="buyFood('basic', 100, 10)">Comprar</button>
+                    </div>
                 </div>
-                <div class="shop-item">
-                    <h4>Cebo Especial (x5)</h4>
-                    <p>💰 250 PRL<br><small>Da 60 XP cada una</small></p>
-                    <button class="btn-buy" onclick="buyFood('rare', 250, 5)">Comprar</button>
+
+                <div class="shop-item-full">
+                    <div class="shop-info">
+                        <h4>Cebo Especial (x5)</h4>
+                        <p><small>Aporte: +12 XP por unidad</small></p>
+                    </div>
+                    <div class="shop-action">
+                        <span class="price-tag">💰 250 PRL</span>
+                        <button class="btn-buy" onclick="buyFood('rare', 250, 5)">Comprar</button>
+                    </div>
                 </div>
+
             </div>
         </div>
     `;
 }
 
 async function buyFood(type, cost, quantity) {
-    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    const { data: profile, error: fetchErr } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    
+    if (fetchErr) return;
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
 
     const updateData = { pearls_balance: profile.pearls_balance - cost };
-    if (type === 'basic') updateData.food_basic = (profile.food_basic || 0) + quantity;
-    if (type === 'rare') updateData.food_rare = (profile.food_rare || 0) + quantity;
+    
+    if (type === 'basic') {
+        updateData.food_basic = (profile.food_basic || 0) + quantity;
+    } else {
+        updateData.food_rare = (profile.food_rare || 0) + quantity;
+    }
 
     const { error } = await client.from('profiles').update(updateData).eq('id', currentUser.id);
+
     if (!error) {
-        alert(`¡Has comprado ${quantity} unidades de comida!`);
-        await loadProfile();
-        renderShop(document.getElementById('panel-body'));
+        alert(`¡Inventario actualizado! +${quantity} de comida.`);
+        await loadProfile(); // Actualiza el balance en la UI
+        renderShop(document.getElementById('panel-body')); // Refresca la tienda
     }
 }
 async function buyEgg(type, cost) {
