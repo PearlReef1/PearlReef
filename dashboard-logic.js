@@ -286,14 +286,14 @@ function renderShop(container) {
     container.innerHTML = `
         <div class="shop-wrapper">
             <h4 style="color:var(--primary); margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:5px;">Mercado de Huevos</h4>
-            <div class="shop-grid-cards">
+            <div class="shop-row eggs-row">
                 ${renderEggCard('Arrecife', '1,000', 'Común (85%) / Poco Común (15%)', '3h')}
                 ${renderEggCard('Abisal', '2,500', 'Raro (80%) / Legendario (20%)', '6h')}
                 ${renderEggCard('Ancestral', '6,000', 'Legendario (90%) / Mítico (10%)', '12h')}
             </div>
 
             <h4 style="color:var(--primary); margin:25px 0 15px 0; border-bottom:1px solid #eee; padding-bottom:5px;">Suministros</h4>
-            <div class="shop-grid-cards">
+            <div class="shop-row food-row">
                 <div class="shop-card">
                     <div style="font-size:2rem;">🌿</div>
                     <h5>Pack Algas (x10)</h5>
@@ -310,7 +310,6 @@ function renderShop(container) {
         </div>
     `;
 }
-
 function renderEggCard(type, price, odds, time) {
     const pValue = price.replace(',', '');
     return `
