@@ -304,32 +304,55 @@ function renderEggCard(type, price, odds, time) {
 }
 
 async function buyFood(type, cost, quantity) {
-    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
-    
-    if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
+    console.log("Iniciando compra:", { type, cost, quantity });
 
-    const updateData = { pearls_balance: profile.pearls_balance - cost };
+    // 1. Obtener perfil
+    const { data: profile, error: fetchError } = await client
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
     
-    // IMPORTANTE: Verifica que los nombres de columna en Supabase sean estos:
-    if (type === 'basic') {
-        updateData.food_basic = (profile.food_basic || 0) + quantity;
-    } else {
-        updateData.food_rare = (profile.food_rare || 0) + quantity;
+    if (fetchError || !profile) {
+        console.error("Error al obtener perfil:", fetchError);
+        return;
     }
 
-    const { error } = await client.from('profiles').update(updateData).eq('id', currentUser.id);
+    if (profile.pearls_balance < cost) {
+        return alert("No tienes suficientes perlas ⚪");
+    }
 
-    if (!error) {
-        alert(`¡Compra exitosa! Se añadieron ${quantity} unidades.`);
-        // FORZAMOS LA RECARGA DE DATOS
-        await loadProfile(); 
-        // Si el panel de la tienda está abierto, lo refrescamos
-        renderShop(document.getElementById('panel-body'));
+    // 2. Preparar actualización
+    const updateData = { 
+        pearls_balance: Number(profile.pearls_balance) - Number(cost) 
+    };
+    
+    if (type === 'basic') {
+        updateData.food_basic = (Number(profile.food_basic) || 0) + Number(quantity);
     } else {
-        console.error("Error al comprar:", error);
+        updateData.food_rare = (Number(profile.food_rare) || 0) + Number(quantity);
+    }
+
+    console.log("Enviando actualización a Supabase:", updateData);
+
+    // 3. Ejecutar Update
+    const { error: updateError } = await client
+        .from('profiles')
+        .update(updateData)
+        .eq('id', currentUser.id);
+
+    if (updateError) {
+        console.error("Error de Supabase al actualizar:", updateError.message);
+        alert("Error en la base de datos: " + updateError.message);
+    } else {
+        alert(`¡Compra exitosa!`);
+        await loadProfile(); // Esto actualiza el balance visual arriba
+        
+        // Si el panel de la tienda está abierto, lo refrescamos para ver los cambios
+        const body = document.getElementById('panel-body');
+        if (body) renderShop(body);
     }
 }
-
 async function buyEgg(type, cost) {
     const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
