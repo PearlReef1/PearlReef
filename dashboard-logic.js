@@ -125,7 +125,8 @@ function moveFishRandomly(element) {
     setTimeout(() => moveFishRandomly(element), 8000);
 }
 
-function switchTab(tab, btn) {
+async function switchTab(tab, btn) {
+    // Manejo de clases activas
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
     
@@ -133,13 +134,26 @@ function switchTab(tab, btn) {
     const body = document.getElementById('panel-body');
     const title = document.getElementById('panel-title');
 
-    if (tab === 'acuario') { panel.style.display = 'none'; return; }
+    // Si es acuario, cerramos el panel lateral
+    if (tab === 'acuario') { 
+        panel.style.display = 'none'; 
+        return; 
+    }
 
+    // Abrimos el panel y configuramos el título
     panel.style.display = 'flex';
-    title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
+    
+    // Personalización de títulos específicos
+    if (tab === 'deposito') {
+        title.innerText = "Depósito de USDT";
+    } else {
+        title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
+    }
 
+    // Renderizado de contenido según la pestaña
     if (tab === 'inventario') renderInventory(body);
     if (tab === 'tienda') renderShop(body);
+    if (tab === 'deposito') renderDeposit(body); // Nueva llamada a la función de Tatum
 }
 
 function renderInventory(container) {
@@ -823,29 +837,57 @@ async function finishFishing() {
     }
 }
 async function renderDeposit(container) {
-    container.innerHTML = `<div style="text-align:center; padding:50px;">Buscando tu dirección de depósito...</div>`;
-    
-    // Obtenemos el ID del usuario actual (de tu lógica de login)
-    const userId = (await supabase.auth.getUser()).data.user.id;
-    const userAddress = await getOrCreateWallet(userId);
+    container.innerHTML = `<div style="text-align:center; padding:40px;">⌛ Cargando tu billetera segura...</div>`;
 
-    container.innerHTML = `
-        <div class="deposit-wrapper" style="max-width:400px; margin:auto; text-align:center;">
-            <h3>Cargar USDT (BEP20)</h3>
-            <div style="background:white; padding:20px; border-radius:15px; margin:20px 0;">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${userAddress}" alt="QR">
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // 1. Intentar obtener la dirección de la base de datos
+        let { data: walletData, error } = await supabase
+            .from('user_wallets')
+            .select('address')
+            .eq('user_id', user.id)
+            .single();
+
+        let address = walletData?.address;
+
+        // 2. Si no existe, llamar a la Edge Function de Supabase
+        if (!address) {
+            const { data: newWallet, error: funcError } = await supabase.functions.invoke('generate-wallet', {
+                body: { user_id: user.id }
+            });
+            if (funcError) throw funcError;
+            address = newWallet.address;
+        }
+
+        // 3. Pintar la interfaz con el QR
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">Envía USDT por la red <b>Binance Smart Chain (BEP20)</b></p>
+                
+                <div style="background: white; padding: 15px; display: inline-block; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${address}" alt="QR Deposito">
+                </div>
+
+                <div style="margin-top: 20px; background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <code style="font-size: 0.75rem; color: #1e293b; word-break: break-all;">${address}</code>
+                    <button onclick="navigator.clipboard.writeText('${address}'); alert('Copiado!')" style="display: block; width: 100%; margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">Copiar Dirección</button>
+                </div>
+
+                <div style="margin-top: 20px; padding: 15px; background: #fff9db; border: 1px solid #fab005; border-radius: 8px; text-align: left;">
+                    <small style="color: #862e00; display: block; line-height: 1.4;">
+                        • Envía solo USDT (BEP20).<br>
+                        • Mínimo recomendado: 1 USDT.<br>
+                        • Una vez enviado, presiona el botón de verificar.
+                    </small>
+                </div>
+
+                <button onclick="checkBalance('${address}')" style="margin-top: 20px; width: 100%; background: #2ecc71; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer;">✅ VERIFICAR DEPÓSITO</button>
             </div>
-            <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
-                <code style="word-break:break-all; font-size:0.8rem;">${userAddress}</code>
-                <button onclick="navigator.clipboard.writeText('${userAddress}')" style="display:block; width:100%; margin-top:10px; background:#3b82f6; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">Copiar Dirección</button>
-            </div>
-            
-            <!-- Botón para verificar manualmente -->
-            <button onclick="checkTatumBalance('${userAddress}')" style="margin-top:20px; width:100%; background:#2ecc71; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">
-                VERIFICAR DEPÓSITO
-            </button>
-        </div>
-    `;
+        `;
+    } catch (err) {
+        container.innerHTML = `<div style="color:red; padding:20px;">Error al conectar con el sistema de pagos: ${err.message}</div>`;
+    }
 }
 async function getOrCreateWallet(userId) {
     // 1. Buscamos si el usuario ya tiene una dirección en Supabase
