@@ -140,7 +140,7 @@ function renderInventory(container) {
         }
     });
 
-    // Encabezado
+    // Encabezado (Se mantiene igual)
     container.innerHTML = `
         <div style="background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
             <div>
@@ -182,13 +182,14 @@ function renderInventory(container) {
             const levelBonus = 1 + ((Math.min(fish.level, 5) - 1) * 0.05);
             const currentYield = (fish.daily_yield * levelBonus).toFixed(2);
             
-            // Lógica de XP: Si es nivel 5, barra llena y dorada
-            const xpPercent = isMaxLevel ? 100 : Math.min(((fish.current_xp || 0) / (fish.next_level_xp || 100)) * 100, 100);
+            // LÓGICA DE XP ACTUALIZADA
+            const currentXP = fish.current_xp || 0;
+            const nextXP = fish.next_level_xp || 100;
+            const xpPercent = isMaxLevel ? 100 : Math.min((currentXP / nextXP) * 100, 100);
             const xpColor = isMaxLevel ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #a855f7, #d946ef)';
 
             div.innerHTML = `
                 <div style="text-align: center; position: relative; min-width: 70px;">
-                    <!-- ID CORREGIDO: PRIMEROS 4 CARACTERES -->
                     <div style="position: absolute; top: -5px; left: 50%; transform: translateX(-50%); background: #334155; color: white; font-size: 0.55rem; padding: 2px 6px; border-radius: 4px; font-family: monospace; z-index: 2; border: 1px solid rgba(255,255,255,0.2);">
                         #${fish.id.toString().slice(0, 4)}
                     </div>
@@ -199,7 +200,7 @@ function renderInventory(container) {
                     <div style="display: flex; flex-direction: column; margin-bottom: 4px;">
                         <strong class="rarity-text-${rarityClass}" style="font-size: 0.9rem;">${fish.rarity}</strong>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.75rem; color: ${isMaxLevel ? '#f59e0b' : '#64748b'}; font-weight: ${isMaxLevel ? 'bold' : 'normal'};">
+                            <span style="font-size: 0.75rem; color: ${isMaxLevel ? '#f59e0b' : '#64748b'}; font-weight: bold;">
                                 Nivel ${fish.level} ${isMaxLevel ? '(MAX)' : ''}
                             </span>
                             <div style="display: flex; align-items: center; gap: 4px;">
@@ -209,8 +210,13 @@ function renderInventory(container) {
                         </div>
                     </div>
 
-                    <!-- BARRA DE XP CON TOPE NIVEL 5 -->
-                    <div style="width: 100%; height: 4px; background: #f1f5f9; border-radius: 2px; margin-bottom: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                    <!-- BARRA DE XP CON TEXTO DINÁMICO X / X -->
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 2px;">
+                        <span style="font-size: 0.55rem; color: #94a3b8; font-weight: bold;">
+                            ${isMaxLevel ? 'MAX' : `${currentXP} / ${nextXP} XP`}
+                        </span>
+                    </div>
+                    <div style="width: 100%; height: 5px; background: #f1f5f9; border-radius: 4px; margin-bottom: 8px; overflow: hidden; border: 1px solid #e2e8f0; position: relative;">
                         <div style="width: ${xpPercent}%; height: 100%; background: ${xpColor}; transition: width 0.5s;"></div>
                     </div>
 
@@ -244,7 +250,6 @@ function renderInventory(container) {
                     
                     <button class="btn-feed-mini" style="background:#1e3a8a; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.65rem; box-shadow: 0 2px 0 #0f1d45; display: ${hungerUnits < 2 ? 'block' : 'none'};" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>
                     
-                    <!-- TIEMPO DE SATISFACCIÓN (Visible mientras tenga al menos 1 barra) -->
                     <div style="font-size:0.55rem; text-align:center; color:#64748b; padding:6px; border:1px dashed #cbd5e1; border-radius:6px; background: #fdfdfd; display: ${hungerUnits >= 1 ? 'block' : 'none'};">
                         Satisfecho<br>
                         <span style="font-weight: bold; color: #1e293b;">${formatTime((lastFed.getTime() + maxReservaMs) - now)}</span>
@@ -302,8 +307,7 @@ async function completeFeeding() {
     // Calculamos cuánta "vida" le queda (máximo 24h)
     let currentLifeMs = Math.max(0, lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime());
     
-    // Si ya tiene más de 12h de reserva (es decir, le queda solo 1 slot libre), 
-    // al alimentar llegamos al tope de 24h.
+    // Si ya tiene las 24h completas, no alimentar
     if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
         alert("El pez ya está lleno.");
         document.getElementById('minigame-modal').style.display = 'none';
@@ -317,20 +321,35 @@ async function completeFeeding() {
     await client.from('profiles').update({ [foodCol]: profile[foodCol] - 1 }).eq('id', currentUser.id);
 
     // 3. Nueva Lógica: Sumar 12 horas a su estado actual
-    // Si estaba muerto/hambriento, empezamos desde 'ahora' + 12h.
-    // Si tenía 1 barra, le sumamos 12h más para tener las 2.
     let baseTime = lastFedDate.getTime() < (now.getTime() - (24 * 60 * 60 * 1000)) 
                    ? now.getTime() - (12 * 60 * 60 * 1000) 
                    : lastFedDate.getTime();
                    
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-    // 4. Calcular XP y Level Up
+    // 4. Calcular XP y Level Up (CORREGIDO PARA ESCALA Y NIVEL 5)
     let newXP = (fish.current_xp || 0) + xpGain;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
-    if (newXP >= nextXP) { newLevel++; newXP = 0; nextXP = Math.floor(nextXP * 1.5); }
 
+    if (newLevel < 5) {
+        if (newXP >= nextXP) {
+            newLevel++;
+            // Conservamos el sobrante de XP para el siguiente nivel
+            newXP = newXP - nextXP; 
+            // Obtenemos la meta del nuevo nivel usando la escala definida
+            nextXP = getNextLevelXP(newLevel);
+            
+            console.log(`¡Subida de nivel! Pez ${fishId} ahora es Nivel ${newLevel}`);
+        }
+    } else {
+        // Bloqueo en Nivel 5: XP y meta se mantienen iguales (Barra llena)
+        newLevel = 5;
+        newXP = 100;
+        nextXP = 100;
+    }
+
+    // 5. Guardar cambios en Supabase
     await client.from('user_fish').update({ 
         last_fed: newFedDate.toISOString(),
         current_xp: newXP,
@@ -338,6 +357,7 @@ async function completeFeeding() {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
+    // 6. Actualizar Interfaz
     document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
     const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
