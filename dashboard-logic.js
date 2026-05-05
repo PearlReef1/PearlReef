@@ -4,12 +4,12 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let allFish = [];
-let isProcessingFeeding = false; // Bloqueo para evitar spam de clics
+let isProcessingFeeding = false; 
 const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/";
 
-// --- CONFIGURACIÓN COIN TO FISH ---
-const FEED_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 Horas por ración
-const MAX_HUNGER_UNITS = 2; // Máximo 2 raciones (24h total)
+// --- CONFIGURACIÓN ESTILO COIN TO FISH ---
+const FEED_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 Horas base
+const MAX_HUNGER_UNITS = 2; 
 
 const AQUARIUM_BG_IMG = 'fondo_acuario.jpg';
 
@@ -130,6 +130,7 @@ function renderInventory(container) {
         div.className = 'mini-card';
         const isEgg = fish.is_egg;
         const rarityFile = fish.rarity.toLowerCase().replace(/\s+/g, '_');
+        const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
         
         let actionHTML = '';
         let statusHTML = '';
@@ -155,14 +156,19 @@ function renderInventory(container) {
 
             const isProducing = hungerUnits > 0;
             const accumulated = fish.accumulated_pearls || 0;
+            const totalGenerated = fish.total_generated || 0; // Campo de vida total
             const currentXP = fish.current_xp || 0;
             const nextXP = fish.next_level_xp || 100;
             const xpPercent = Math.min((currentXP / nextXP) * 100, 100);
 
+            // Cálculo dinámico de producción basado en nivel (5% extra por nivel sobre base)
+            const levelBonus = 1 + ((fish.level - 1) * 0.05);
+            const currentYield = (fish.daily_yield * levelBonus).toFixed(2);
+
             statusHTML = `
                 <div style="font-size: 0.8rem; margin-bottom:4px;">
                     Nivel: <strong>${fish.level || 1}</strong> | 
-                    Prod: <strong style="color:${isProducing ? '#2ecc71' : '#e63946'}">${isProducing ? fish.daily_yield + ' PRL' : '¡HAMBRIENTO!'}</strong>
+                    Prod: <strong style="color:${isProducing ? '#2ecc71' : '#e63946'}">${isProducing ? currentYield + ' PRL' : '¡HAMBRIENTO!'}</strong>
                 </div>
                 
                 <small style="font-size:0.6rem; color:#64748b">EXPERIENCIA (${currentXP}/${nextXP})</small>
@@ -170,8 +176,15 @@ function renderInventory(container) {
                     <div style="width:${xpPercent}%; height:100%; background:#4ade80;"></div>
                 </div>
 
-                <div style="margin: 5px 0; background: rgba(0,0,0,0.05); padding: 5px; border-radius: 5px; border: 1px solid #eee;">
-                    <small style="font-size:0.65rem; color:#64748b">ACUMULADO: <strong style="color:var(--primary)">⚪ ${accumulated.toFixed(2)} PRL</strong></small>
+                <div style="margin: 5px 0; background: rgba(0,0,0,0.03); padding: 5px; border-radius: 5px; border: 1px solid #eee; display: flex; justify-content: space-between;">
+                    <div>
+                        <small style="font-size:0.55rem; color:#64748b; display:block;">ACUMULADO</small>
+                        <strong style="color:var(--primary); font-size:0.75rem;">⚪ ${accumulated.toFixed(2)}</strong>
+                    </div>
+                    <div style="text-align: right;">
+                        <small style="font-size:0.55rem; color:#64748b; display:block;">TOTAL VIDA</small>
+                        <strong style="color:#64748b; font-size:0.75rem;">✨ ${totalGenerated.toFixed(2)}</strong>
+                    </div>
                 </div>
 
                 <div style="display:flex; align-items:center; gap:5px;">
@@ -181,7 +194,7 @@ function renderInventory(container) {
             `;
 
             let buttons = [];
-            if (accumulated > 0) buttons.push(`<button class="btn-buy" style="background:#2ecc71; margin-bottom:5px; width:100%;" onclick="claimPearls('${fish.id}')">COBRAR</button>`);
+            if (accumulated > 0) buttons.push(`<button class="btn-buy" style="background:#2ecc71; margin-bottom:5px; width:100%;" onclick="claimPearls('${fish.id}')">RECOLECTAR</button>`);
             
             if (hungerUnits < MAX_HUNGER_UNITS) {
                 buttons.push(`<button class="btn-feed-mini" style="width:100%;" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>`);
@@ -195,10 +208,10 @@ function renderInventory(container) {
         div.innerHTML = `
             <img src="${RAW_BASE}${isEgg ? 'pez_huevo.png' : 'pez_'+rarityFile+'.png'}" style="width:60px; filter:${!isEgg && (now - (new Date(fish.last_fed || 0)) > FEED_COOLDOWN_MS * 2) ? 'grayscale(0.8) contrast(0.5)' : 'none'}">
             <div style="flex-grow:1; margin-left:12px;">
-                <strong style="color:var(--primary)">${fish.rarity}</strong><br>
+                <strong class="rarity-text-${rarityClass}">${fish.rarity}</strong><br>
                 <div style="margin-top:6px;">${statusHTML}</div>
             </div>
-            <div class="action-zone" style="display:flex; flex-direction:column; gap:4px; min-width:80px;">${actionHTML}</div>
+            <div class="action-zone" style="display:flex; flex-direction:column; gap:4px; min-width:90px;">${actionHTML}</div>
         `;
         container.appendChild(div);
     });
@@ -224,7 +237,7 @@ async function hatchFish(fishId) {
 }
 
 async function startFeeding(fishId) {
-    if (isProcessingFeeding) return; // Bloqueo si ya está procesando
+    if (isProcessingFeeding) return; 
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
 
     if ((profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
@@ -238,17 +251,15 @@ async function startFeeding(fishId) {
 
 async function completeFeeding() {
     if (isProcessingFeeding) return;
-    isProcessingFeeding = true; // ACTIVAR BLOQUEO
+    isProcessingFeeding = true; 
 
     const fishId = sessionStorage.getItem('feeding_fish_id');
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
     const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
 
-    // 1. Determinar nivel de hambre actual
     const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(0);
     const msSinceFed = new Date() - lastFedDate;
     
-    // Si ya está lleno (menos de 12h), no dejar alimentar
     if (msSinceFed < FEED_COOLDOWN_MS) {
         alert("Este pez ya está satisfecho por ahora.");
         document.getElementById('minigame-modal').style.display = 'none';
@@ -256,23 +267,17 @@ async function completeFeeding() {
         return;
     }
 
-    // 2. Descontar comida (1 unidad)
     let foodCol = profile.food_basic > 0 ? 'food_basic' : 'food_rare';
     let xpGain = foodCol === 'food_basic' ? 10 : 25;
     await client.from('profiles').update({ [foodCol]: profile[foodCol] - 1 }).eq('id', currentUser.id);
 
-    // 3. Calcular Nueva Fecha (Sumar 12h al estado actual)
-    // Lógica: Si estaba en 0 raciones, se pone en 1. Si estaba en 1 ración, se pone en 2.
     let newFedDate;
     if (msSinceFed >= FEED_COOLDOWN_MS * 2) {
-        // Estaba hambriento (>24h), ahora le queda 1 ración (12h de vida)
         newFedDate = new Date(new Date().getTime() - FEED_COOLDOWN_MS); 
     } else {
-        // Tenía 1 ración, ahora tiene 2 (Lleno total)
         newFedDate = new Date();
     }
 
-    // 4. Calcular XP y Level Up
     let newXP = (fish.current_xp || 0) + xpGain;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
@@ -285,14 +290,13 @@ async function completeFeeding() {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
-    // 5. Finalizar y liberar bloqueo
     document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
     const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
     renderInventory(document.getElementById('panel-body'));
     
-    isProcessingFeeding = false; // DESACTIVAR BLOQUEO
+    isProcessingFeeding = false; 
 }
 
 function updateAquariumState() {
@@ -385,7 +389,7 @@ async function buyEgg(type, cost) {
     await client.from('user_fish').insert([{
         user_id: currentUser.id, rarity, daily_yield: yieldAmount, is_egg: true,
         egg_hatch_time: hatchDate.toISOString(), level: 1, current_xp: 0,
-        next_level_xp: 100, last_fed: new Date().toISOString()
+        next_level_xp: 100, last_fed: new Date().toISOString(), total_generated: 0
     }]);
 
     await loadProfile();
@@ -399,10 +403,16 @@ async function claimPearls(fishId) {
     if (!fish || fish.accumulated_pearls <= 0) return;
 
     const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
-    const newBalance = (Number(profile.pearls_balance) || 0) + Number(fish.accumulated_pearls);
+    const amount = Number(fish.accumulated_pearls);
+    const newBalance = (Number(profile.pearls_balance) || 0) + amount;
+    const newTotalLife = (Number(fish.total_generated) || 0) + amount;
 
     await client.from('profiles').update({ pearls_balance: newBalance }).eq('id', currentUser.id);
-    await client.from('user_fish').update({ accumulated_pearls: 0, last_claim: new Date().toISOString() }).eq('id', fishId);
+    await client.from('user_fish').update({ 
+        accumulated_pearls: 0, 
+        total_generated: newTotalLife,
+        last_claim: new Date().toISOString() 
+    }).eq('id', fishId);
     
     await loadProfile();
     const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
