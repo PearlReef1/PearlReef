@@ -148,6 +148,9 @@ function renderInventory(container) {
     let totalPendingClaim = 0;
     let hungryFishCount = 0;
 
+    // Definimos el icono de la perla para reusarlo
+    const PRL_ICON_SMALL = `<img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" style="width:12px; height:12px; vertical-align:middle; margin-right:2px;">`;
+
     allFish.forEach(f => {
         if (!f.is_egg) {
             const levelBonus = 1 + ((Math.min(f.level, 5) - 1) * 0.05);
@@ -167,11 +170,11 @@ function renderInventory(container) {
         <div style="background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
             <div>
                 <small style="color: #64748b; font-size: 0.65rem; display: block; text-transform: uppercase;">Prod / Día</small>
-                <strong style="color: #2ecc71; font-size: 0.9rem;">⚪ ${totalDailyProd.toFixed(0)}</strong>
+                <strong style="color: #2ecc71; font-size: 0.9rem;">${PRL_ICON_SMALL} ${totalDailyProd.toFixed(0)}</strong>
             </div>
             <div style="border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
                 <small style="color: #64748b; font-size: 0.65rem; display: block; text-transform: uppercase;">Por Recoger</small>
-                <strong style="color: #3b82f6; font-size: 0.9rem;">⚪ ${totalPendingClaim.toFixed(2)}</strong>
+                <strong style="color: #3b82f6; font-size: 0.9rem;">${PRL_ICON_SMALL} ${totalPendingClaim.toFixed(2)}</strong>
             </div>
             <div>
                 <small style="color: #64748b; font-size: 0.65rem; display: block; text-transform: uppercase;">Hambre</small>
@@ -241,7 +244,7 @@ function renderInventory(container) {
                     </div>
 
                     <div style="font-size: 0.75rem; color: #475569; margin-bottom: 6px;">
-                        Prod: <strong style="color: #1e293b;">${currentYield} PRL</strong>
+                        Prod: <strong style="color: #1e293b;">${PRL_ICON_SMALL} ${currentYield}</strong>
                     </div>
 
                     <div style="display: flex; gap: 4px; margin-bottom: 8px; align-items: center;">
@@ -255,7 +258,7 @@ function renderInventory(container) {
                     <div style="background: #f8fafc; padding: 6px; border-radius: 6px; display: flex; justify-content: space-between; border: 1px solid #f1f5f9;">
                          <div style="display: flex; flex-direction: column;">
                             <small style="font-size: 0.5rem; color: #64748b; text-transform: uppercase;">Acumulado</small>
-                            <strong style="font-size: 0.8rem; color: #0f172a;">⚪ ${Number(fish.accumulated_pearls).toFixed(2)}</strong>
+                            <strong style="font-size: 0.8rem; color: #0f172a;">${PRL_ICON_SMALL} ${Number(fish.accumulated_pearls).toFixed(2)}</strong>
                          </div>
                          <div style="display: flex; flex-direction: column; text-align: right;">
                             <small style="font-size: 0.5rem; color: #64748b; text-transform: uppercase;">Total Vida</small>
@@ -279,7 +282,6 @@ function renderInventory(container) {
         container.appendChild(div);
     });
 }
-
 function renderEggRow(container, fish, now) {
     const hatchTime = new Date(fish.egg_hatch_time);
     const msLeft = hatchTime - now;
