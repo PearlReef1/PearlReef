@@ -4,7 +4,10 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let allFish = [];
-let isProcessingFeeding = false; 
+let isProcessingFeeding = false;
+let hookPos = 0;
+let targetPos = 50;
+let progress = 0;
 const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/";
 
 // --- CONFIGURACIÓN ECONOMÍA HÍBRIDA ---
@@ -585,4 +588,62 @@ if (fish.current_xp >= fish.next_level_xp && fish.level < 5) {
     fish.next_level_xp = getNextLevelXP(fish.level);
     
     // Aquí disparas el UPDATE a la base de datos
+}
+function startFishingMinigame() {
+    const hook = document.getElementById('hook-pointer');
+    const target = document.getElementById('target-zone');
+    const btn = document.getElementById('btn-fish-action');
+    
+    let gameInterval = setInterval(() => {
+        // Gravedad: el anzuelo baja solo
+        hookPos = Math.max(0, hookPos - 2);
+        hook.style.bottom = hookPos + 'px';
+
+        // Movimiento aleatorio del objetivo (pez)
+        targetPos += (Math.random() - 0.5) * 10;
+        targetPos = Math.max(0, Math.min(150, targetPos));
+        target.style.bottom = targetPos + 'px';
+
+        // Verificar si el anzuelo está sobre el objetivo
+        if (hookPos >= targetPos && hookPos <= (targetPos + 50)) {
+            progress += 1.5;
+        } else {
+            progress = Math.max(0, progress - 0.5);
+        }
+
+        if (progress >= 100) {
+            clearInterval(gameInterval);
+            finishFishing();
+        }
+    }, 50);
+
+    btn.onmousedown = () => { hookPos = Math.min(190, hookPos + 25); };
+}
+
+async function finishFishing() {
+    const rand = Math.random() * 100;
+    let reward = "";
+    let col = "";
+
+    // Probabilidades
+    if (rand < 50) { 
+        reward = "Restos Marinos"; 
+        col = "marine_trash"; // Debes crear esta columna en Supabase
+    } else if (rand < 80) { 
+        reward = "1x Plancton"; 
+        col = "food_plancton"; 
+    } else if (rand < 95) { 
+        reward = "1x Alga Básica"; 
+        col = "food_basic"; 
+    } else { 
+        reward = "1x Cebo Raro"; 
+        col = "food_rare"; 
+    }
+
+    // Actualizar en Supabase
+    const { data: profile } = await client.from('profiles').select(col).eq('id', currentUser.id).single();
+    await client.from('profiles').update({ [col]: (profile[col] || 0) + 1 }).eq('id', currentUser.id);
+
+    alert(`¡Atrapaste: ${reward}!`);
+    location.reload(); // Refrescar para ver inventario
 }
