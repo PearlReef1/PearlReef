@@ -17,9 +17,12 @@
                 <span id="user-name">...</span>
                 <div class="balance-display">⚪ <span id="pearl-balance">0</span> PRL</div>
                 
-                <div class="food-inventory-mini" style="margin-top: 10px; font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+                <!-- Inventario de comida actualizado con Plancton y Restos Marinos -->
+                <div class="food-inventory-mini" style="margin-top: 10px; font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; display: flex; flex-wrap: wrap; gap: 8px;">
+                    <span title="Plancton">🦠 <span id="food-plancton-count">0</span></span>
                     <span title="Algas">🌿 <span id="food-basic-count">0</span></span>
-                    <span style="margin-left: 10px;" title="Cebos">🦐 <span id="food-rare-count">0</span></span>
+                    <span title="Cebos">🦐 <span id="food-rare-count">0</span></span>
+                    <span title="Restos Marinos" style="color: #94a3b8;">⚓ <span id="marine-trash-count">0</span></span>
                 </div>
             </div>
         </div>
@@ -28,6 +31,8 @@
             <button class="nav-btn active" onclick="switchTab('acuario', this)">🌊 Acuario</button>
             <button class="nav-btn" onclick="switchTab('inventario', this)">🎒 Inventario</button>
             <button class="nav-btn" onclick="switchTab('tienda', this)">🛒 Tienda</button>
+            <!-- Nuevo botón para activar el minijuego de pesca -->
+            <button class="nav-btn" onclick="openFishingGame()" style="color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); margin-top: 5px; background: rgba(251, 191, 36, 0.05);">🎣 Pescar</button>
         </nav>
 
         <button onclick="handleLogout()" class="btn-logout">Salir del Mar</button>
@@ -40,16 +45,15 @@
         </div>
         
         <div id="panel-body" class="panel-body">
-            </div>
+            <!-- Contenido dinámico desde dashboard-logic.js -->
+        </div>
     </main>
 
+    <!-- Modal Multi-propósito: Se usa para alimentar y para el minijuego de pesca -->
     <div id="minigame-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-content">
-            <h2>¡Hora de comer!</h2>
-            <p>Haz clic rápido en la comida para alimentar a tu especie</p>
-            <div class="game-area" style="height: 150px; position: relative; margin-top: 20px;">
-                <div id="game-target" class="food-icon" onclick="completeFeeding()" style="cursor: pointer; font-size: 3rem; user-select: none;">🦐</div>
-            </div>
+        <div class="modal-content" id="modal-dynamic-content">
+            <!-- El JS inyectará aquí el Selector de Comida o la Interfaz de Pesca -->
+            <h2>Cargando...</h2>
         </div>
     </div>
 
