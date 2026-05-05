@@ -434,15 +434,17 @@ function updateAquariumState() {
 }
 
 function renderShop(container) {
+    // Icono de perla actualizado para coherencia visual
     const PRL_ICON = `<img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" style="width:16px; height:16px; vertical-align:middle; margin-right:5px;">`;
 
     container.innerHTML = `
         <div class="shop-wrapper">
             <h4 style="color:var(--primary); margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:5px;">Mercado de Huevos</h4>
             <div class="shop-row eggs-row">
-                ${renderEggCard('Arrecife', '1,000', 'Común (85%) / Poco Común (15%)', '3h')}
-                ${renderEggCard('Abisal', '2,500', 'Raro (80%) / Legendario (20%)', '6h')}
-                ${renderEggCard('Ancestral', '6,000', 'Legendario (90%) / Mítico (10%)', '12h')}
+                <!-- Se pasan las URLs directas de los assets proporcionados -->
+                ${renderEggCard('Arrecife', '1,000', 'Común (85%) / Poco Común (15%)', '3h', 'https://github.com/PearlReef1/PearlReef/blob/main/assets/huevo_comun.png?raw=true')}
+                ${renderEggCard('Abisal', '2,500', 'Raro (80%) / Legendario (20%)', '6h', 'https://github.com/PearlReef1/PearlReef/blob/main/assets/huevo_raro.png?raw=true')}
+                ${renderEggCard('Ancestral', '6,000', 'Legendario (90%) / Mítico (10%)', '12h', 'https://github.com/PearlReef1/PearlReef/blob/main/assets/huevo_legendario.png?raw=true')}
             </div>
             
             <h4 style="color:var(--primary); margin:25px 0 15px 0; border-bottom:1px solid #eee; padding-bottom:5px;">Herramientas</h4>
@@ -455,7 +457,7 @@ function renderShop(container) {
                             <p style="font-size:0.75rem; color:#666; margin:2px 0 0 0;">Contiene 2 cañas. Límite diario: 4 sesiones de pesca.</p>
                         </div>
                     </div>
-                    <button class="btn-buy" onclick="buyItem('fishing_rods', 15, 2)" style="min-width: 120px;">${PRL_ICON} 15 PRL</button>
+                    <button class="btn-buy" onclick="buyItem('fishing_rods', 15, 2)" style="min-width: 120px;">${PRL_ICON} 15 $PRL</button>
                 </div>
             </div>
 
@@ -465,32 +467,38 @@ function renderShop(container) {
                     <div style="font-size:2rem;">${FOOD_TYPES.plancton.icon}</div>
                     <h5>Plancton (x10)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.plancton.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('plancton', 20, 10)">${PRL_ICON} 20 PRL</button>
+                    <button class="btn-buy" onclick="buyFood('plancton', 20, 10)">${PRL_ICON} 20 $PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.basic.icon}</div>
                     <h5>Pack Algas (x10)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.basic.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('basic', 50, 10)">${PRL_ICON} 50 PRL</button>
+                    <button class="btn-buy" onclick="buyFood('basic', 50, 10)">${PRL_ICON} 50 $PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.rare.icon}</div>
                     <h5>Cebo Especial (x5)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.rare.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('rare', 250, 5)">${PRL_ICON} 250 PRL</button>
+                    <button class="btn-buy" onclick="buyFood('rare', 250, 5)">${PRL_ICON} 250 $PRL</button>
                 </div>
             </div>
         </div>
     `;
 }
-function renderEggCard(type, price, odds, time) {
+
+function renderEggCard(type, price, odds, time, imgUrl) {
     const pValue = price.replace(',', '');
+    const PRL_ICON = `<img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));">`;
+    
     return `
         <div class="shop-card">
-            <img src="${RAW_BASE}pez_huevo.png" width="50" style="margin-bottom:10px;">
+            <!-- Imagen dinámica según el tipo de huevo -->
+            <img src="${imgUrl}" width="60" style="margin-bottom:10px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
             <h5>Huevo ${type}</h5>
             <p style="font-size:0.7rem; color:#666; margin-bottom:8px;">${odds}<br>Eclosión: ${time}</p>
-            <button class="btn-buy" onclick="buyEgg('${type}', ${pValue})">💰 ${price} PRL</button>
+            <button class="btn-buy" onclick="buyEgg('${type}', ${pValue})">
+                ${PRL_ICON} ${price} $PRL
+            </button>
         </div>
     `;
 }
