@@ -596,52 +596,68 @@ function openFishingGame() {
     const modal = document.getElementById('minigame-modal');
     const container = document.getElementById('modal-dynamic-content');
 
-    // Inyectamos la estructura del minijuego
     container.innerHTML = `
-        <div id="fishing-ui" style="text-align:center;">
-            <h2 style="color:#1e3a8a; margin-bottom:10px;">🎣 Pesca de Suministros</h2>
-            <p style="font-size:0.9rem; color:#64748b;">Mantén el anzuelo (rojo) sobre el pez (verde)</p>
+        <div id="fishing-scene" style="position:relative; width:100%; height:400px; background: url('${RAW_BASE}fondo_acuario.jpg'); background-size:cover; border-radius:15px; overflow:hidden; border:4px solid #1e3a8a;">
             
-            <div id="fishing-container" style="width:70px; height:200px; background:#e2e8f0; margin:20px auto; position:relative; border-radius:15px; border:4px solid #1e3a8a; overflow:hidden;">
-                <div id="target-zone" style="width:100%; height:50px; background:#4ade80; position:absolute; bottom:50px; transition: bottom 0.2s ease-out;"></div>
-                <div id="hook-pointer" style="width:100%; height:12px; background:#ef4444; position:absolute; bottom:0; border-top:2px solid white; border-bottom:2px solid white;"></div>
+            <!-- Superposición de agua/burbujas -->
+            <div style="position:absolute; width:100%; height:100%; background:rgba(30, 58, 138, 0.2); pointer-events:none;"></div>
+
+            <!-- La Caña/Anzuelo Visual -->
+            <div id="fishing-line" style="position:absolute; left:50%; top:0; width:2px; height:0px; background:white; transition: height 0.1s;"></div>
+            <div id="hook-visual" style="position:absolute; left:calc(50% - 15px); width:30px; height:30px; font-size:25px; filter:drop-shadow(2px 2px 2px rgba(0,0,0,0.5));">🪝</div>
+
+            <!-- El Pez (Objetivo) -->
+            <div id="fish-target" style="position:absolute; left:calc(50% - 20px); width:40px; height:40px; font-size:30px; transition: bottom 0.2s ease-out;">🐟</div>
+
+            <!-- UI de Progreso Flotante -->
+            <div style="position:absolute; top:20px; right:20px; width:60px; height:150px; background:rgba(255,255,255,0.2); border-radius:30px; border:2px solid white; backdrop-filter:blur(5px); overflow:hidden;">
+                <div id="fishing-progress-fill" style="position:absolute; bottom:0; width:100%; height:0%; background:linear-gradient(to top, #3b82f6, #60a5fa); transition: height 0.3s;"></div>
             </div>
 
-            <div style="width:100%; height:10px; background:#cbd5e1; border-radius:5px; margin-bottom:20px;">
-                <div id="fishing-progress-bar" style="width:0%; height:100%; background:#3b82f6; border-radius:5px; transition: width 0.1s;"></div>
+            <div style="position:absolute; bottom:20px; width:100%; text-align:center;">
+                <button id="btn-fish-action" class="btn-buy" style="padding:15px 40px; font-size:1.2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">¡JALAR!</button>
             </div>
-
-            <button id="btn-fish-action" class="btn-buy" style="width:100%; padding:15px; font-weight:bold;">¡PULSAR!</button>
-            <button onclick="document.getElementById('minigame-modal').style.display='none'" style="background:none; border:none; color:#94a3b8; margin-top:15px; cursor:pointer;">Abandonar</button>
         </div>
+        <button onclick="document.getElementById('minigame-modal').style.display='none'" style="margin-top:10px; background:none; border:none; color:#64748b; cursor:pointer;">Cancelar</button>
     `;
 
     modal.style.display = 'flex';
-    
-    // IMPORTANTE: Llamamos a la lógica del juego que ya tienes definida
-    startFishingMinigame(); 
+    startFishingMinigame();
 }
 function startFishingMinigame() {
-    const hook = document.getElementById('hook-pointer');
-    const target = document.getElementById('target-zone');
-    const btn = document.getElementById('btn-fish-action');
+    let hookPos = 50; // Posición inicial del anzuelo (en px desde el fondo)
+    let targetPos = 100; // Posición inicial del pez
+    let progress = 0;
     
-    let gameInterval = setInterval(() => {
-        // Gravedad: el anzuelo baja solo
-        hookPos = Math.max(0, hookPos - 2);
+    const hook = document.getElementById('hook-visual');
+    const line = document.getElementById('fishing-line');
+    const fish = document.getElementById('fish-target');
+    const progressFill = document.getElementById('fishing-progress-fill');
+    const btn = document.getElementById('btn-fish-action');
+
+    const gameInterval = setInterval(() => {
+        // Gravedad del anzuelo
+        hookPos = Math.max(40, hookPos - 2.5);
+        
+        // Movimiento errático del pez (como en Coin to Fish)
+        targetPos += (Math.random() - 0.5) * 15;
+        targetPos = Math.max(40, Math.min(320, targetPos));
+
+        // Actualizar posiciones visuales
         hook.style.bottom = hookPos + 'px';
+        line.style.height = (400 - hookPos - 30) + 'px'; // El hilo llega hasta el anzuelo
+        fish.style.bottom = targetPos + 'px';
 
-        // Movimiento aleatorio del objetivo (pez)
-        targetPos += (Math.random() - 0.5) * 10;
-        targetPos = Math.max(0, Math.min(150, targetPos));
-        target.style.bottom = targetPos + 'px';
-
-        // Verificar si el anzuelo está sobre el objetivo
-        if (hookPos >= targetPos && hookPos <= (targetPos + 50)) {
-            progress += 1.5;
+        // Lógica de captura (si el anzuelo está cerca del pez)
+        if (Math.abs(hookPos - targetPos) < 30) {
+            progress = Math.min(100, progress + 1);
+            fish.style.filter = "brightness(1.5) drop-shadow(0 0 10px #4ade80)";
         } else {
             progress = Math.max(0, progress - 0.5);
+            fish.style.filter = "none";
         }
+
+        progressFill.style.height = progress + '%';
 
         if (progress >= 100) {
             clearInterval(gameInterval);
@@ -649,7 +665,8 @@ function startFishingMinigame() {
         }
     }, 50);
 
-    btn.onmousedown = () => { hookPos = Math.min(190, hookPos + 25); };
+    // Control: Al pulsar, el anzuelo sube
+    btn.onmousedown = () => { hookPos = Math.min(350, hookPos + 35); };
 }
 
 async function finishFishing() {
