@@ -51,14 +51,17 @@ async function loadProfile() {
         document.getElementById('pearl-balance').innerText = Math.floor(data.pearls_balance) || 0;
         document.getElementById('user-name').innerText = data.username || "Jugador";
         
-        // Actualizar contadores de comida en la interfaz (asegúrate de tener estos IDs en tu HTML)
-        const foodPlanctonEl = document.getElementById('food-plancton-count');
-        const foodBasicEl = document.getElementById('food-basic-count');
-        const foodRareEl = document.getElementById('food-rare-count');
+        // Actualizar contadores de comida
+        if (document.getElementById('food-plancton-count')) 
+            document.getElementById('food-plancton-count').innerText = data.food_plancton || 0;
+        if (document.getElementById('food-basic-count')) 
+            document.getElementById('food-basic-count').innerText = data.food_basic || 0;
+        if (document.getElementById('food-rare-count')) 
+            document.getElementById('food-rare-count').innerText = data.food_rare || 0;
         
-        if (foodPlanctonEl) foodPlanctonEl.innerText = data.food_plancton || 0;
-        if (foodBasicEl) foodBasicEl.innerText = data.food_basic || 0;
-        if (foodRareEl) foodRareEl.innerText = data.food_rare || 0;
+        // NUEVO: Actualizar contador de restos marinos
+        if (document.getElementById('marine-trash-count'))
+            document.getElementById('marine-trash-count').innerText = data.marine_trash || 0;
     }
 }
 
