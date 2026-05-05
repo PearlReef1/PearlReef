@@ -129,7 +129,6 @@ function renderInventory(container) {
             const levelBonus = 1 + ((f.level - 1) * 0.05);
             const currentYield = f.daily_yield * levelBonus;
             
-            // Determinar si tiene hambre según su rareza
             let hoursPerUnit = 12; 
             if (f.rarity === 'Raro') hoursPerUnit = 9;
             if (f.rarity === 'Legendario') hoursPerUnit = 6;
@@ -138,7 +137,8 @@ function renderInventory(container) {
             const cooldownMs = hoursPerUnit * 60 * 60 * 1000;
             const msSinceFed = now - new Date(f.last_fed || 0);
             
-            if (msSinceFed < cooldownMs * 2) {
+            // Un pez produce si tiene al menos 1 unidad de hambre llena (menos de 24h sin comer)
+            if (msSinceFed < (24 * 60 * 60 * 1000)) {
                 totalDailyProd += currentYield;
             } else {
                 hungryFishCount++;
@@ -181,75 +181,75 @@ function renderInventory(container) {
         const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
         
         if (isEgg) {
-            // ... (Mantenemos lógica de huevo igual) ...
             renderEggRow(div, fish, now);
         } else {
-            // --- CÁLCULOS POR PEZ ---
-            let hoursPerUnit = 12; 
-            if (fish.rarity === 'Raro') hoursPerUnit = 9;
-            if (fish.rarity === 'Legendario') hoursPerUnit = 6;
-            if (fish.rarity === 'Mitico') hoursPerUnit = 4;
-
-            const cooldownMs = hoursPerUnit * 60 * 60 * 1000;
+            // --- NUEVA LÓGICA DE BARRA (2 slots de 12h = 24h total) ---
             const lastFed = new Date(fish.last_fed || 0);
             const msSinceFed = now - lastFed;
+            const maxReservaMs = 24 * 60 * 60 * 1000;
             
+            // Calculamos cuántas barras de 12h tiene llenas
             let hungerUnits = 0;
-            if (msSinceFed < cooldownMs) hungerUnits = 2; 
-            else if (msSinceFed < cooldownMs * 2) hungerUnits = 1; 
+            if (msSinceFed < 12 * 60 * 60 * 1000) hungerUnits = 2; // Tiene más de 12h de reserva
+            else if (msSinceFed < 24 * 60 * 60 * 1000) hungerUnits = 1; // Tiene entre 0 y 12h de reserva
 
             const isProducing = hungerUnits > 0;
             const levelBonus = 1 + ((fish.level - 1) * 0.05);
             const currentYield = (fish.daily_yield * levelBonus).toFixed(2);
-            const xpPercent = Math.min(((fish.current_xp || 0) / (fish.next_level_xp || 100)) * 100, 100);
 
             div.innerHTML = `
                 <img src="${RAW_BASE}pez_${rarityKey}.png" style="width:65px; height:65px; object-fit:contain; filter: ${!isProducing ? 'grayscale(1)' : 'none'};">
                 
-                <div style="flex-grow:1;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
-                        <strong class="rarity-text-${rarityClass}" style="font-size: 1rem;">${fish.rarity} / Niv. ${fish.level}</strong>
-                        <span style="font-size: 0.7rem; color: ${isProducing ? '#2ecc71' : '#e63946'}; font-weight: bold;">
-                            ${isProducing ? '● PRODUCIENDO' : '○ HAMBRIENTO'}
-                        </span>
-                    </div>
-
-                    <div style="font-size: 0.75rem; color: #475569; margin-bottom: 8px;">
-                        Producción: <strong>${currentYield} PRL</strong>
-                    </div>
-
-                    <!-- BARRA DE HAMBRE SEGMENTADA -->
-                    <div style="display: flex; gap: 4px; margin-bottom: 8px; align-items: center;">
-                        <small style="font-size: 0.6rem; color: #94a3b8; width: 45px;">HAMBRE:</small>
-                        <div style="flex-grow: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; display: flex; gap: 2px;">
-                            <div style="flex: 1; background: ${hungerUnits >= 1 ? '#3b82f6' : 'transparent'};"></div>
-                            <div style="flex: 1; background: ${hungerUnits >= 2 ? '#3b82f6' : 'transparent'};"></div>
+                <div style="flex-grow:1; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                        <strong class="rarity-text-${rarityClass}" style="font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${fish.rarity} <span style="color: #64748b; font-weight: normal; font-size: 0.8rem;">/ Niv. ${fish.level}</span>
+                        </strong>
+                        <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            <div style="width: 6px; height: 6px; border-radius: 50%; background: ${isProducing ? '#2ecc71' : '#e63946'};"></div>
+                            <span style="font-size: 0.6rem; color: ${isProducing ? '#2ecc71' : '#e63946'}; font-weight: bold;">
+                                ${isProducing ? 'PRODUCIENDO' : 'HAMBRIENTO'}
+                            </span>
                         </div>
                     </div>
 
-                    <!-- ACUMULADO / RECOLECTADO -->
-                    <div style="background: #f1f5f9; padding: 6px 10px; border-radius: 8px; display: flex; justify-content: space-between;">
-                         <div>
-                            <small style="font-size: 0.55rem; color: #64748b; display:block;">ACUMULADO</small>
-                            <strong style="font-size: 0.8rem; color: #0f172a;">⚪ ${Number(fish.accumulated_pearls).toFixed(2)}</strong>
+                    <div style="font-size: 0.75rem; color: #475569; margin-bottom: 8px;">
+                        Producción: <strong style="color: #1e293b;">${currentYield} PRL</strong>
+                    </div>
+
+                    <!-- BARRA DE HAMBRE SEGMENTADA (2 SLOTS DE 12H) -->
+                    <div style="display: flex; gap: 4px; margin-bottom: 10px; align-items: center;">
+                        <small style="font-size: 0.55rem; color: #94a3b8; width: 40px; font-weight: bold;">HAMBRE</small>
+                        <div style="flex-grow: 1; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; display: flex; gap: 3px; border: 1px solid #e2e8f0;">
+                            <div style="flex: 1; background: ${hungerUnits >= 1 ? '#3b82f6' : 'transparent'}; transition: 0.3s;"></div>
+                            <div style="flex: 1; background: ${hungerUnits >= 2 ? '#3b82f6' : 'transparent'}; transition: 0.3s;"></div>
+                        </div>
+                    </div>
+
+                    <!-- ACUMULADO / TOTAL VIDA -->
+                    <div style="background: #f8fafc; padding: 8px; border-radius: 8px; display: flex; justify-content: space-between; border: 1px solid #f1f5f9;">
+                         <div style="display: flex; flex-direction: column;">
+                            <small style="font-size: 0.5rem; color: #64748b; text-transform: uppercase;">Acumulado</small>
+                            <strong style="font-size: 0.85rem; color: #3b82f6;">⚪ ${Number(fish.accumulated_pearls).toFixed(2)}</strong>
                          </div>
-                         <div style="text-align: right;">
-                            <small style="font-size: 0.55rem; color: #64748b; display:block;">TOTAL RECOLECTADO</small>
-                            <strong style="font-size: 0.8rem; color: #64748b;">✨ ${Number(fish.total_generated || 0).toFixed(0)}</strong>
+                         <div style="display: flex; flex-direction: column; text-align: right;">
+                            <small style="font-size: 0.5rem; color: #64748b; text-transform: uppercase;">Total Vida</small>
+                            <strong style="font-size: 0.85rem; color: #64748b;">✨ ${Number(fish.total_generated || 0).toFixed(0)}</strong>
                          </div>
                     </div>
                 </div>
 
-                <div style="display:flex; flex-direction:column; gap:8px; min-width:110px;">
-                    <button class="btn-buy" style="background:#2ecc71; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.75rem; box-shadow: 0 2px 0 #1a9e5a;" 
+                <div style="display:flex; flex-direction:column; gap:6px; min-width:105px;">
+                    <button class="btn-buy" style="background:#2ecc71; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.7rem; box-shadow: 0 2px 0 #1a9e5a;" 
                         onclick="claimPearls('${fish.id}')">RECOLECTAR</button>
                     
                     ${hungerUnits < 2 ? `
-                        <button class="btn-feed-mini" style="background:#3b82f6; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.75rem; box-shadow: 0 2px 0 #1e40af;" 
+                        <button class="btn-feed-mini" style="background:#1e3a8a; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.7rem; box-shadow: 0 2px 0 #0f1d45;" 
                         onclick="startFeeding('${fish.id}')">ALIMENTAR</button>
                     ` : `
-                        <div style="font-size:0.6rem; text-align:center; color:#94a3b8; padding:8px; border:1px dashed #cbd5e1; border-radius:8px;">
-                            Satisfecho<br>${formatTime((lastFed.getTime() + cooldownMs) - now)}
+                        <div style="font-size:0.55rem; text-align:center; color:#94a3b8; padding:6px; border:1px dashed #cbd5e1; border-radius:6px; background: #fdfdfd;">
+                            Satisfecho<br>
+                            <span style="font-weight: bold;">${formatTime((lastFed.getTime() + maxReservaMs) - now)}</span>
                         </div>
                     `}
                 </div>
@@ -298,27 +298,37 @@ async function completeFeeding() {
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
     const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
 
-    const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(0);
-    const msSinceFed = new Date() - lastFedDate;
+    // 1. Determinar nivel de hambre actual
+    const now = new Date();
+    const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
     
-    if (msSinceFed < FEED_COOLDOWN_MS) {
-        alert("Este pez ya está satisfecho por ahora.");
+    // Calculamos cuánta "vida" le queda (máximo 24h)
+    let currentLifeMs = Math.max(0, lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime());
+    
+    // Si ya tiene más de 12h de reserva (es decir, le queda solo 1 slot libre), 
+    // al alimentar llegamos al tope de 24h.
+    if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
+        alert("El pez ya está lleno.");
         document.getElementById('minigame-modal').style.display = 'none';
         isProcessingFeeding = false;
         return;
     }
 
+    // 2. Descontar comida (1 unidad)
     let foodCol = profile.food_basic > 0 ? 'food_basic' : 'food_rare';
     let xpGain = foodCol === 'food_basic' ? 10 : 25;
     await client.from('profiles').update({ [foodCol]: profile[foodCol] - 1 }).eq('id', currentUser.id);
 
-    let newFedDate;
-    if (msSinceFed >= FEED_COOLDOWN_MS * 2) {
-        newFedDate = new Date(new Date().getTime() - FEED_COOLDOWN_MS); 
-    } else {
-        newFedDate = new Date();
-    }
+    // 3. Nueva Lógica: Sumar 12 horas a su estado actual
+    // Si estaba muerto/hambriento, empezamos desde 'ahora' + 12h.
+    // Si tenía 1 barra, le sumamos 12h más para tener las 2.
+    let baseTime = lastFedDate.getTime() < (now.getTime() - (24 * 60 * 60 * 1000)) 
+                   ? now.getTime() - (12 * 60 * 60 * 1000) 
+                   : lastFedDate.getTime();
+                   
+    let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
+    // 4. Calcular XP y Level Up
     let newXP = (fish.current_xp || 0) + xpGain;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
