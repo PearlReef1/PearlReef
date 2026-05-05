@@ -125,8 +125,8 @@ function renderInventory(container) {
 
     allFish.forEach(f => {
         if (!f.is_egg) {
-            // FÓRMULA DE PRODUCCIÓN REAL (Incluyendo Niveles)
-            const levelBonus = 1 + ((f.level - 1) * 0.05);
+            // FÓRMULA DE PRODUCCIÓN REAL (Limitada a nivel 5)
+            const levelBonus = 1 + ((Math.min(f.level, 5) - 1) * 0.05);
             const currentYield = f.daily_yield * levelBonus;
             
             const msSinceFed = now - new Date(f.last_fed || 0);
@@ -178,9 +178,13 @@ function renderInventory(container) {
             else if (msSinceFed < 24 * 60 * 60 * 1000) hungerUnits = 1;
 
             const isProducing = hungerUnits > 0;
-            const levelBonus = 1 + ((fish.level - 1) * 0.05);
+            const isMaxLevel = fish.level >= 5;
+            const levelBonus = 1 + ((Math.min(fish.level, 5) - 1) * 0.05);
             const currentYield = (fish.daily_yield * levelBonus).toFixed(2);
-            const xpPercent = Math.min(((fish.current_xp || 0) / (fish.next_level_xp || 100)) * 100, 100);
+            
+            // Lógica de XP: Si es nivel 5, barra llena y dorada
+            const xpPercent = isMaxLevel ? 100 : Math.min(((fish.current_xp || 0) / (fish.next_level_xp || 100)) * 100, 100);
+            const xpColor = isMaxLevel ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #a855f7, #d946ef)';
 
             div.innerHTML = `
                 <div style="text-align: center; position: relative; min-width: 70px;">
@@ -195,7 +199,9 @@ function renderInventory(container) {
                     <div style="display: flex; flex-direction: column; margin-bottom: 4px;">
                         <strong class="rarity-text-${rarityClass}" style="font-size: 0.9rem;">${fish.rarity}</strong>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.75rem; color: #64748b;">Nivel ${fish.level}</span>
+                            <span style="font-size: 0.75rem; color: ${isMaxLevel ? '#f59e0b' : '#64748b'}; font-weight: ${isMaxLevel ? 'bold' : 'normal'};">
+                                Nivel ${fish.level} ${isMaxLevel ? '(MAX)' : ''}
+                            </span>
                             <div style="display: flex; align-items: center; gap: 4px;">
                                 <div style="width: 6px; height: 6px; border-radius: 50%; background: ${isProducing ? '#2ecc71' : '#e63946'};"></div>
                                 <span style="font-size: 0.6rem; color: ${isProducing ? '#2ecc71' : '#e63946'}; font-weight: bold;">${isProducing ? 'PRODUCIENDO' : 'HAMBRIENTO'}</span>
@@ -203,14 +209,16 @@ function renderInventory(container) {
                         </div>
                     </div>
 
+                    <!-- BARRA DE XP CON TOPE NIVEL 5 -->
                     <div style="width: 100%; height: 4px; background: #f1f5f9; border-radius: 2px; margin-bottom: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
-                        <div style="width: ${xpPercent}%; height: 100%; background: linear-gradient(90deg, #a855f7, #d946ef);"></div>
+                        <div style="width: ${xpPercent}%; height: 100%; background: ${xpColor}; transition: width 0.5s;"></div>
                     </div>
 
                     <div style="font-size: 0.75rem; color: #475569; margin-bottom: 6px;">
                         Prod: <strong style="color: #1e293b;">${currentYield} PRL</strong>
                     </div>
 
+                    <!-- BARRA DE HAMBRE -->
                     <div style="display: flex; gap: 4px; margin-bottom: 8px; align-items: center;">
                         <small style="font-size: 0.55rem; color: #94a3b8; font-weight: bold;">HAMBRE</small>
                         <div style="flex-grow: 1; height: 7px; background: #f1f5f9; border-radius: 10px; overflow: hidden; display: flex; gap: 2px; border: 1px solid #e2e8f0;">
@@ -236,6 +244,7 @@ function renderInventory(container) {
                     
                     <button class="btn-feed-mini" style="background:#1e3a8a; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.65rem; box-shadow: 0 2px 0 #0f1d45; display: ${hungerUnits < 2 ? 'block' : 'none'};" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>
                     
+                    <!-- TIEMPO DE SATISFACCIÓN (Visible mientras tenga al menos 1 barra) -->
                     <div style="font-size:0.55rem; text-align:center; color:#64748b; padding:6px; border:1px dashed #cbd5e1; border-radius:6px; background: #fdfdfd; display: ${hungerUnits >= 1 ? 'block' : 'none'};">
                         Satisfecho<br>
                         <span style="font-weight: bold; color: #1e293b;">${formatTime((lastFed.getTime() + maxReservaMs) - now)}</span>
