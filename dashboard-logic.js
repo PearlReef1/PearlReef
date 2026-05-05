@@ -434,7 +434,6 @@ function updateAquariumState() {
 function renderShop(container) {
     container.innerHTML = `
         <div class="shop-wrapper">
-            <!-- SECCIÓN: HUEVOS -->
             <h4 style="color:var(--primary); margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:5px;">Mercado de Huevos</h4>
             <div class="shop-row eggs-row">
                 ${renderEggCard('Arrecife', '1,000', 'Común (85%) / Poco Común (15%)', '3h')}
@@ -442,40 +441,38 @@ function renderShop(container) {
                 ${renderEggCard('Ancestral', '6,000', 'Legendario (90%) / Mítico (10%)', '12h')}
             </div>
             
-            <!-- SECCIÓN: HERRAMIENTAS (NUEVA) -->
             <h4 style="color:var(--primary); margin:25px 0 15px 0; border-bottom:1px solid #eee; padding-bottom:5px;">Herramientas</h4>
             <div class="shop-row tools-row" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
                 <div class="shop-card" style="display: flex; align-items: center; justify-content: space-between; padding: 15px 20px;">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <div style="font-size:2.5rem;">🎣</div>
                         <div style="text-align: left;">
-                            <h5 style="margin:0;">Caña de Pescar</h5>
-                            <p style="font-size:0.75rem; color:#666; margin:2px 0 0 0;">Necesaria para buscar suministros y restos en el mar.</p>
+                            <h5 style="margin:0;">Pack de Cañas (x2)</h5>
+                            <p style="font-size:0.75rem; color:#666; margin:2px 0 0 0;">Contiene 2 cañas. Límite diario: 4 sesiones de pesca.</p>
                         </div>
                     </div>
-                    <button class="btn-buy" onclick="buyItem('fishing_rods', 15, 1)" style="min-width: 120px;">💰 15 PRL</button>
+                    <button class="btn-buy" onclick="buyItem('fishing_rods', 15, 2)" style="min-width: 120px;">💰 15 PRL</button>
                 </div>
             </div>
 
-            <!-- SECCIÓN: SUMINISTROS -->
             <h4 style="color:var(--primary); margin:25px 0 15px 0; border-bottom:1px solid #eee; padding-bottom:5px;">Suministros</h4>
             <div class="shop-row food-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.plancton.icon}</div>
                     <h5>Plancton (x10)</h5>
-                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.plancton.xp} XP por unidad<br>Máxima rentabilidad.</p>
+                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.plancton.xp} XP por unidad</p>
                     <button class="btn-buy" onclick="buyFood('plancton', 20, 10)">💰 20 PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.basic.icon}</div>
                     <h5>Pack Algas (x10)</h5>
-                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.basic.xp} XP por unidad<br>Balance nivel/precio.</p>
+                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.basic.xp} XP por unidad</p>
                     <button class="btn-buy" onclick="buyFood('basic', 50, 10)">💰 50 PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.rare.icon}</div>
                     <h5>Cebo Especial (x5)</h5>
-                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.rare.xp} XP por unidad<br>Subida rápida.</p>
+                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.rare.xp} XP por unidad</p>
                     <button class="btn-buy" onclick="buyFood('rare', 250, 5)">💰 250 PRL</button>
                 </div>
             </div>
@@ -610,18 +607,44 @@ if (fish.current_xp >= fish.next_level_xp && fish.level < 5) {
     // Aquí disparas el UPDATE a la base de datos
 }
 
-function openFishingGame() {
+async function openFishingGame() {
     const modal = document.getElementById('minigame-modal');
     const container = document.getElementById('modal-dynamic-content');
+    const today = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
 
-    // 1. Verificación de Cañas (Suponiendo que cargaste 'fishing_rods' en currentUser)
-    if ((currentUser.fishing_rods || 0) <= 0) {
-        alert("¡No tienes Cañas de Pescar! Compra una en la tienda.");
+    // 1. Obtener datos frescos del perfil (Intentos y Cañas)
+    const { data: profile, error } = await client.from('profiles')
+        .select('fishing_rods, fishing_attempts_today, last_fishing_date')
+        .eq('id', currentUser.id)
+        .single();
+
+    if (error || !profile) return alert("Error al conectar con el servidor.");
+
+    // 2. Lógica de Reinicio Diario y Validación de Intentos
+    let attempts = profile.fishing_attempts_today || 0;
+    
+    if (profile.last_fishing_date !== today) {
+        // Es un nuevo día, reseteamos el contador en la DB
+        attempts = 0;
+        await client.from('profiles').update({ 
+            fishing_attempts_today: 0, 
+            last_fishing_date: today 
+        }).eq('id', currentUser.id);
+    }
+
+    if (attempts >= 4) {
+        alert("🐟 Los peces están asustados por hoy. Vuelve mañana (Límite 4/4 alcanzado).");
+        return;
+    }
+
+    // 3. Verificación de Cañas (Pack de 2 en tienda)
+    if ((profile.fishing_rods || 0) <= 0) {
+        alert("¡No tienes Cañas de Pescar! Compra un pack en la tienda.");
         switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
         return;
     }
 
-    // 2. Diseño corregido (Ancho completo y responsivo)
+    // 4. Inyección del Diseño Corregido
     container.innerHTML = `
         <div id="fishing-scene" style="position:relative; width:100%; max-width:400px; height:450px; background: url('${RAW_BASE}fondo_acuario.jpg'); background-size:cover; border-radius:15px; overflow:hidden; border:4px solid #1e3a8a; margin: 0 auto;">
             <div style="position:absolute; width:100%; height:100%; background:rgba(30, 58, 138, 0.2); pointer-events:none;"></div>
@@ -638,7 +661,10 @@ function openFishingGame() {
                 <button id="btn-fish-action" class="btn-buy" style="padding:15px 30px; font-size:1.2rem; width:80%;">¡JALAR!</button>
             </div>
         </div>
-        <button onclick="closeFishingModal()" style="margin-top:15px; background:#ef4444; color:white; border:none; padding:8px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">Cancelar y Salir</button>
+        <div style="text-align:center; margin-top:10px;">
+            <span style="color:#64748b; font-size:0.85rem;">Sesiones hoy: ${attempts}/4 | Cañas: ${profile.fishing_rods}</span><br>
+            <button onclick="closeFishingModal()" style="margin-top:10px; background:#ef4444; color:white; border:none; padding:8px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">Cancelar y Salir</button>
+        </div>
     `;
 
     modal.style.display = 'flex';
@@ -688,24 +714,55 @@ function startFishingMinigame() {
 }
 
 async function finishFishing() {
-    // 1. Descontar la caña usada
-    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
-    
-    // 2. Determinar recompensa
+    // 1. Obtener datos actuales para asegurar sincronización
+    const { data: profile, error } = await client.from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+
+    if (error || !profile) {
+        alert("Error de conexión al reclamar recompensa.");
+        return;
+    }
+
+    // 2. Determinar recompensa (Probabilidades configuradas)
     const rand = Math.random() * 100;
     let rewardCol, rewardName;
-    if (rand < 60) { rewardCol = 'marine_trash'; rewardName = "Restos Marinos"; }
-    else if (rand < 85) { rewardCol = 'food_plancton'; rewardName = "Plancton"; }
-    else if (rand < 97) { rewardCol = 'food_basic'; rewardName = "Algas"; }
-    else { rewardCol = 'food_rare'; rewardName = "Cebo Raro"; }
 
-    // 3. Update en Supabase: Restar 1 caña y sumar recompensa
-    await client.from('profiles').update({ 
-        fishing_rods: profile.fishing_rods - 1,
+    if (rand < 60) { 
+        rewardCol = 'marine_trash'; 
+        rewardName = "Restos Marinos"; 
+    } else if (rand < 85) { 
+        rewardCol = 'food_plancton'; 
+        rewardName = "Plancton"; 
+    } else if (rand < 97) { 
+        rewardCol = 'food_basic'; 
+        rewardName = "Algas"; 
+    } else { 
+        rewardCol = 'food_rare'; 
+        rewardName = "Cebo Raro"; 
+    }
+
+    // 3. Ejecutar actualización: Restar caña, sumar intento diario y sumar recompensa
+    const { error: updateError } = await client.from('profiles').update({ 
+        fishing_rods: Math.max(0, (profile.fishing_rods || 0) - 1),
+        fishing_attempts_today: (profile.fishing_attempts_today || 0) + 1,
         [rewardCol]: (profile[rewardCol] || 0) + 1
     }).eq('id', currentUser.id);
 
-    alert(`¡Éxito! Gastaste 1 caña y encontraste: ${rewardName}`);
+    if (updateError) {
+        alert("Hubo un problema al guardar tu progreso.");
+        console.error(updateError);
+        return;
+    }
+
+    // 4. Feedback al usuario y refresco de interfaz
+    alert(`¡Buena pesca! 🎣\nGastaste 1 caña y encontraste: ${rewardName}.\nIntentos hoy: ${(profile.fishing_attempts_today || 0) + 1}/4`);
+    
     closeFishingModal();
-    loadProfile();
+    
+    // Recargar perfil para actualizar contadores en el inventario/tienda
+    if (typeof loadProfile === "function") {
+        await loadProfile();
+    }
 }
