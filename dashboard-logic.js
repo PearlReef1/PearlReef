@@ -317,16 +317,31 @@ async function startFeeding(fishId) {
     if (isProcessingFeeding) return; 
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
 
+    // Validar si tiene alguna comida
     if ((profile.food_plancton || 0) <= 0 && (profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
         alert("¡No tienes comida! Ve a la tienda.");
         switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
         return;
     }
-    sessionStorage.setItem('feeding_fish_id', fishId);
-    document.getElementById('minigame-modal').style.display = 'flex';
-}
 
-async function completeFeeding() {
+    sessionStorage.setItem('feeding_fish_id', fishId);
+    
+    // Cambiamos el contenido del modal para que sea un selector
+    const modal = document.getElementById('minigame-modal');
+    modal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 15px; text-align: center; max-width: 300px; width: 90%;">
+            <h3 style="margin-top:0; color:#1e3a8a;">¿Qué vas a dar de comer?</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                ${profile.food_plancton > 0 ? `<button class="btn-buy" onclick="completeFeeding('plancton')" style="background:#4ade80; color:white;">🦠 Plancton (${profile.food_plancton})</button>` : ''}
+                ${profile.food_basic > 0 ? `<button class="btn-buy" onclick="completeFeeding('basic')" style="background:#3b82f6; color:white;">🌿 Algas (${profile.food_basic})</button>` : ''}
+                ${profile.food_rare > 0 ? `<button class="btn-buy" onclick="completeFeeding('rare')" style="background:#a855f7; color:white;">🦐 Cebo (${profile.food_rare})</button>` : ''}
+                <button onclick="document.getElementById('minigame-modal').style.display='none'" style="background:none; border:none; color:#64748b; cursor:pointer; margin-top:10px;">Cancelar</button>
+            </div>
+        </div>
+    `;
+    modal.style.display = 'flex';
+}
+async function completeFeeding(foodType) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true; 
 
@@ -335,9 +350,12 @@ async function completeFeeding() {
     const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
 
     const now = new Date();
+    // Determinamos el punto de partida: el tiempo actual o el last_fed si aún tiene vida
     const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
-    let currentLifeMs = Math.max(0, lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime());
     
+    let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
+    
+    // Si ya tiene 2 barras llenas (24h de reserva), no permitir más
     if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
         alert("El pez ya está lleno.");
         document.getElementById('minigame-modal').style.display = 'none';
@@ -345,22 +363,20 @@ async function completeFeeding() {
         return;
     }
 
-    // Selección automática de comida (Prioriza Plancton > Algas > Cebo)
-    let foodKey = '';
-    if (profile.food_plancton > 0) foodKey = 'plancton';
-    else if (profile.food_basic > 0) foodKey = 'basic';
-    else if (profile.food_rare > 0) foodKey = 'rare';
-
-    const foodCfg = FOOD_TYPES[foodKey];
+    const foodCfg = FOOD_TYPES[foodType];
+    
+    // 1. Descontar 1 unidad de la comida elegida
     await client.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
 
-    // Sumar 12 horas a la vida
+    // 2. Lógica de Tiempo: Ajustar para que solo sume 12h (1 barra)
+    // Si el pez estaba muerto (hace más de 24h que no come), lo revivimos poniéndole 12h de vida desde "ahora"
     let baseTime = lastFedDate.getTime() < (now.getTime() - (24 * 60 * 60 * 1000)) 
                    ? now.getTime() - (12 * 60 * 60 * 1000) 
                    : lastFedDate.getTime();
+    
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-    // Lógica de XP
+    // 3. Lógica de XP
     let newXP = (fish.current_xp || 0) + foodCfg.xp;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
@@ -377,6 +393,7 @@ async function completeFeeding() {
         nextXP = 100;
     }
 
+    // 4. Guardar en Supabase
     await client.from('user_fish').update({ 
         last_fed: newFedDate.toISOString(),
         current_xp: newXP,
@@ -384,6 +401,7 @@ async function completeFeeding() {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
+    // Limpiar y refrescar
     document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
     const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
