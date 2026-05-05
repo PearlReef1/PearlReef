@@ -8,6 +8,7 @@ let isProcessingFeeding = false;
 let hookPos = 0;
 let targetPos = 50;
 let progress = 0;
+let fishingInterval = null; // Variable global para controlar el cierre real
 const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/";
 
 // --- CONFIGURACIÓN ECONOMÍA HÍBRIDA ---
@@ -592,41 +593,50 @@ if (fish.current_xp >= fish.next_level_xp && fish.level < 5) {
     
     // Aquí disparas el UPDATE a la base de datos
 }
+
 function openFishingGame() {
     const modal = document.getElementById('minigame-modal');
     const container = document.getElementById('modal-dynamic-content');
 
+    // 1. Verificación de Cañas (Suponiendo que cargaste 'fishing_rods' en currentUser)
+    if ((currentUser.fishing_rods || 0) <= 0) {
+        alert("¡No tienes Cañas de Pescar! Compra una en la tienda.");
+        switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
+        return;
+    }
+
+    // 2. Diseño corregido (Ancho completo y responsivo)
     container.innerHTML = `
-        <div id="fishing-scene" style="position:relative; width:100%; height:400px; background: url('${RAW_BASE}fondo_acuario.jpg'); background-size:cover; border-radius:15px; overflow:hidden; border:4px solid #1e3a8a;">
-            
-            <!-- Superposición de agua/burbujas -->
+        <div id="fishing-scene" style="position:relative; width:100%; max-width:400px; height:450px; background: url('${RAW_BASE}fondo_acuario.jpg'); background-size:cover; border-radius:15px; overflow:hidden; border:4px solid #1e3a8a; margin: 0 auto;">
             <div style="position:absolute; width:100%; height:100%; background:rgba(30, 58, 138, 0.2); pointer-events:none;"></div>
 
-            <!-- La Caña/Anzuelo Visual -->
             <div id="fishing-line" style="position:absolute; left:50%; top:0; width:2px; height:0px; background:white; transition: height 0.1s;"></div>
-            <div id="hook-visual" style="position:absolute; left:calc(50% - 15px); width:30px; height:30px; font-size:25px; filter:drop-shadow(2px 2px 2px rgba(0,0,0,0.5));">🪝</div>
+            <div id="hook-visual" style="position:absolute; left:calc(50% - 15px); width:30px; height:30px; font-size:25px; z-index:2;">🪝</div>
+            <div id="fish-target" style="position:absolute; left:calc(50% - 20px); width:40px; height:40px; font-size:30px; z-index:1;">🐟</div>
 
-            <!-- El Pez (Objetivo) -->
-            <div id="fish-target" style="position:absolute; left:calc(50% - 20px); width:40px; height:40px; font-size:30px; transition: bottom 0.2s ease-out;">🐟</div>
-
-            <!-- UI de Progreso Flotante -->
-            <div style="position:absolute; top:20px; right:20px; width:60px; height:150px; background:rgba(255,255,255,0.2); border-radius:30px; border:2px solid white; backdrop-filter:blur(5px); overflow:hidden;">
-                <div id="fishing-progress-fill" style="position:absolute; bottom:0; width:100%; height:0%; background:linear-gradient(to top, #3b82f6, #60a5fa); transition: height 0.3s;"></div>
+            <div style="position:absolute; top:20px; right:20px; width:40px; height:200px; background:rgba(0,0,0,0.3); border-radius:20px; border:2px solid white; overflow:hidden;">
+                <div id="fishing-progress-fill" style="position:absolute; bottom:0; width:100%; height:0%; background:#4ade80; transition: height 0.2s;"></div>
             </div>
 
             <div style="position:absolute; bottom:20px; width:100%; text-align:center;">
-                <button id="btn-fish-action" class="btn-buy" style="padding:15px 40px; font-size:1.2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">¡JALAR!</button>
+                <button id="btn-fish-action" class="btn-buy" style="padding:15px 30px; font-size:1.2rem; width:80%;">¡JALAR!</button>
             </div>
         </div>
-        <button onclick="document.getElementById('minigame-modal').style.display='none'" style="margin-top:10px; background:none; border:none; color:#64748b; cursor:pointer;">Cancelar</button>
+        <button onclick="closeFishingModal()" style="margin-top:15px; background:#ef4444; color:white; border:none; padding:8px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">Cancelar y Salir</button>
     `;
 
     modal.style.display = 'flex';
     startFishingMinigame();
 }
+
+function closeFishingModal() {
+    clearInterval(fishingInterval); // Detiene el juego inmediatamente
+    document.getElementById('minigame-modal').style.display = 'none';
+}
+
 function startFishingMinigame() {
-    let hookPos = 50; // Posición inicial del anzuelo (en px desde el fondo)
-    let targetPos = 100; // Posición inicial del pez
+    let hookPos = 50;
+    let targetPos = 150;
     let progress = 0;
     
     const hook = document.getElementById('hook-visual');
@@ -635,64 +645,51 @@ function startFishingMinigame() {
     const progressFill = document.getElementById('fishing-progress-fill');
     const btn = document.getElementById('btn-fish-action');
 
-    const gameInterval = setInterval(() => {
-        // Gravedad del anzuelo
-        hookPos = Math.max(40, hookPos - 2.5);
-        
-        // Movimiento errático del pez (como en Coin to Fish)
-        targetPos += (Math.random() - 0.5) * 15;
-        targetPos = Math.max(40, Math.min(320, targetPos));
+    fishingInterval = setInterval(() => {
+        hookPos = Math.max(40, hookPos - 3);
+        targetPos += (Math.random() - 0.5) * 20;
+        targetPos = Math.max(40, Math.min(380, targetPos));
 
-        // Actualizar posiciones visuales
         hook.style.bottom = hookPos + 'px';
-        line.style.height = (400 - hookPos - 30) + 'px'; // El hilo llega hasta el anzuelo
+        line.style.height = (450 - hookPos - 30) + 'px';
         fish.style.bottom = targetPos + 'px';
 
-        // Lógica de captura (si el anzuelo está cerca del pez)
-        if (Math.abs(hookPos - targetPos) < 30) {
-            progress = Math.min(100, progress + 1);
-            fish.style.filter = "brightness(1.5) drop-shadow(0 0 10px #4ade80)";
+        if (Math.abs(hookPos - targetPos) < 35) {
+            progress = Math.min(100, progress + 1.5);
         } else {
-            progress = Math.max(0, progress - 0.5);
-            fish.style.filter = "none";
+            progress = Math.max(0, progress - 0.8);
         }
 
         progressFill.style.height = progress + '%';
 
         if (progress >= 100) {
-            clearInterval(gameInterval);
+            clearInterval(fishingInterval);
             finishFishing();
         }
     }, 50);
 
-    // Control: Al pulsar, el anzuelo sube
-    btn.onmousedown = () => { hookPos = Math.min(350, hookPos + 35); };
+    btn.onmousedown = (e) => { e.preventDefault(); hookPos = Math.min(410, hookPos + 45); };
 }
 
 async function finishFishing() {
+    // 1. Descontar la caña usada
+    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    
+    // 2. Determinar recompensa
     const rand = Math.random() * 100;
-    let reward = "";
-    let col = "";
+    let rewardCol, rewardName;
+    if (rand < 60) { rewardCol = 'marine_trash'; rewardName = "Restos Marinos"; }
+    else if (rand < 85) { rewardCol = 'food_plancton'; rewardName = "Plancton"; }
+    else if (rand < 97) { rewardCol = 'food_basic'; rewardName = "Algas"; }
+    else { rewardCol = 'food_rare'; rewardName = "Cebo Raro"; }
 
-    // Probabilidades
-    if (rand < 50) { 
-        reward = "Restos Marinos"; 
-        col = "marine_trash"; // Debes crear esta columna en Supabase
-    } else if (rand < 80) { 
-        reward = "1x Plancton"; 
-        col = "food_plancton"; 
-    } else if (rand < 95) { 
-        reward = "1x Alga Básica"; 
-        col = "food_basic"; 
-    } else { 
-        reward = "1x Cebo Raro"; 
-        col = "food_rare"; 
-    }
+    // 3. Update en Supabase: Restar 1 caña y sumar recompensa
+    await client.from('profiles').update({ 
+        fishing_rods: profile.fishing_rods - 1,
+        [rewardCol]: (profile[rewardCol] || 0) + 1
+    }).eq('id', currentUser.id);
 
-    // Actualizar en Supabase
-    const { data: profile } = await client.from('profiles').select(col).eq('id', currentUser.id).single();
-    await client.from('profiles').update({ [col]: (profile[col] || 0) + 1 }).eq('id', currentUser.id);
-
-    alert(`¡Atrapaste: ${reward}!`);
-    location.reload(); // Refrescar para ver inventario
+    alert(`¡Éxito! Gastaste 1 caña y encontraste: ${rewardName}`);
+    closeFishingModal();
+    loadProfile();
 }
