@@ -112,7 +112,7 @@ function switchTab(tab, btn) {
     panel.style.display = 'flex';
     title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
 
-    if (tab === 'inventario') renderInventory(body);
+    if (tab === 'inventario') render(body);
     if (tab === 'tienda') renderShop(body);
 }
 
@@ -128,16 +128,8 @@ function renderInventory(container) {
         if (!f.is_egg) {
             const levelBonus = 1 + ((f.level - 1) * 0.05);
             const currentYield = f.daily_yield * levelBonus;
-            
-            let hoursPerUnit = 12; 
-            if (f.rarity === 'Raro') hoursPerUnit = 9;
-            if (f.rarity === 'Legendario') hoursPerUnit = 6;
-            if (f.rarity === 'Mitico') hoursPerUnit = 4;
-            
-            const cooldownMs = hoursPerUnit * 60 * 60 * 1000;
             const msSinceFed = now - new Date(f.last_fed || 0);
             
-            // Un pez produce si tiene al menos 1 unidad de hambre llena (menos de 24h sin comer)
             if (msSinceFed < (24 * 60 * 60 * 1000)) {
                 totalDailyProd += currentYield;
             } else {
@@ -147,20 +139,20 @@ function renderInventory(container) {
         }
     });
 
-    // --- ENCABEZADO DE RESUMEN ---
+    // Encabezado de Resumen
     container.innerHTML = `
         <div style="background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
             <div>
-                <small style="color: #64748b; font-size: 0.65rem; display: block; text-transform: uppercase;">Producción / Día</small>
-                <strong style="color: #2ecc71; font-size: 1rem;">⚪ ${totalDailyProd.toFixed(0)}</strong>
+                <small style="color: #64748b; font-size: 0.65rem; display: block; text-transform: uppercase;">Prod / Día</small>
+                <strong style="color: #2ecc71; font-size: 0.9rem;">⚪ ${totalDailyProd.toFixed(0)}</strong>
             </div>
             <div style="border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
                 <small style="color: #64748b; font-size: 0.65rem; display: block; text-transform: uppercase;">Por Recoger</small>
-                <strong style="color: #3b82f6; font-size: 1rem;">⚪ ${totalPendingClaim.toFixed(2)}</strong>
+                <strong style="color: #3b82f6; font-size: 0.9rem;">⚪ ${totalPendingClaim.toFixed(2)}</strong>
             </div>
             <div>
-                <small style="color: #64748b; font-size: 0.65rem; display: block; text-transform: uppercase;">Hambrientos</small>
-                <strong style="color: ${hungryFishCount > 0 ? '#e63946' : '#2ecc71'}; font-size: 1rem;">🐟 ${hungryFishCount}</strong>
+                <small style="color: #64748b; font-size: 0.65rem; display: block; text-transform: uppercase;">Hambre</small>
+                <strong style="color: ${hungryFishCount > 0 ? '#e63946' : '#2ecc71'}; font-size: 0.9rem;">🐟 ${hungryFishCount}</strong>
             </div>
         </div>
         <h3 style="margin-bottom:15px; color:#1e293b; font-size: 1.1rem;">Gestión de Especies</h3>
@@ -174,7 +166,7 @@ function renderInventory(container) {
     allFish.forEach(fish => {
         const div = document.createElement('div');
         div.className = 'mini-card';
-        div.style = "background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);";
+        div.style = "background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);";
         
         const isEgg = fish.is_egg;
         const rarityKey = fish.rarity.toLowerCase().replace(/\s+/g, '_');
@@ -183,75 +175,79 @@ function renderInventory(container) {
         if (isEgg) {
             renderEggRow(div, fish, now);
         } else {
-            // --- NUEVA LÓGICA DE BARRA (2 slots de 12h = 24h total) ---
             const lastFed = new Date(fish.last_fed || 0);
             const msSinceFed = now - lastFed;
             const maxReservaMs = 24 * 60 * 60 * 1000;
             
-            // Calculamos cuántas barras de 12h tiene llenas
             let hungerUnits = 0;
-            if (msSinceFed < 12 * 60 * 60 * 1000) hungerUnits = 2; // Tiene más de 12h de reserva
-            else if (msSinceFed < 24 * 60 * 60 * 1000) hungerUnits = 1; // Tiene entre 0 y 12h de reserva
+            if (msSinceFed < 12 * 60 * 60 * 1000) hungerUnits = 2;
+            else if (msSinceFed < 24 * 60 * 60 * 1000) hungerUnits = 1;
 
             const isProducing = hungerUnits > 0;
             const levelBonus = 1 + ((fish.level - 1) * 0.05);
             const currentYield = (fish.daily_yield * levelBonus).toFixed(2);
+            const xpPercent = Math.min(((fish.current_xp || 0) / (fish.next_level_xp || 100)) * 100, 100);
 
             div.innerHTML = `
-                <img src="${RAW_BASE}pez_${rarityKey}.png" style="width:65px; height:65px; object-fit:contain; filter: ${!isProducing ? 'grayscale(1)' : 'none'};">
+                <div style="text-align: center; position: relative;">
+                    <div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; font-size: 0.55rem; padding: 1px 5px; border-radius: 4px; z-index: 1;">#${fish.id.toString().slice(-4)}</div>
+                    <img src="${RAW_BASE}pez_${rarityKey}.png" style="width:60px; height:60px; object-fit:contain; filter: ${!isProducing ? 'grayscale(1)' : 'none'};">
+                </div>
                 
                 <div style="flex-grow:1; min-width: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                        <strong class="rarity-text-${rarityClass}" style="font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${fish.rarity} <span style="color: #64748b; font-weight: normal; font-size: 0.8rem;">/ Niv. ${fish.level}</span>
-                        </strong>
-                        <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                            <div style="width: 6px; height: 6px; border-radius: 50%; background: ${isProducing ? '#2ecc71' : '#e63946'};"></div>
-                            <span style="font-size: 0.6rem; color: ${isProducing ? '#2ecc71' : '#e63946'}; font-weight: bold;">
-                                ${isProducing ? 'PRODUCIENDO' : 'HAMBRIENTO'}
-                            </span>
+                    <div style="display: flex; flex-direction: column; margin-bottom: 5px;">
+                        <strong class="rarity-text-${rarityClass}" style="font-size: 0.9rem; line-height: 1.1;">${fish.rarity}</strong>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.75rem; color: #64748b;">Nivel ${fish.level}</span>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 5px; height: 5px; border-radius: 50%; background: ${isProducing ? '#2ecc71' : '#e63946'};"></div>
+                                <span style="font-size: 0.6rem; color: ${isProducing ? '#2ecc71' : '#e63946'}; font-weight: bold;">${isProducing ? 'PRODUCIENDO' : 'HAMBRIENTO'}</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div style="font-size: 0.75rem; color: #475569; margin-bottom: 8px;">
-                        Producción: <strong style="color: #1e293b;">${currentYield} PRL</strong>
+                    <!-- BARRA DE XP REINCORPORADA -->
+                    <div style="width: 100%; height: 4px; background: #e2e8f0; border-radius: 2px; margin-bottom: 8px; overflow: hidden;" title="XP: ${fish.current_xp}/${fish.next_level_xp}">
+                        <div style="width: ${xpPercent}%; height: 100%; background: #a855f7;"></div>
                     </div>
 
-                    <!-- BARRA DE HAMBRE SEGMENTADA (2 SLOTS DE 12H) -->
-                    <div style="display: flex; gap: 4px; margin-bottom: 10px; align-items: center;">
-                        <small style="font-size: 0.55rem; color: #94a3b8; width: 40px; font-weight: bold;">HAMBRE</small>
-                        <div style="flex-grow: 1; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; display: flex; gap: 3px; border: 1px solid #e2e8f0;">
-                            <div style="flex: 1; background: ${hungerUnits >= 1 ? '#3b82f6' : 'transparent'}; transition: 0.3s;"></div>
-                            <div style="flex: 1; background: ${hungerUnits >= 2 ? '#3b82f6' : 'transparent'}; transition: 0.3s;"></div>
+                    <div style="font-size: 0.75rem; color: #475569; margin-bottom: 6px;">
+                        Prod: <strong style="color: #1e293b;">${currentYield} PRL</strong>
+                    </div>
+
+                    <!-- BARRA DE HAMBRE SEGMENTADA -->
+                    <div style="display: flex; gap: 4px; margin-bottom: 8px; align-items: center;">
+                        <small style="font-size: 0.55rem; color: #94a3b8; font-weight: bold;">HAMBRE</small>
+                        <div style="flex-grow: 1; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; display: flex; gap: 2px; border: 1px solid #e2e8f0;">
+                            <div style="flex: 1; background: ${hungerUnits >= 1 ? '#3b82f6' : 'transparent'};"></div>
+                            <div style="flex: 1; background: ${hungerUnits >= 2 ? '#3b82f6' : 'transparent'};"></div>
                         </div>
                     </div>
 
                     <!-- ACUMULADO / TOTAL VIDA -->
-                    <div style="background: #f8fafc; padding: 8px; border-radius: 8px; display: flex; justify-content: space-between; border: 1px solid #f1f5f9;">
+                    <div style="background: #f8fafc; padding: 5px 8px; border-radius: 6px; display: flex; justify-content: space-between; border: 1px solid #f1f5f9;">
                          <div style="display: flex; flex-direction: column;">
                             <small style="font-size: 0.5rem; color: #64748b; text-transform: uppercase;">Acumulado</small>
-                            <strong style="font-size: 0.85rem; color: #3b82f6;">⚪ ${Number(fish.accumulated_pearls).toFixed(2)}</strong>
+                            <strong style="font-size: 0.75rem; color: #3b82f6;">⚪ ${Number(fish.accumulated_pearls).toFixed(2)}</strong>
                          </div>
                          <div style="display: flex; flex-direction: column; text-align: right;">
                             <small style="font-size: 0.5rem; color: #64748b; text-transform: uppercase;">Total Vida</small>
-                            <strong style="font-size: 0.85rem; color: #64748b;">✨ ${Number(fish.total_generated || 0).toFixed(0)}</strong>
+                            <strong style="font-size: 0.75rem; color: #64748b;">✨ ${Number(fish.total_generated || 0).toFixed(0)}</strong>
                          </div>
                     </div>
                 </div>
 
-                <div style="display:flex; flex-direction:column; gap:6px; min-width:105px;">
-                    <button class="btn-buy" style="background:#2ecc71; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.7rem; box-shadow: 0 2px 0 #1a9e5a;" 
+                <div style="display:flex; flex-direction:column; gap:5px; min-width:100px;">
+                    <button class="btn-buy" style="background:#2ecc71; color:white; border:none; padding:7px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.65rem; box-shadow: 0 2px 0 #1a9e5a;" 
                         onclick="claimPearls('${fish.id}')">RECOLECTAR</button>
                     
-                    ${hungerUnits < 2 ? `
-                        <button class="btn-feed-mini" style="background:#1e3a8a; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.7rem; box-shadow: 0 2px 0 #0f1d45;" 
+                    <button class="btn-feed-mini" style="background:#1e3a8a; color:white; border:none; padding:7px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.65rem; box-shadow: 0 2px 0 #0f1d45; display: ${hungerUnits < 2 ? 'block' : 'none'};" 
                         onclick="startFeeding('${fish.id}')">ALIMENTAR</button>
-                    ` : `
-                        <div style="font-size:0.55rem; text-align:center; color:#94a3b8; padding:6px; border:1px dashed #cbd5e1; border-radius:6px; background: #fdfdfd;">
-                            Satisfecho<br>
-                            <span style="font-weight: bold;">${formatTime((lastFed.getTime() + maxReservaMs) - now)}</span>
-                        </div>
-                    `}
+                    
+                    <div style="font-size:0.55rem; text-align:center; color:#94a3b8; padding:5px; border:1px dashed #cbd5e1; border-radius:6px; background: #fdfdfd; display: ${hungerUnits >= 1 ? 'block' : 'none'};">
+                        Satisfecho<br>
+                        <span style="font-weight: bold;">${formatTime((lastFed.getTime() + maxReservaMs) - now)}</span>
+                    </div>
                 </div>
             `;
         }
