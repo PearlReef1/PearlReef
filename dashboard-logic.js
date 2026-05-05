@@ -823,47 +823,50 @@ async function finishFishing() {
     }
 }
 async function renderDeposit(container) {
-    // 1. Intentar obtener la dirección desde Supabase
-    let { data: wallet } = await supabase
-        .from('user_wallets')
-        .select('address')
-        .single();
-
-    // 2. Si no existe, aquí llamaríamos a la función de creación automática
-    if (!wallet) {
-        // wallet = await generateNewBEP20Address(userId);
-    }
-
-    const userAddress = wallet?.address || "Generando dirección...";
+    container.innerHTML = `<div style="text-align:center; padding:50px;">Buscando tu dirección de depósito...</div>`;
+    
+    // Obtenemos el ID del usuario actual (de tu lógica de login)
+    const userId = (await supabase.auth.getUser()).data.user.id;
+    const userAddress = await getOrCreateWallet(userId);
 
     container.innerHTML = `
-        <div class="deposit-card" style="text-align: center; padding: 25px; background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-            <h3 style="color: #1e293b;">Depositar USDT</h3>
-            <p style="font-size: 0.8rem; color: #64748b;">Red: <b>Binance Smart Chain (BEP20)</b></p>
-            
-            <div style="margin: 20px 0;">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${userAddress}" 
-                     style="border: 10px solid #f8fafc; border-radius: 15px;">
+        <div class="deposit-wrapper" style="max-width:400px; margin:auto; text-align:center;">
+            <h3>Cargar USDT (BEP20)</h3>
+            <div style="background:white; padding:20px; border-radius:15px; margin:20px 0;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${userAddress}" alt="QR">
             </div>
-
-            <div style="background: #f1f5f9; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; position: relative;">
-                <code style="font-size: 0.7rem; color: #334155; word-break: break-all;">${userAddress}</code>
-                <button onclick="copyToClipboard('${userAddress}')" 
-                        style="margin-top: 10px; width: 100%; background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">
-                    COPIAR DIRECCIÓN
-                </button>
-            </div>
-
-            <div style="margin-top: 25px; padding: 15px; background: #fff4e6; border-radius: 10px; border: 1px solid #ffd8a8;">
-                <p style="font-size: 0.75rem; color: #d9480f; margin: 0;">
-                    ⚠️ Envía solo USDT (BEP20). Otros activos se perderán permanentemente.
-                </p>
+            <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
+                <code style="word-break:break-all; font-size:0.8rem;">${userAddress}</code>
+                <button onclick="navigator.clipboard.writeText('${userAddress}')" style="display:block; width:100%; margin-top:10px; background:#3b82f6; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">Copiar Dirección</button>
             </div>
             
-            <button onclick="checkDepositStatus()" 
-                    style="margin-top: 20px; width: 100%; background: #22c55e; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer;">
-                VERIFICAR TRANSACCIÓN
+            <!-- Botón para verificar manualmente -->
+            <button onclick="checkTatumBalance('${userAddress}')" style="margin-top:20px; width:100%; background:#2ecc71; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">
+                VERIFICAR DEPÓSITO
             </button>
         </div>
     `;
+}
+async function getOrCreateWallet(userId) {
+    // 1. Buscamos si el usuario ya tiene una dirección en Supabase
+    let { data, error } = await supabase
+        .from('user_wallets')
+        .select('address')
+        .eq('user_id', userId)
+        .single();
+
+    if (data) return data.address;
+
+    // 2. Si no tiene, llamamos a tu Edge Function (o API de Tatum)
+    // Aquí invocamos la función que configuraste en Supabase
+    const { data: newWallet, error: genError } = await supabase.functions.invoke('generate-wallet', {
+        body: { user_id: userId }
+    });
+
+    if (genError) {
+        console.error("Error creando wallet:", genError);
+        return "Error al generar dirección";
+    }
+
+    return newWallet.address;
 }
