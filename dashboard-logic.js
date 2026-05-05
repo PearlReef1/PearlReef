@@ -432,6 +432,8 @@ function updateAquariumState() {
 }
 
 function renderShop(container) {
+    const PRL_ICON = `<img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" style="width:16px; height:16px; vertical-align:middle; margin-right:5px;">`;
+
     container.innerHTML = `
         <div class="shop-wrapper">
             <h4 style="color:var(--primary); margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:5px;">Mercado de Huevos</h4>
@@ -451,7 +453,7 @@ function renderShop(container) {
                             <p style="font-size:0.75rem; color:#666; margin:2px 0 0 0;">Contiene 2 cañas. Límite diario: 4 sesiones de pesca.</p>
                         </div>
                     </div>
-                    <button class="btn-buy" onclick="buyItem('fishing_rods', 15, 2)" style="min-width: 120px;">💰 15 PRL</button>
+                    <button class="btn-buy" onclick="buyItem('fishing_rods', 15, 2)" style="min-width: 120px;">${PRL_ICON} 15 PRL</button>
                 </div>
             </div>
 
@@ -461,19 +463,19 @@ function renderShop(container) {
                     <div style="font-size:2rem;">${FOOD_TYPES.plancton.icon}</div>
                     <h5>Plancton (x10)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.plancton.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('plancton', 20, 10)">💰 20 PRL</button>
+                    <button class="btn-buy" onclick="buyFood('plancton', 20, 10)">${PRL_ICON} 20 PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.basic.icon}</div>
                     <h5>Pack Algas (x10)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.basic.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('basic', 50, 10)">💰 50 PRL</button>
+                    <button class="btn-buy" onclick="buyFood('basic', 50, 10)">${PRL_ICON} 50 PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.rare.icon}</div>
                     <h5>Cebo Especial (x5)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.rare.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('rare', 250, 5)">💰 250 PRL</button>
+                    <button class="btn-buy" onclick="buyFood('rare', 250, 5)">${PRL_ICON} 250 PRL</button>
                 </div>
             </div>
         </div>
