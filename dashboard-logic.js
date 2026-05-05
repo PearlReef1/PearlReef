@@ -434,6 +434,7 @@ function updateAquariumState() {
 function renderShop(container) {
     container.innerHTML = `
         <div class="shop-wrapper">
+            <!-- SECCIÓN: HUEVOS -->
             <h4 style="color:var(--primary); margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:5px;">Mercado de Huevos</h4>
             <div class="shop-row eggs-row">
                 ${renderEggCard('Arrecife', '1,000', 'Común (85%) / Poco Común (15%)', '3h')}
@@ -441,6 +442,22 @@ function renderShop(container) {
                 ${renderEggCard('Ancestral', '6,000', 'Legendario (90%) / Mítico (10%)', '12h')}
             </div>
             
+            <!-- SECCIÓN: HERRAMIENTAS (NUEVA) -->
+            <h4 style="color:var(--primary); margin:25px 0 15px 0; border-bottom:1px solid #eee; padding-bottom:5px;">Herramientas</h4>
+            <div class="shop-row tools-row" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                <div class="shop-card" style="display: flex; align-items: center; justify-content: space-between; padding: 15px 20px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="font-size:2.5rem;">🎣</div>
+                        <div style="text-align: left;">
+                            <h5 style="margin:0;">Caña de Pescar</h5>
+                            <p style="font-size:0.75rem; color:#666; margin:2px 0 0 0;">Necesaria para buscar suministros y restos en el mar.</p>
+                        </div>
+                    </div>
+                    <button class="btn-buy" onclick="buyItem('fishing_rods', 15, 1)" style="min-width: 120px;">💰 15 PRL</button>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: SUMINISTROS -->
             <h4 style="color:var(--primary); margin:25px 0 15px 0; border-bottom:1px solid #eee; padding-bottom:5px;">Suministros</h4>
             <div class="shop-row food-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                 <div class="shop-card">
@@ -465,7 +482,6 @@ function renderShop(container) {
         </div>
     `;
 }
-
 function renderEggCard(type, price, odds, time) {
     const pValue = price.replace(',', '');
     return `
