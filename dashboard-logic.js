@@ -7,9 +7,25 @@ let allFish = [];
 let isProcessingFeeding = false; 
 const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/";
 
-// --- CONFIGURACIÓN ESTILO COIN TO FISH ---
-const FEED_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 Horas base
+// --- CONFIGURACIÓN ECONOMÍA HÍBRIDA ---
+const FEED_COOLDOWN_MS = 12 * 60 * 60 * 1000; 
 const MAX_HUNGER_UNITS = 2; 
+
+// Tipos de comida con sus nuevos valores de XP y Precios
+const FOOD_TYPES = {
+    plancton: { col: 'food_plancton', xp: 2, price: 20, qty: 10, icon: '🦠' },
+    basic: { col: 'food_basic', xp: 7, price: 50, qty: 10, icon: '🌿' },
+    rare: { col: 'food_rare', xp: 25, price: 250, qty: 5, icon: '🦐' }
+};
+
+// Producción ajustada para ROI de 24-30 días
+const YIELD_CONFIG = {
+    'Comun': 45,
+    'Poco Comun': 55,
+    'Raro': 110,
+    'Legendario': 250,
+    'Mitico': 500
+};
 
 const AQUARIUM_BG_IMG = 'fondo_acuario.jpg';
 
@@ -32,9 +48,12 @@ async function loadProfile() {
         document.getElementById('pearl-balance').innerText = Math.floor(data.pearls_balance) || 0;
         document.getElementById('user-name').innerText = data.username || "Jugador";
         
+        // Actualizar contadores de comida en la interfaz (asegúrate de tener estos IDs en tu HTML)
+        const foodPlanctonEl = document.getElementById('food-plancton-count');
         const foodBasicEl = document.getElementById('food-basic-count');
         const foodRareEl = document.getElementById('food-rare-count');
         
+        if (foodPlanctonEl) foodPlanctonEl.innerText = data.food_plancton || 0;
         if (foodBasicEl) foodBasicEl.innerText = data.food_basic || 0;
         if (foodRareEl) foodRareEl.innerText = data.food_rare || 0;
     }
@@ -112,23 +131,20 @@ function switchTab(tab, btn) {
     panel.style.display = 'flex';
     title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
 
-    if (tab === 'inventario') render(body);
+    if (tab === 'inventario') renderInventory(body);
     if (tab === 'tienda') renderShop(body);
 }
 
 function renderInventory(container) {
     const now = new Date();
-    
     let totalDailyProd = 0;
     let totalPendingClaim = 0;
     let hungryFishCount = 0;
 
     allFish.forEach(f => {
         if (!f.is_egg) {
-            // FÓRMULA DE PRODUCCIÓN REAL (Limitada a nivel 5)
             const levelBonus = 1 + ((Math.min(f.level, 5) - 1) * 0.05);
             const currentYield = f.daily_yield * levelBonus;
-            
             const msSinceFed = now - new Date(f.last_fed || 0);
             
             if (msSinceFed < (24 * 60 * 60 * 1000)) {
@@ -140,7 +156,6 @@ function renderInventory(container) {
         }
     });
 
-    // Encabezado (Se mantiene igual)
     container.innerHTML = `
         <div style="background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
             <div>
@@ -182,7 +197,6 @@ function renderInventory(container) {
             const levelBonus = 1 + ((Math.min(fish.level, 5) - 1) * 0.05);
             const currentYield = (fish.daily_yield * levelBonus).toFixed(2);
             
-            // LÓGICA DE XP ACTUALIZADA
             const currentXP = fish.current_xp || 0;
             const nextXP = fish.next_level_xp || 100;
             const xpPercent = isMaxLevel ? 100 : Math.min((currentXP / nextXP) * 100, 100);
@@ -210,7 +224,6 @@ function renderInventory(container) {
                         </div>
                     </div>
 
-                    <!-- BARRA DE XP CON TEXTO DINÁMICO X / X -->
                     <div style="display: flex; justify-content: flex-end; margin-bottom: 2px;">
                         <span style="font-size: 0.55rem; color: #94a3b8; font-weight: bold;">
                             ${isMaxLevel ? 'MAX' : `${currentXP} / ${nextXP} XP`}
@@ -224,7 +237,6 @@ function renderInventory(container) {
                         Prod: <strong style="color: #1e293b;">${currentYield} PRL</strong>
                     </div>
 
-                    <!-- BARRA DE HAMBRE -->
                     <div style="display: flex; gap: 4px; margin-bottom: 8px; align-items: center;">
                         <small style="font-size: 0.55rem; color: #94a3b8; font-weight: bold;">HAMBRE</small>
                         <div style="flex-grow: 1; height: 7px; background: #f1f5f9; border-radius: 10px; overflow: hidden; display: flex; gap: 2px; border: 1px solid #e2e8f0;">
@@ -260,6 +272,28 @@ function renderInventory(container) {
         container.appendChild(div);
     });
 }
+
+function renderEggRow(container, fish, now) {
+    const hatchTime = new Date(fish.egg_hatch_time);
+    const msLeft = hatchTime - now;
+    const isReady = msLeft <= 0;
+
+    container.innerHTML = `
+        <div style="text-align: center; min-width: 70px;">
+            <img src="${RAW_BASE}pez_huevo.png" style="width:50px; height:50px; object-fit:contain;">
+        </div>
+        <div style="flex-grow:1;">
+            <strong style="color: #64748b;">Huevo ${fish.rarity}</strong>
+            <div style="font-size: 0.75rem; color: #94a3b8;">
+                ${isReady ? '¡Listo para eclosionar!' : `Eclosiona en: ${formatTime(msLeft)}`}
+            </div>
+        </div>
+        <button class="btn-buy" style="background: ${isReady ? '#f59e0b' : '#cbd5e1'}; color:white; border:none; padding:8px 15px; border-radius:6px; font-weight:bold; cursor: ${isReady ? 'pointer' : 'default'};" ${isReady ? `onclick="hatchFish('${fish.id}')"` : ''}>
+            ${isReady ? 'ABRIR' : 'ESPERANDO'}
+        </button>
+    `;
+}
+
 function formatTime(ms) {
     if (ms < 0) return "0s";
     const s = Math.floor(ms / 1000);
@@ -283,7 +317,7 @@ async function startFeeding(fishId) {
     if (isProcessingFeeding) return; 
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
 
-    if ((profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
+    if ((profile.food_plancton || 0) <= 0 && (profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
         alert("¡No tienes comida! Ve a la tienda.");
         switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
         return;
@@ -300,14 +334,10 @@ async function completeFeeding() {
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
     const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
 
-    // 1. Determinar nivel de hambre actual
     const now = new Date();
     const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
-    
-    // Calculamos cuánta "vida" le queda (máximo 24h)
     let currentLifeMs = Math.max(0, lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime());
     
-    // Si ya tiene las 24h completas, no alimentar
     if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
         alert("El pez ya está lleno.");
         document.getElementById('minigame-modal').style.display = 'none';
@@ -315,41 +345,38 @@ async function completeFeeding() {
         return;
     }
 
-    // 2. Descontar comida (1 unidad)
-    let foodCol = profile.food_basic > 0 ? 'food_basic' : 'food_rare';
-    let xpGain = foodCol === 'food_basic' ? 10 : 25;
-    await client.from('profiles').update({ [foodCol]: profile[foodCol] - 1 }).eq('id', currentUser.id);
+    // Selección automática de comida (Prioriza Plancton > Algas > Cebo)
+    let foodKey = '';
+    if (profile.food_plancton > 0) foodKey = 'plancton';
+    else if (profile.food_basic > 0) foodKey = 'basic';
+    else if (profile.food_rare > 0) foodKey = 'rare';
 
-    // 3. Nueva Lógica: Sumar 12 horas a su estado actual
+    const foodCfg = FOOD_TYPES[foodKey];
+    await client.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
+
+    // Sumar 12 horas a la vida
     let baseTime = lastFedDate.getTime() < (now.getTime() - (24 * 60 * 60 * 1000)) 
                    ? now.getTime() - (12 * 60 * 60 * 1000) 
                    : lastFedDate.getTime();
-                   
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-    // 4. Calcular XP y Level Up (CORREGIDO PARA ESCALA Y NIVEL 5)
-    let newXP = (fish.current_xp || 0) + xpGain;
+    // Lógica de XP
+    let newXP = (fish.current_xp || 0) + foodCfg.xp;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
 
     if (newLevel < 5) {
         if (newXP >= nextXP) {
             newLevel++;
-            // Conservamos el sobrante de XP para el siguiente nivel
             newXP = newXP - nextXP; 
-            // Obtenemos la meta del nuevo nivel usando la escala definida
             nextXP = getNextLevelXP(newLevel);
-            
-            console.log(`¡Subida de nivel! Pez ${fishId} ahora es Nivel ${newLevel}`);
         }
     } else {
-        // Bloqueo en Nivel 5: XP y meta se mantienen iguales (Barra llena)
         newLevel = 5;
         newXP = 100;
         nextXP = 100;
     }
 
-    // 5. Guardar cambios en Supabase
     await client.from('user_fish').update({ 
         last_fed: newFedDate.toISOString(),
         current_xp: newXP,
@@ -357,7 +384,6 @@ async function completeFeeding() {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
-    // 6. Actualizar Interfaz
     document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
     const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
@@ -365,6 +391,11 @@ async function completeFeeding() {
     renderInventory(document.getElementById('panel-body'));
     
     isProcessingFeeding = false; 
+}
+
+function getNextLevelXP(currentLevel) {
+    const xpRequirements = { 1: 100, 2: 150, 3: 225, 4: 350, 5: 0 };
+    return xpRequirements[currentLevel] || 0;
 }
 
 function updateAquariumState() {
@@ -384,18 +415,25 @@ function renderShop(container) {
                 ${renderEggCard('Abisal', '2,500', 'Raro (80%) / Legendario (20%)', '6h')}
                 ${renderEggCard('Ancestral', '6,000', 'Legendario (90%) / Mítico (10%)', '12h')}
             </div>
+            
             <h4 style="color:var(--primary); margin:25px 0 15px 0; border-bottom:1px solid #eee; padding-bottom:5px;">Suministros</h4>
-            <div class="shop-row food-row">
+            <div class="shop-row food-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                 <div class="shop-card">
-                    <div style="font-size:2rem;">🌿</div>
-                    <h5>Pack Algas (x10)</h5>
-                    <p style="font-size:0.75rem; color:#666;">+10 XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('basic', 100, 10)">💰 100 PRL</button>
+                    <div style="font-size:2rem;">${FOOD_TYPES.plancton.icon}</div>
+                    <h5>Plancton (x10)</h5>
+                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.plancton.xp} XP por unidad<br>Máxima rentabilidad.</p>
+                    <button class="btn-buy" onclick="buyFood('plancton', 20, 10)">💰 20 PRL</button>
                 </div>
                 <div class="shop-card">
-                    <div style="font-size:2rem;">🦐</div>
+                    <div style="font-size:2rem;">${FOOD_TYPES.basic.icon}</div>
+                    <h5>Pack Algas (x10)</h5>
+                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.basic.xp} XP por unidad<br>Balance nivel/precio.</p>
+                    <button class="btn-buy" onclick="buyFood('basic', 50, 10)">💰 50 PRL</button>
+                </div>
+                <div class="shop-card">
+                    <div style="font-size:2rem;">${FOOD_TYPES.rare.icon}</div>
                     <h5>Cebo Especial (x5)</h5>
-                    <p style="font-size:0.75rem; color:#666;">+25 XP por unidad</p>
+                    <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.rare.xp} XP por unidad<br>Subida rápida.</p>
                     <button class="btn-buy" onclick="buyFood('rare', 250, 5)">💰 250 PRL</button>
                 </div>
             </div>
@@ -420,7 +458,7 @@ async function buyFood(type, cost, quantity) {
     const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
 
-    const col = type === 'basic' ? 'food_basic' : 'food_rare';
+    const col = FOOD_TYPES[type].col;
     await client.from('profiles').update({
         pearls_balance: Number(profile.pearls_balance) - Number(cost),
         [col]: (Number(profile[col]) || 0) + Number(quantity)
@@ -437,16 +475,17 @@ async function buyEgg(type, cost) {
     
     let rarity, yieldAmount, hatchHours = 3; 
     const roll = Math.random() * 100;
+    
     if (type === 'Arrecife') {
-        if (roll < 85) { rarity = 'Comun'; yieldAmount = 38; }
-        else { rarity = 'Poco Comun'; yieldAmount = 55; }
+        if (roll < 85) { rarity = 'Comun'; yieldAmount = YIELD_CONFIG['Comun']; }
+        else { rarity = 'Poco Comun'; yieldAmount = YIELD_CONFIG['Poco Comun']; }
     } else if (type === 'Abisal') {
-        if (roll < 80) { rarity = 'Raro'; yieldAmount = 120; }
-        else { rarity = 'Legendario'; yieldAmount = 320; }
+        if (roll < 80) { rarity = 'Raro'; yieldAmount = YIELD_CONFIG['Raro']; }
+        else { rarity = 'Legendario'; yieldAmount = YIELD_CONFIG['Legendario']; }
         hatchHours = 6;
     } else if (type === 'Ancestral') {
-        if (roll < 90) { rarity = 'Legendario'; yieldAmount = 320; }
-        else { rarity = 'Mitico'; yieldAmount = 500; }
+        if (roll < 90) { rarity = 'Legendario'; yieldAmount = YIELD_CONFIG['Legendario']; }
+        else { rarity = 'Mitico'; yieldAmount = YIELD_CONFIG['Mitico']; }
         hatchHours = 12;
     }
 
@@ -471,37 +510,23 @@ async function claimPearls(fishId) {
     isProcessingFeeding = true;
 
     try {
-        // 1. Obtener datos actuales del pez
         const { data: fish, error: fishError } = await client.from('user_fish').select('*').eq('id', fishId).single();
-        
         if (fishError || !fish || Number(fish.accumulated_pearls) <= 0) {
             isProcessingFeeding = false;
             return;
         }
 
-        // 2. Obtener balance actual del perfil
         const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
-        
         const amountToClaim = Number(fish.accumulated_pearls);
         const newBalance = Number(profile.pearls_balance) + amountToClaim;
         
-        // 3. Actualizar Perfil (Balance de perlas)
-        const { error: profileErr } = await client.from('profiles').update({ 
-            pearls_balance: newBalance 
-        }).eq('id', currentUser.id);
-
-        if (profileErr) throw profileErr;
-
-        // 4. Actualizar Pez (Resetear acumulado y sumar al total de vida)
-        const { error: updateError } = await client.from('user_fish').update({ 
+        await client.from('profiles').update({ pearls_balance: newBalance }).eq('id', currentUser.id);
+        await client.from('user_fish').update({ 
             accumulated_pearls: 0, 
             total_generated: (Number(fish.total_generated) || 0) + amountToClaim,
             last_claim: new Date().toISOString() 
         }).eq('id', fishId);
 
-        if (updateError) throw updateError;
-
-        // 5. Refrescar interfaz
         await loadProfile();
         const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
@@ -509,7 +534,6 @@ async function claimPearls(fishId) {
 
     } catch (err) {
         console.error("Error en recolección:", err);
-        alert("Error al procesar la recolección. Revisa la consola.");
     } finally {
         isProcessingFeeding = false;
     }
