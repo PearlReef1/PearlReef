@@ -589,6 +589,35 @@ if (fish.current_xp >= fish.next_level_xp && fish.level < 5) {
     
     // Aquí disparas el UPDATE a la base de datos
 }
+function openFishingGame() {
+    const modal = document.getElementById('minigame-modal');
+    const container = document.getElementById('modal-dynamic-content');
+
+    // Inyectamos la estructura del minijuego
+    container.innerHTML = `
+        <div id="fishing-ui" style="text-align:center;">
+            <h2 style="color:#1e3a8a; margin-bottom:10px;">🎣 Pesca de Suministros</h2>
+            <p style="font-size:0.9rem; color:#64748b;">Mantén el anzuelo (rojo) sobre el pez (verde)</p>
+            
+            <div id="fishing-container" style="width:70px; height:200px; background:#e2e8f0; margin:20px auto; position:relative; border-radius:15px; border:4px solid #1e3a8a; overflow:hidden;">
+                <div id="target-zone" style="width:100%; height:50px; background:#4ade80; position:absolute; bottom:50px; transition: bottom 0.2s ease-out;"></div>
+                <div id="hook-pointer" style="width:100%; height:12px; background:#ef4444; position:absolute; bottom:0; border-top:2px solid white; border-bottom:2px solid white;"></div>
+            </div>
+
+            <div style="width:100%; height:10px; background:#cbd5e1; border-radius:5px; margin-bottom:20px;">
+                <div id="fishing-progress-bar" style="width:0%; height:100%; background:#3b82f6; border-radius:5px; transition: width 0.1s;"></div>
+            </div>
+
+            <button id="btn-fish-action" class="btn-buy" style="width:100%; padding:15px; font-weight:bold;">¡PULSAR!</button>
+            <button onclick="document.getElementById('minigame-modal').style.display='none'" style="background:none; border:none; color:#94a3b8; margin-top:15px; cursor:pointer;">Abandonar</button>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    
+    // IMPORTANTE: Llamamos a la lógica del juego que ya tienes definida
+    startFishingMinigame(); 
+}
 function startFishingMinigame() {
     const hook = document.getElementById('hook-pointer');
     const target = document.getElementById('target-zone');
