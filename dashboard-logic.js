@@ -505,3 +505,22 @@ async function handleLogout() {
     await client.auth.signOut();
     window.location.href = 'index.html';
 }
+function getNextLevelXP(currentLevel) {
+    const xpRequirements = {
+        1: 100,
+        2: 150,
+        3: 225,
+        4: 350,
+        5: 0 // Nivel máximo
+    };
+    return xpRequirements[currentLevel] || 0;
+}
+
+// Ejemplo de lógica al ganar XP:
+if (fish.current_xp >= fish.next_level_xp && fish.level < 5) {
+    fish.level += 1;
+    fish.current_xp = 0; // O la diferencia si quieres "carry over"
+    fish.next_level_xp = getNextLevelXP(fish.level);
+    
+    // Aquí disparas el UPDATE a la base de datos
+}
