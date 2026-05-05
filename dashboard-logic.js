@@ -399,25 +399,52 @@ async function buyEgg(type, cost) {
 }
 
 async function claimPearls(fishId) {
-    const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
-    if (!fish || fish.accumulated_pearls <= 0) return;
+    if (isProcessingFeeding) return;
+    isProcessingFeeding = true;
 
-    const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
-    const amount = Number(fish.accumulated_pearls);
-    const newBalance = (Number(profile.pearls_balance) || 0) + amount;
-    const newTotalLife = (Number(fish.total_generated) || 0) + amount;
+    try {
+        // 1. Obtener datos actuales del pez
+        const { data: fish, error: fishError } = await client.from('user_fish').select('*').eq('id', fishId).single();
+        
+        if (fishError || !fish || Number(fish.accumulated_pearls) <= 0) {
+            isProcessingFeeding = false;
+            return;
+        }
 
-    await client.from('profiles').update({ pearls_balance: newBalance }).eq('id', currentUser.id);
-    await client.from('user_fish').update({ 
-        accumulated_pearls: 0, 
-        total_generated: newTotalLife,
-        last_claim: new Date().toISOString() 
-    }).eq('id', fishId);
-    
-    await loadProfile();
-    const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
-    allFish = data;
-    renderInventory(document.getElementById('panel-body'));
+        // 2. Obtener balance actual del perfil
+        const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
+        
+        const amountToClaim = Number(fish.accumulated_pearls);
+        const newBalance = Number(profile.pearls_balance) + amountToClaim;
+        
+        // 3. Actualizar Perfil (Balance de perlas)
+        const { error: profileErr } = await client.from('profiles').update({ 
+            pearls_balance: newBalance 
+        }).eq('id', currentUser.id);
+
+        if (profileErr) throw profileErr;
+
+        // 4. Actualizar Pez (Resetear acumulado y sumar al total de vida)
+        const { error: updateError } = await client.from('user_fish').update({ 
+            accumulated_pearls: 0, 
+            total_generated: (Number(fish.total_generated) || 0) + amountToClaim,
+            last_claim: new Date().toISOString() 
+        }).eq('id', fishId);
+
+        if (updateError) throw updateError;
+
+        // 5. Refrescar interfaz
+        await loadProfile();
+        const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+        allFish = data;
+        renderInventory(document.getElementById('panel-body'));
+
+    } catch (err) {
+        console.error("Error en recolección:", err);
+        alert("Error al procesar la recolección. Revisa la consola.");
+    } finally {
+        isProcessingFeeding = false;
+    }
 }
 
 function closeAllPanels() {
