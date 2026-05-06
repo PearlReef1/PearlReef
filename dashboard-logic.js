@@ -999,43 +999,59 @@ async function checkBalance(address) {
         btn.disabled = false;
     }
 }
-async function handleSwap(amountUSDT) {
-    const PRL_PER_USDT = 100; // Tu regla: 1 USDT = 100 PRL
-    const amountPRL = amountUSDT * PRL_PER_USDT;
+async function handleSwap(amount, direction) {
+    const { data: { session } } = await window.supabase.auth.getSession();
+    if (!session) throw new Error("No hay sesión activa");
 
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        // 1. Obtener balance actual para validar
-        let { data: profile } = await supabase
-            .from('profiles')
-            .select('balance_usdt, balance')
-            .eq('id', user.id)
-            .single();
+    const userId = session.user.id;
 
-        if (profile.balance_usdt < amountUSDT) {
-            alert("Saldo en USDT insuficiente.");
-            return;
-        }
+    // 1. Obtener datos frescos del perfil
+    const { data: profile, error: fetchError } = await window.supabase
+        .from('profiles')
+        .select('balance_usdt, pearl_balance')
+        .eq('id', userId)
+        .single();
 
-        // 2. Ejecutar el intercambio
-        const { error } = await supabase
-            .from('profiles')
-            .update({ 
-                balance_usdt: profile.balance_usdt - amountUSDT,
-                balance: profile.balance + amountPRL 
-            })
-            .eq('id', user.id);
-
-        if (error) throw error;
-
-        alert(`¡Cambio exitoso! Recibiste ${amountPRL} PRL.`);
-        location.reload();
-
-    } catch (err) {
-        console.error("Error en SWAP:", err);
-        alert("No se pudo procesar el cambio.");
+    if (fetchError || !profile) {
+        console.error("Error al obtener perfil:", fetchError);
+        throw new Error("No se pudo cargar tu perfil para realizar el cambio.");
     }
+
+    // Aquí ya no dará error de 'null' porque validamos arriba
+    let newUSDT = profile.balance_usdt;
+    let newPRL = profile.pearl_balance;
+
+    if (direction === "USDT_TO_PRL") {
+        if (newUSDT < amount) throw new Error("Saldo USDT insuficiente");
+        newUSDT -= amount;
+        newPRL += (amount * 100);
+    } else {
+        if (newPRL < amount) throw new Error("Saldo PRL insuficiente");
+        newPRL -= amount;
+        newUSDT += (amount / 100);
+    }
+
+    // 2. Actualizar en Supabase
+    const { error: updateError } = await window.supabase
+        .from('profiles')
+        .update({ 
+            balance_usdt: newUSDT, 
+            pearl_balance: newPRL 
+        })
+        .eq('id', userId);
+
+    if (updateError) throw updateError;
+
+    // 3. Actualizar la interfaz (opcional si tienes una función updateUI)
+    if (typeof updateUI === 'function') {
+        updateUI(); 
+    } else {
+        // Recarga simple de saldos si no tienes updateUI global
+        document.getElementById('usdt-balance').innerText = newUSDT.toFixed(2);
+        document.getElementById('pearl-balance').innerText = Math.floor(newPRL);
+    }
+
+    alert("¡Intercambio realizado con éxito!");
 }
 async function getOrCreateWallet(userId) {
     // 1. Buscamos si el usuario ya tiene una dirección en Supabase
