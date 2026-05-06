@@ -998,15 +998,42 @@ async function checkBalance(address) {
         btn.disabled = false;
     }
 }
-async function executeSwap(amount, direction) {
-    // direction: 'TO_PRL' o 'TO_USDT'
-    const PRL_PRICE = 1000; // 1 USDT = 1000 PRL
+async function handleSwap(amountUSDT) {
+    const PRL_PER_USDT = 100; // Tu regla: 1 USDT = 100 PRL
+    const amountPRL = amountUSDT * PRL_PER_USDT;
 
-    if (direction === 'TO_PRL') {
-        // Lógica: Restar balance_usdt y sumar balance (PRL)
-        // update profiles SET balance_usdt = balance_usdt - amount, balance = balance + (amount * 1000)
-    } else {
-        // Lógica de retiro: Restar balance (PRL) y sumar balance_usdt
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // 1. Obtener balance actual para validar
+        let { data: profile } = await supabase
+            .from('profiles')
+            .select('balance_usdt, balance')
+            .eq('id', user.id)
+            .single();
+
+        if (profile.balance_usdt < amountUSDT) {
+            alert("Saldo en USDT insuficiente.");
+            return;
+        }
+
+        // 2. Ejecutar el intercambio
+        const { error } = await supabase
+            .from('profiles')
+            .update({ 
+                balance_usdt: profile.balance_usdt - amountUSDT,
+                balance: profile.balance + amountPRL 
+            })
+            .eq('id', user.id);
+
+        if (error) throw error;
+
+        alert(`¡Cambio exitoso! Recibiste ${amountPRL} PRL.`);
+        location.reload();
+
+    } catch (err) {
+        console.error("Error en SWAP:", err);
+        alert("No se pudo procesar el cambio.");
     }
 }
 async function getOrCreateWallet(userId) {
