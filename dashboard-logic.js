@@ -5,6 +5,7 @@ let hookPos = 0;
 let targetPos = 50;
 let progress = 0;
 let fishingInterval = null; // Variable global para controlar el cierre real
+let swapDirection = "USDT_TO_PRL";
 const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/";
 
 // --- CONFIGURACIÓN ECONOMÍA HÍBRIDA ---
@@ -1060,74 +1061,59 @@ async function getOrCreateWallet(userId) {
     // Retornamos la nueva dirección generada por Tatum
     return newWallet.address;
 }
-// --- FUNCIONES DEL SWAP ---
+
 function openSwapModal() {
     const modal = document.getElementById('minigame-modal');
     const content = document.getElementById('modal-dynamic-content');
-    modal.style.display = 'flex';
-
-    content.innerHTML = `
-        <div style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-            <h2 style="color: #6366f1; margin-bottom: 5px;">🔄 Intercambio</h2>
-            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 20px;">Tasa: 1 USDT = 100 PRL</p>
-
-            <div style="background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 15px;">
-                <label style="display: block; font-size: 0.7rem; color: #94a3b8; text-align: left; margin-bottom: 8px;">Cantidad a convertir (USDT)</label>
-                <input type="number" id="swap-amount-input" placeholder="0.00" 
-                       style="width: 100%; background: transparent; border: none; border-bottom: 2px solid #6366f1; color: white; font-size: 1.8rem; text-align: center; outline: none; margin-bottom: 10px;">
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <span style="font-size: 0.85rem; color: #94a3b8;">Recibirás:</span>
-                    <span id="swap-result-display" style="font-size: 1.1rem; font-weight: bold; color: #f1c40f;">0 PRL</span>
-                </div>
-            </div>
-
-            <button onclick="executeSwapAction()" 
-                    style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);">
-                CONFIRMAR CAMBIO
-            </button>
-            
-            <button onclick="document.getElementById('minigame-modal').style.display='none'" 
-                    style="background: transparent; border: none; color: #64748b; font-size: 0.85rem; cursor: pointer; text-decoration: underline;">
-                Cerrar Ventana
-            </button>
-        </div>
-    `;
-
-    // Escuchar cambios en el input
-    const input = document.getElementById('swap-amount-input');
-    const result = document.getElementById('swap-result-display');
     
-    input.addEventListener('input', () => {
-        const val = parseFloat(input.value) || 0;
-        result.innerText = `${(val * 100).toLocaleString()} PRL`;
-    });
+    // Obtenemos los saldos actuales directamente de lo que muestra tu interfaz
+    const currentUSDT = parseFloat(document.getElementById('usdt-balance').innerText) || 0;
+    const currentPRL = parseFloat(document.getElementById('pearl-balance').innerText) || 0;
+
+    modal.style.display = 'flex';
+    renderSwapContent(currentUSDT, currentPRL);
 }
 
-// --- FUNCIONES DEL SWAP ---
-function openSwapModal() {
-    const modal = document.getElementById('minigame-modal');
+function renderSwapContent(userUSDT, userPRL) {
     const content = document.getElementById('modal-dynamic-content');
-    modal.style.display = 'flex';
+    const isToPRL = swapDirection === "USDT_TO_PRL";
+    
+    // Ajuste de etiquetas y tasas según la dirección
+    const fromLabel = isToPRL ? "Cantidad a convertir (USDT)" : "Cantidad a convertir (PRL)";
+    const toLabel = isToPRL ? "PRL" : "USDT";
+    const rateText = isToPRL ? "1 USDT = 100 PRL" : "100 PRL = 1 USDT";
 
     content.innerHTML = `
         <div style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
             <h2 style="color: #6366f1; margin-bottom: 5px;">🔄 Intercambio</h2>
-            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 20px;">Tasa: 1 USDT = 100 PRL</p>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 20px;">Tasa: ${rateText}</p>
 
-            <div style="background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 15px;">
-                <label style="display: block; font-size: 0.7rem; color: #94a3b8; text-align: left; margin-bottom: 8px;">Cantidad a convertir (USDT)</label>
-                <input type="number" id="swap-amount-input" placeholder="0.00" 
-                       style="width: 100%; background: transparent; border: none; border-bottom: 2px solid #6366f1; color: white; font-size: 1.8rem; text-align: center; outline: none; margin-bottom: 10px;">
+            <div style="background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 15px; position: relative;">
                 
+                <!-- Botón para invertir dirección -->
+                <button onclick="toggleSwapDirection(${userUSDT}, ${userPRL})" 
+                        style="position: absolute; right: 10px; top: -15px; background: #6366f1; border: none; border-radius: 50%; width: 32px; height: 32px; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    ⇅
+                </button>
+
+                <label style="display: block; font-size: 0.7rem; color: #94a3b8; text-align: left; margin-bottom: 8px;">${fromLabel}</label>
+                <input type="number" id="swap-amount-input" placeholder="0.00" 
+                       style="width: 100%; background: transparent; border: none; border-bottom: 2px solid #6366f1; color: white; font-size: 1.8rem; text-align: center; outline: none; margin-bottom: 5px;">
+                
+                <!-- Mensaje de Error de Saldo -->
+                <div id="balance-error" style="color: #ff4757; font-size: 0.75rem; font-weight: bold; display: none; margin-bottom: 10px;">
+                    ⚠️ Sin saldo disponible
+                </div>
+
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
                     <span style="font-size: 0.85rem; color: #94a3b8;">Recibirás:</span>
-                    <span id="swap-result-display" style="font-size: 1.1rem; font-weight: bold; color: #f1c40f;">0 PRL</span>
+                    <span id="swap-result-display" style="font-size: 1.1rem; font-weight: bold; color: #f1c40f;">0 ${toLabel}</span>
                 </div>
             </div>
 
-            <button onclick="executeSwapAction()" 
-                    style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);">
+            <button id="confirm-swap-btn" onclick="executeSwapAction()" 
+                    style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4); opacity: 0.5; pointer-events: none; transition: opacity 0.3s;">
                 CONFIRMAR CAMBIO
             </button>
             
@@ -1138,26 +1124,60 @@ function openSwapModal() {
         </div>
     `;
 
-    // Escuchar cambios en el input
+    setupSwapListeners(userUSDT, userPRL);
+}
+
+function toggleSwapDirection(u, p) {
+    swapDirection = (swapDirection === "USDT_TO_PRL") ? "PRL_TO_USDT" : "USDT_TO_PRL";
+    renderSwapContent(u, p);
+}
+
+function setupSwapListeners(userUSDT, userPRL) {
     const input = document.getElementById('swap-amount-input');
     const result = document.getElementById('swap-result-display');
-    
+    const errorMsg = document.getElementById('balance-error');
+    const btn = document.getElementById('confirm-swap-btn');
+
     input.addEventListener('input', () => {
         const val = parseFloat(input.value) || 0;
-        result.innerText = `${(val * 100).toLocaleString()} PRL`;
+        const isToPRL = swapDirection === "USDT_TO_PRL";
+        const maxAvailable = isToPRL ? userUSDT : userPRL;
+        
+        // Cálculo del resultado
+        const finalAmount = isToPRL ? (val * 100) : (val / 100);
+        const label = isToPRL ? "PRL" : "USDT";
+        result.innerText = `${finalAmount.toLocaleString(undefined, {minimumFractionDigits: isToPRL ? 0 : 2})} ${label}`;
+
+        // Validación de Saldo
+        if (val > maxAvailable) {
+            errorMsg.style.display = 'block';
+            input.style.borderBottomColor = '#ff4757';
+            btn.style.opacity = '0.5';
+            btn.style.pointerEvents = 'none';
+        } else if (val <= 0) {
+            errorMsg.style.display = 'none';
+            btn.style.opacity = '0.5';
+            btn.style.pointerEvents = 'none';
+            input.style.borderBottomColor = '#6366f1';
+        } else {
+            errorMsg.style.display = 'none';
+            input.style.borderBottomColor = '#2ecc71';
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+        }
     });
 }
 
 async function executeSwapAction() {
-    const amountUSDT = parseFloat(document.getElementById('swap-amount-input').value);
-    if (!amountUSDT || amountUSDT <= 0) return alert("Ingresa un monto válido");
+    const amount = parseFloat(document.getElementById('swap-amount-input').value);
+    const isToPRL = swapDirection === "USDT_TO_PRL";
 
     try {
-        const { data: { session } } = await window.supabase.auth.getSession();
-        const userId = session.user.id;
-
-        // Llamar a tu función de procesamiento (asegúrate de tenerla definida)
-        await handleSwap(amountUSDT); // La que definimos en el paso anterior
+        // Aquí llamas a tu backend/Supabase pasando el monto y la dirección
+        // Por ejemplo: await handleSwap(amount, swapDirection);
+        console.log(`Procesando cambio de ${amount} en dirección ${swapDirection}`);
+        
+        await handleSwap(amount, swapDirection); 
         
         document.getElementById('minigame-modal').style.display = 'none';
     } catch (err) {
