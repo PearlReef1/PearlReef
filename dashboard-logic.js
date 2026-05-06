@@ -40,23 +40,53 @@ window.onload = async () => {
     setInterval(updateAquariumState, 1000);
 };
 
+window.onload = async () => {
+    // Usamos 'supabase' en lugar de 'client' para coincidir con el HTML
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) { 
+        window.location.href = 'index.html'; 
+        return; 
+    }
+    
+    currentUser = user;
+    
+    await loadProfile();
+    await initAquarium();
+    
+    // Inicia el ciclo del acuario
+    setInterval(updateAquariumState, 1000);
+};
+
 async function loadProfile() {
-    const { data, error } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
-    if (error) return;
+    // También cambiamos 'client' por 'supabase' aquí
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+    
+    if (error) {
+        console.error("Error cargando perfil:", error);
+        return;
+    }
     
     if (data) {
-        document.getElementById('pearl-balance').innerText = Math.floor(data.pearls_balance) || 0;
-        document.getElementById('user-name').innerText = data.username || "Jugador";
+        // Actualizar balance de perlas
+        if (document.getElementById('pearl-balance'))
+            document.getElementById('pearl-balance').innerText = Math.floor(data.pearls_balance) || 0;
+            
+        // Actualizar nombre de usuario
+        if (document.getElementById('user-name'))
+            document.getElementById('user-name').innerText = data.username || "Jugador";
         
         // Actualizar contadores de comida
         if (document.getElementById('food-plancton-count')) 
             document.getElementById('food-plancton-count').innerText = data.food_plancton || 0;
+            
         if (document.getElementById('food-basic-count')) 
             document.getElementById('food-basic-count').innerText = data.food_basic || 0;
+            
         if (document.getElementById('food-rare-count')) 
             document.getElementById('food-rare-count').innerText = data.food_rare || 0;
         
-        // NUEVO: Actualizar contador de restos marinos
+        // Actualizar contador de restos marinos
         if (document.getElementById('marine-trash-count'))
             document.getElementById('marine-trash-count').innerText = data.marine_trash || 0;
     }
