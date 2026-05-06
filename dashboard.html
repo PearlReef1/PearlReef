@@ -46,15 +46,15 @@
             </div>
         </div>
 
-       <nav class="sidebar-nav">
-    <button class="nav-btn active" onclick="switchTab('acuario', this)">🌊 Acuario</button>
-    <button class="nav-btn" onclick="switchTab('inventario', this)">🎒 Inventario</button>
-    <button class="nav-btn" onclick="switchTab('tienda', this)">🛒 Tienda</button>
-    <!-- Nuevo botón de Depósito -->
-    <button class="nav-btn" onclick="switchTab('deposito', this)" style="color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); margin-top: 5px; background: rgba(46, 204, 113, 0.05);">💰 Depósito</button>
-    
-    <button class="nav-btn" onclick="openFishingGame()" style="color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); margin-top: 5px; background: rgba(251, 191, 36, 0.05);">🎣 Pescar</button>
-</nav>
+        <nav class="sidebar-nav">
+            <button class="nav-btn active" onclick="switchTab('acuario', this)">🌊 Acuario</button>
+            <button class="nav-btn" onclick="switchTab('inventario', this)">🎒 Inventario</button>
+            <button class="nav-btn" onclick="switchTab('tienda', this)">🛒 Tienda</button>
+            <!-- Botón de Depósito -->
+            <button class="nav-btn" onclick="switchTab('deposito', this)" style="color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); margin-top: 5px; background: rgba(46, 204, 113, 0.05);">💰 Depósito</button>
+            
+            <button class="nav-btn" onclick="openFishingGame()" style="color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); margin-top: 5px; background: rgba(251, 191, 36, 0.05);">🎣 Pescar</button>
+        </nav>
 
         <button onclick="handleLogout()" class="btn-logout">Salir del Mar</button>
     </aside>
@@ -78,6 +78,17 @@
 
     <div id="egg-info-tooltip" class="egg-tooltip"></div>
 
+    <!-- INICIALIZACIÓN CRÍTICA DE SUPABASE -->
+    <script>
+        // Configuración de conexión
+        const SUPABASE_URL = "https://hqmwdcfbqhugokqhxfhd.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_q5fCEu3VFtZs8cvmdLSoRQ__4USW-cl";
+
+        // Creamos la instancia y la exponemos globalmente en window
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+
+    <!-- CARGA DE LÓGICA (Ahora detectará correctamente a window.supabase) -->
     <script src="dashboard-logic.js"></script>
 </body>
 </html>
