@@ -30,7 +30,7 @@ const YIELD_CONFIG = {
 const AQUARIUM_BG_IMG = 'fondo_acuario.jpg';
 
 window.onload = async () => {
-    const { data: { user } } = await client.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = 'index.html'; return; }
     currentUser = user;
     
@@ -41,7 +41,7 @@ window.onload = async () => {
 };
 
 window.onload = async () => {
-    // Usamos 'supabase' en lugar de 'client' para coincidir con el HTML
+    // Usamos 'supabase' en lugar de 'supabase' para coincidir con el HTML
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) { 
@@ -59,7 +59,7 @@ window.onload = async () => {
 };
 
 async function loadProfile() {
-    // También cambiamos 'client' por 'supabase' aquí
+    // También cambiamos 'supabase' por 'supabase' aquí
     const { data, error } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
     
     if (error) {
@@ -93,7 +93,7 @@ async function loadProfile() {
 }
 
 async function initAquarium() {
-    const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data || [];
     
     const container = document.getElementById('aquarium-bg');
@@ -141,7 +141,7 @@ function moveFishRandomly(element) {
     const img = element.querySelector('.fish-img');
     
     if (img) {
-        const rect = element.getBoundingClientRect();
+        const rect = element.getBoundingsupabaseRect();
         const currentXPercent = (rect.left / window.innerWidth) * 100;
         img.style.transform = targetX > currentXPercent ? "scaleX(1)" : "scaleX(-1)";
     }
@@ -353,9 +353,9 @@ function formatTime(ms) {
 }
 
 async function hatchFish(fishId) {
-    const { error } = await client.from('user_fish').update({ is_egg: false }).eq('id', fishId);
+    const { error } = await supabase.from('user_fish').update({ is_egg: false }).eq('id', fishId);
     if (!error) {
-        const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+        const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
         await initAquarium();
         renderInventory(document.getElementById('panel-body'));
@@ -364,7 +364,7 @@ async function hatchFish(fishId) {
 
 async function startFeeding(fishId) {
     if (isProcessingFeeding) return; 
-    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
 
     // Validar si tiene alguna comida
     if ((profile.food_plancton || 0) <= 0 && (profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
@@ -395,8 +395,8 @@ async function completeFeeding(foodType) {
     isProcessingFeeding = true; 
 
     const fishId = sessionStorage.getItem('feeding_fish_id');
-    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
-    const { data: fish } = await client.from('user_fish').select('*').eq('id', fishId).single();
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+    const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
 
     const now = new Date();
     // Determinamos el punto de partida: el tiempo actual o el last_fed si aún tiene vida
@@ -415,7 +415,7 @@ async function completeFeeding(foodType) {
     const foodCfg = FOOD_TYPES[foodType];
     
     // 1. Descontar 1 unidad de la comida elegida
-    await client.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
+    await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
 
     // 2. Lógica de Tiempo: Ajustar para que solo sume 12h (1 barra)
     // Si el pez estaba muerto (hace más de 24h que no come), lo revivimos poniéndole 12h de vida desde "ahora"
@@ -443,7 +443,7 @@ async function completeFeeding(foodType) {
     }
 
     // 4. Guardar en Supabase
-    await client.from('user_fish').update({ 
+    await supabase.from('user_fish').update({ 
         last_fed: newFedDate.toISOString(),
         current_xp: newXP,
         level: newLevel,
@@ -453,7 +453,7 @@ async function completeFeeding(foodType) {
     // Limpiar y refrescar
     document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
-    const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
     renderInventory(document.getElementById('panel-body'));
     
@@ -545,11 +545,11 @@ function renderEggCard(type, price, odds, time, imgUrl) {
 
 async function buyFood(type, cost, quantity) {
     if (isProcessingFeeding) return;
-    const { data: profile } = await client.from('profiles').select('*').eq('id', currentUser.id).single();
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
 
     const col = FOOD_TYPES[type].col;
-    await client.from('profiles').update({
+    await supabase.from('profiles').update({
         pearls_balance: Number(profile.pearls_balance) - Number(cost),
         [col]: (Number(profile[col]) || 0) + Number(quantity)
     }).eq('id', currentUser.id);
@@ -560,7 +560,7 @@ async function buyFood(type, cost, quantity) {
 }
 
 async function buyEgg(type, cost) {
-    const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
+    const { data: profile } = await supabase.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
     if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
     
     let rarity, yieldAmount, hatchHours = 3; 
@@ -582,15 +582,15 @@ async function buyEgg(type, cost) {
     const hatchDate = new Date();
     hatchDate.setHours(hatchDate.getHours() + hatchHours);
 
-    await client.from('profiles').update({ pearls_balance: profile.pearls_balance - cost }).eq('id', currentUser.id);
-    await client.from('user_fish').insert([{
+    await supabase.from('profiles').update({ pearls_balance: profile.pearls_balance - cost }).eq('id', currentUser.id);
+    await supabase.from('user_fish').insert([{
         user_id: currentUser.id, rarity, daily_yield: yieldAmount, is_egg: true,
         egg_hatch_time: hatchDate.toISOString(), level: 1, current_xp: 0,
         next_level_xp: 100, last_fed: new Date().toISOString(), total_generated: 0
     }]);
 
     await loadProfile();
-    const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
     renderInventory(document.getElementById('panel-body'));
 }
@@ -598,7 +598,7 @@ async function buyEgg(type, cost) {
 async function buyItem(column, price, qty) {
     try {
         // 1. Obtener saldo actual del perfil
-        const { data: profile, error: fetchError } = await client.from('profiles')
+        const { data: profile, error: fetchError } = await supabase.from('profiles')
             .select('pearls_balance, ' + column)
             .eq('id', currentUser.id)
             .single();
@@ -615,7 +615,7 @@ async function buyItem(column, price, qty) {
         }
 
         // 3. Procesar la compra en Supabase
-        const { error: updateError } = await client.from('profiles').update({
+        const { error: updateError } = await supabase.from('profiles').update({
             pearls_balance: profile.pearls_balance - price,
             [column]: (profile[column] || 0) + qty
         }).eq('id', currentUser.id);
@@ -644,25 +644,25 @@ async function claimPearls(fishId) {
     isProcessingFeeding = true;
 
     try {
-        const { data: fish, error: fishError } = await client.from('user_fish').select('*').eq('id', fishId).single();
+        const { data: fish, error: fishError } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
         if (fishError || !fish || Number(fish.accumulated_pearls) <= 0) {
             isProcessingFeeding = false;
             return;
         }
 
-        const { data: profile } = await client.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
+        const { data: profile } = await supabase.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
         const amountToClaim = Number(fish.accumulated_pearls);
         const newBalance = Number(profile.pearls_balance) + amountToClaim;
         
-        await client.from('profiles').update({ pearls_balance: newBalance }).eq('id', currentUser.id);
-        await client.from('user_fish').update({ 
+        await supabase.from('profiles').update({ pearls_balance: newBalance }).eq('id', currentUser.id);
+        await supabase.from('user_fish').update({ 
             accumulated_pearls: 0, 
             total_generated: (Number(fish.total_generated) || 0) + amountToClaim,
             last_claim: new Date().toISOString() 
         }).eq('id', fishId);
 
         await loadProfile();
-        const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+        const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
         renderInventory(document.getElementById('panel-body'));
 
@@ -680,7 +680,7 @@ function closeAllPanels() {
 }
 
 async function handleLogout() {
-    await client.auth.signOut();
+    await supabase.auth.signOut();
     window.location.href = 'index.html';
 }
 function getNextLevelXP(currentLevel) {
@@ -709,7 +709,7 @@ async function openFishingGame() {
     const today = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
 
     // 1. Obtener datos frescos del perfil (Intentos y Cañas)
-    const { data: profile, error } = await client.from('profiles')
+    const { data: profile, error } = await supabase.from('profiles')
         .select('fishing_rods, fishing_attempts_today, last_fishing_date')
         .eq('id', currentUser.id)
         .single();
@@ -722,7 +722,7 @@ async function openFishingGame() {
     if (profile.last_fishing_date !== today) {
         // Es un nuevo día, reseteamos el contador en la DB
         attempts = 0;
-        await client.from('profiles').update({ 
+        await supabase.from('profiles').update({ 
             fishing_attempts_today: 0, 
             last_fishing_date: today 
         }).eq('id', currentUser.id);
@@ -811,7 +811,7 @@ function startFishingMinigame() {
 
 async function finishFishing() {
     // 1. Obtener datos actuales para asegurar sincronización
-    const { data: profile, error } = await client.from('profiles')
+    const { data: profile, error } = await supabase.from('profiles')
         .select('*')
         .eq('id', currentUser.id)
         .single();
@@ -840,7 +840,7 @@ async function finishFishing() {
     }
 
     // 3. Ejecutar actualización: Restar caña, sumar intento diario y sumar recompensa
-    const { error: updateError } = await client.from('profiles').update({ 
+    const { error: updateError } = await supabase.from('profiles').update({ 
         fishing_rods: Math.max(0, (profile.fishing_rods || 0) - 1),
         fishing_attempts_today: (profile.fishing_attempts_today || 0) + 1,
         [rewardCol]: (profile[rewardCol] || 0) + 1
@@ -865,13 +865,13 @@ async function finishFishing() {
 async function renderDeposit(container) {
     container.innerHTML = `<div style="text-align:center; padding:40px;">⌛ Cargando tu billetera segura...</div>`;
 
-    // Intentamos obtener el cliente de Supabase desde el objeto global window
+    // Intentamos obtener el supabasee de Supabase desde el objeto global window
     const sb = window.supabase;
 
     try {
-        // Validación crítica: ¿Existe el cliente de Supabase?
+        // Validación crítica: ¿Existe el supabasee de Supabase?
         if (!sb) {
-            throw new Error("El cliente de Supabase no se encontró. Verifica que el script esté cargado en el HTML.");
+            throw new Error("El supabasee de Supabase no se encontró. Verifica que el script esté cargado en el HTML.");
         }
 
         // Obtener la sesión actual de forma segura
