@@ -958,13 +958,13 @@ async function getOrCreateWallet(userId) {
         .from('user_wallets')
         .select('address')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle(); // Usamos maybeSingle para que no dé error si no encuentra nada
 
-    if (data) return data.address;
+    if (data && data.address) return data.address;
 
-    // 2. Si no tiene, llamamos a tu Edge Function (o API de Tatum)
-    // Aquí invocamos la función que configuraste en Supabase
-    const { data: newWallet, error: genError } = await supabase.functions.invoke('generate-wallet', {
+    // 2. Si no tiene, llamamos a tu Edge Function con el nombre correcto
+    // CAMBIO REALIZADO: de 'generate-wallet' a 'dynamic-task'
+    const { data: newWallet, error: genError } = await supabase.functions.invoke('dynamic-task', {
         body: { user_id: userId }
     });
 
@@ -973,5 +973,6 @@ async function getOrCreateWallet(userId) {
         return "Error al generar dirección";
     }
 
+    // Retornamos la nueva dirección generada por Tatum
     return newWallet.address;
 }
