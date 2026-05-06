@@ -839,60 +839,90 @@ async function finishFishing() {
 async function renderDeposit(container) {
     container.innerHTML = `<div style="text-align:center; padding:40px;">⌛ Cargando tu billetera segura...</div>`;
 
+    // Intentamos obtener el cliente de Supabase desde el objeto global window
+    const sb = window.supabase;
+
     try {
-        // Verifica que supabase exista antes de llamar a auth
-        if (typeof supabase === 'undefined') {
-            throw new Error("El cliente de Supabase no está inicializado.");
+        // Validación crítica: ¿Existe el cliente de Supabase?
+        if (!sb) {
+            throw new Error("El cliente de Supabase no se encontró. Verifica que el script esté cargado en el HTML.");
         }
 
         // Obtener la sesión actual de forma segura
-        const { data: sessionData, error: authError } = await supabase.auth.getSession();
+        const { data: { session }, error: authError } = await sb.auth.getSession();
         
-        if (authError || !sessionData.session) {
-            throw new Error("No se pudo detectar una sesión activa. Por favor, reingresa.");
+        if (authError || !session) {
+            throw new Error("No hay sesión activa. Por favor, inicia sesión de nuevo.");
         }
 
-        const user = sessionData.session.user;
+        const userId = session.user.id;
 
         // 1. Intentar obtener la dirección de la base de datos
-        let { data: walletData, error } = await supabase
+        // Usamos maybeSingle para que devuelva null si no hay datos en lugar de lanzar error
+        let { data: walletData, error: dbError } = await sb
             .from('user_wallets')
             .select('address')
-            .eq('user_id', user.id)
-            .maybeSingle(); // Usamos maybeSingle para evitar errores si no existe
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (dbError) throw dbError;
 
         let address = walletData?.address;
 
-        // 2. Si no existe, llamar a la Edge Function de Supabase
+        // 2. Si no existe en la base de datos, llamar a la Edge Function de Tatum
         if (!address) {
-            const { data: newWallet, error: funcError } = await supabase.functions.invoke('generate-wallet', {
-                body: { user_id: user.id }
+            const { data: newWallet, error: funcError } = await sb.functions.invoke('generate-wallet', {
+                body: { user_id: userId }
             });
+            
             if (funcError) throw funcError;
+            if (!newWallet || !newWallet.address) throw new Error("La función no devolvió una dirección válida.");
+            
             address = newWallet.address;
         }
 
-        // 3. Renderizar la interfaz (El resto del código de HTML permanece igual)
+        // 3. Renderizar la interfaz completa
         container.innerHTML = `
             <div style="text-align: center; padding: 20px;">
-                <!-- ... contenido del QR y dirección ... -->
+                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">Envía USDT por la red <b>Binance Smart Chain (BEP20)</b></p>
+                
                 <div style="background: white; padding: 15px; display: inline-block; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${address}" alt="QR Deposito">
                 </div>
+
                 <div style="margin-top: 20px; background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
                     <code style="font-size: 0.75rem; color: #1e293b; word-break: break-all;">${address}</code>
-                    <button onclick="navigator.clipboard.writeText('${address}'); alert('Copiado!')" style="display: block; width: 100%; margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;">Copiar Dirección</button>
+                    <button onclick="navigator.clipboard.writeText('${address}'); alert('¡Copiado al portapapeles!')" 
+                            style="display: block; width: 100%; margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: 500;">
+                        COPIAR DIRECCIÓN
+                    </button>
                 </div>
-                <button onclick="checkBalance('${address}')" style="margin-top: 20px; width: 100%; background: #2ecc71; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer;">✅ VERIFICAR DEPÓSITO</button>
+
+                <div style="margin-top: 20px; padding: 15px; background: #fff9db; border: 1px solid #fab005; border-radius: 8px; text-align: left;">
+                    <small style="color: #862e00; display: block; line-height: 1.4;">
+                        • Envía solo USDT (BEP20).<br>
+                        • Mínimo recomendado: 1 USDT.<br>
+                        • El proceso de verificación puede tardar unos minutos tras el envío.
+                    </small>
+                </div>
+
+                <button onclick="checkBalance('${address}')" 
+                        style="margin-top: 20px; width: 100%; background: #2ecc71; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: background 0.3s;">
+                    ✅ VERIFICAR DEPÓSITO
+                </button>
             </div>
         `;
 
     } catch (err) {
-        console.error("Error en Depósito:", err);
+        console.error("Detalle del error en Depósito:", err);
         container.innerHTML = `
-            <div style="color: #e74c3c; padding: 20px; background: #fdf2f2; border-radius: 10px; border: 1px solid #f8d7da;">
-                <strong>Error de conexión:</strong><br>
-                <small>${err.message}</small>
+            <div style="color: #e74c3c; padding: 20px; background: #fdf2f2; border-radius: 10px; border: 1px solid #f8d7da; text-align: center;">
+                <strong style="display: block; margin-bottom: 5px;">Error de conexión</strong>
+                <small style="display: block; line-height: 1.2;">${err.message}</small>
+                <button onclick="renderDeposit(document.getElementById('panel-body'))" 
+                        style="margin-top: 15px; background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">
+                    REINTENTAR
+                </button>
             </div>`;
     }
 }
