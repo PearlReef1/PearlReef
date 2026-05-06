@@ -865,16 +865,16 @@ async function finishFishing() {
 async function renderDeposit(container) {
     container.innerHTML = `<div style="text-align:center; padding:40px;">⌛ Cargando tu billetera segura...</div>`;
 
-    // Intentamos obtener el cliente de Supabase desde el objeto global window
+    // Usamos el cliente de Supabase desde el objeto global window
     const sb = window.supabase;
 
     try {
-        // Validación crítica: ¿Existe el cliente de Supabase?
+        // 1. Validación crítica: ¿Existe el cliente de Supabase?
         if (!sb) {
             throw new Error("El cliente de Supabase no se encontró. Verifica que el script esté cargado en el HTML.");
         }
 
-        // Obtener la sesión actual de forma segura
+        // 2. Obtener la sesión actual de forma segura
         const { data: { session }, error: authError } = await sb.auth.getSession();
         
         if (authError || !session) {
@@ -883,8 +883,8 @@ async function renderDeposit(container) {
 
         const userId = session.user.id;
 
-        // 1. Intentar obtener la dirección de la base de datos
-        // Usamos maybeSingle para que devuelva null si no hay datos en lugar de lanzar error
+        // 3. Intentar obtener la dirección de la base de datos
+        // maybeSingle devuelve null si no hay datos en lugar de lanzar error
         let { data: walletData, error: dbError } = await sb
             .from('user_wallets')
             .select('address')
@@ -895,19 +895,21 @@ async function renderDeposit(container) {
 
         let address = walletData?.address;
 
-        // 2. Si no existe en la base de datos, llamar a la Edge Function de Tatum
+        // 4. Si no existe, llamar a la Edge Function correcta: 'dynamic-task'
         if (!address) {
-            const { data: newWallet, error: funcError } = await sb.functions.invoke('generate-wallet', {
+            const { data: newWallet, error: funcError } = await sb.functions.invoke('dynamic-task', {
                 body: { user_id: userId }
             });
             
             if (funcError) throw funcError;
-            if (!newWallet || !newWallet.address) throw new Error("La función no devolvió una dirección válida.");
+            if (!newWallet || !newWallet.address) {
+                throw new Error("La función no devolvió una dirección válida.");
+            }
             
             address = newWallet.address;
         }
 
-        // 3. Renderizar la interfaz completa
+        // 5. Renderizar la interfaz completa
         container.innerHTML = `
             <div style="text-align: center; padding: 20px;">
                 <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">Envía USDT por la red <b>Binance Smart Chain (BEP20)</b></p>
