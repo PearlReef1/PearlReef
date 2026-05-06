@@ -1,7 +1,3 @@
-const SUPABASE_URL = 'https://hqmwdcfbqhugokqhxfhd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_q5fCEu3VFtZs8cvmdLSoRQ__4USW-cl';
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 let currentUser = null;
 let allFish = [];
 let isProcessingFeeding = false;
