@@ -1060,3 +1060,107 @@ async function getOrCreateWallet(userId) {
     // Retornamos la nueva dirección generada por Tatum
     return newWallet.address;
 }
+// --- FUNCIONES DEL SWAP ---
+function openSwapModal() {
+    const modal = document.getElementById('minigame-modal');
+    const content = document.getElementById('modal-dynamic-content');
+    modal.style.display = 'flex';
+
+    content.innerHTML = `
+        <div style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            <h2 style="color: #6366f1; margin-bottom: 5px;">🔄 Intercambio</h2>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 20px;">Tasa: 1 USDT = 100 PRL</p>
+
+            <div style="background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 15px;">
+                <label style="display: block; font-size: 0.7rem; color: #94a3b8; text-align: left; margin-bottom: 8px;">Cantidad a convertir (USDT)</label>
+                <input type="number" id="swap-amount-input" placeholder="0.00" 
+                       style="width: 100%; background: transparent; border: none; border-bottom: 2px solid #6366f1; color: white; font-size: 1.8rem; text-align: center; outline: none; margin-bottom: 10px;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size: 0.85rem; color: #94a3b8;">Recibirás:</span>
+                    <span id="swap-result-display" style="font-size: 1.1rem; font-weight: bold; color: #f1c40f;">0 PRL</span>
+                </div>
+            </div>
+
+            <button onclick="executeSwapAction()" 
+                    style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);">
+                CONFIRMAR CAMBIO
+            </button>
+            
+            <button onclick="document.getElementById('minigame-modal').style.display='none'" 
+                    style="background: transparent; border: none; color: #64748b; font-size: 0.85rem; cursor: pointer; text-decoration: underline;">
+                Cerrar Ventana
+            </button>
+        </div>
+    `;
+
+    // Escuchar cambios en el input
+    const input = document.getElementById('swap-amount-input');
+    const result = document.getElementById('swap-result-display');
+    
+    input.addEventListener('input', () => {
+        const val = parseFloat(input.value) || 0;
+        result.innerText = `${(val * 100).toLocaleString()} PRL`;
+    });
+}
+
+// --- FUNCIONES DEL SWAP ---
+function openSwapModal() {
+    const modal = document.getElementById('minigame-modal');
+    const content = document.getElementById('modal-dynamic-content');
+    modal.style.display = 'flex';
+
+    content.innerHTML = `
+        <div style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            <h2 style="color: #6366f1; margin-bottom: 5px;">🔄 Intercambio</h2>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 20px;">Tasa: 1 USDT = 100 PRL</p>
+
+            <div style="background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 15px;">
+                <label style="display: block; font-size: 0.7rem; color: #94a3b8; text-align: left; margin-bottom: 8px;">Cantidad a convertir (USDT)</label>
+                <input type="number" id="swap-amount-input" placeholder="0.00" 
+                       style="width: 100%; background: transparent; border: none; border-bottom: 2px solid #6366f1; color: white; font-size: 1.8rem; text-align: center; outline: none; margin-bottom: 10px;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size: 0.85rem; color: #94a3b8;">Recibirás:</span>
+                    <span id="swap-result-display" style="font-size: 1.1rem; font-weight: bold; color: #f1c40f;">0 PRL</span>
+                </div>
+            </div>
+
+            <button onclick="executeSwapAction()" 
+                    style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);">
+                CONFIRMAR CAMBIO
+            </button>
+            
+            <button onclick="document.getElementById('minigame-modal').style.display='none'" 
+                    style="background: transparent; border: none; color: #64748b; font-size: 0.85rem; cursor: pointer; text-decoration: underline;">
+                Cerrar Ventana
+            </button>
+        </div>
+    `;
+
+    // Escuchar cambios en el input
+    const input = document.getElementById('swap-amount-input');
+    const result = document.getElementById('swap-result-display');
+    
+    input.addEventListener('input', () => {
+        const val = parseFloat(input.value) || 0;
+        result.innerText = `${(val * 100).toLocaleString()} PRL`;
+    });
+}
+
+async function executeSwapAction() {
+    const amountUSDT = parseFloat(document.getElementById('swap-amount-input').value);
+    if (!amountUSDT || amountUSDT <= 0) return alert("Ingresa un monto válido");
+
+    try {
+        const { data: { session } } = await window.supabase.auth.getSession();
+        const userId = session.user.id;
+
+        // Llamar a tu función de procesamiento (asegúrate de tenerla definida)
+        await handleSwap(amountUSDT); // La que definimos en el paso anterior
+        
+        document.getElementById('minigame-modal').style.display = 'none';
+    } catch (err) {
+        alert("Error al procesar el cambio: " + err.message);
+    }
+}
