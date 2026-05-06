@@ -998,6 +998,17 @@ async function checkBalance(address) {
         btn.disabled = false;
     }
 }
+async function executeSwap(amount, direction) {
+    // direction: 'TO_PRL' o 'TO_USDT'
+    const PRL_PRICE = 1000; // 1 USDT = 1000 PRL
+
+    if (direction === 'TO_PRL') {
+        // Lógica: Restar balance_usdt y sumar balance (PRL)
+        // update profiles SET balance_usdt = balance_usdt - amount, balance = balance + (amount * 1000)
+    } else {
+        // Lógica de retiro: Restar balance (PRL) y sumar balance_usdt
+    }
+}
 async function getOrCreateWallet(userId) {
     // 1. Buscamos si el usuario ya tiene una dirección en Supabase
     let { data, error } = await supabase
