@@ -400,12 +400,12 @@ async function completeFeeding(foodType) {
     const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
 
     const now = new Date();
-    // Determinamos el punto de partida: el tiempo actual o el last_fed si aún tiene vida
     const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
     
+    // Cálculo de vida restante actual
     let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
     
-    // Si ya tiene 2 barras llenas (24h de reserva), no permitir más
+    // Limite: No permitir más de 24h de reserva (2 barras)
     if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
         alert("El pez ya está lleno.");
         document.getElementById('minigame-modal').style.display = 'none';
@@ -415,18 +415,21 @@ async function completeFeeding(foodType) {
 
     const foodCfg = FOOD_TYPES[foodType];
     
-    // 1. Descontar 1 unidad de la comida elegida
+    // 1. Descontar comida
     await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
 
-    // 2. Lógica de Tiempo: Ajustar para que solo sume 12h (1 barra)
-    // Si el pez estaba muerto (hace más de 24h que no come), lo revivimos poniéndole 12h de vida desde "ahora"
-    let baseTime = lastFedDate.getTime() < (now.getTime() - (24 * 60 * 60 * 1000)) 
-                   ? now.getTime() - (12 * 60 * 60 * 1000) 
-                   : lastFedDate.getTime();
+    // --- CORRECCIÓN DE TIEMPO ---
+    // Si el pez tiene hambre acumulada (está por debajo de 'now'), empezamos desde su último last_fed.
+    // Si el pez ya estaba muerto (más de 24h sin comer), el nuevo punto de partida es 'ahora' - 12h,
+    // para que al sumarle 12h quede exactamente en el tiempo actual (revivido con 1 barra vacía).
     
+    let limitPast = now.getTime() - (24 * 60 * 60 * 1000); // El punto máximo de muerte
+    let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
+    
+    // Sumamos exactamente 12 horas (1 barra)
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-    // 3. Lógica de XP
+    // 2. Lógica de XP (se mantiene igual)
     let newXP = (fish.current_xp || 0) + foodCfg.xp;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
@@ -437,13 +440,9 @@ async function completeFeeding(foodType) {
             newXP = newXP - nextXP; 
             nextXP = getNextLevelXP(newLevel);
         }
-    } else {
-        newLevel = 5;
-        newXP = 100;
-        nextXP = 100;
     }
 
-    // 4. Guardar en Supabase
+    // 3. Guardar en Supabase
     await supabase.from('user_fish').update({ 
         last_fed: newFedDate.toISOString(),
         current_xp: newXP,
@@ -451,7 +450,7 @@ async function completeFeeding(foodType) {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
-    // Limpiar y refrescar
+    // Refrescar Interfaz
     document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
     const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
@@ -460,7 +459,6 @@ async function completeFeeding(foodType) {
     
     isProcessingFeeding = false; 
 }
-
 function getNextLevelXP(currentLevel) {
     const xpRequirements = { 1: 100, 2: 150, 3: 225, 4: 350, 5: 0 };
     return xpRequirements[currentLevel] || 0;
