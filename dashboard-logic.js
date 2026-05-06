@@ -954,6 +954,50 @@ async function renderDeposit(container) {
             </div>`;
     }
 }
+async function checkBalance(address) {
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "🔍 BUSCANDO DEPÓSITO...";
+    btn.disabled = true;
+
+    try {
+        const TATUM_API_KEY = "t-69fa7455ef78608e39ec0781-d29f2d8b334c4f5db058367d";
+        const USDT_CONTRACT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT en BSC Mainnet
+
+        // 1. Consultar saldo de USDT en la blockchain a través de Tatum
+        const response = await fetch(`https://api.tatum.io/v3/blockchain/token/address/BSC/${address}/${USDT_CONTRACT_ADDRESS}`, {
+            headers: { 'x-api-key': TATUM_API_KEY }
+        });
+        const data = await response.json();
+        
+        const balanceOnChain = parseFloat(data.balance || 0);
+
+        if (balanceOnChain > 0) {
+            // 2. Si hay saldo, actualizar el balance_usdt en Supabase
+            // IMPORTANTE: Aquí podrías restar lo que ya se procesó antes, 
+            // pero para esta lógica simple, actualizaremos el saldo.
+            const { data: userData } = await supabase.auth.getUser();
+            
+            const { error } = await supabase
+                .from('profiles')
+                .update({ balance_usdt: balanceOnChain }) // Actualizamos el saldo real
+                .eq('id', userData.user.id);
+
+            if (error) throw error;
+
+            alert(`¡Depósito detectado! Tienes ${balanceOnChain} USDT listos.`);
+            location.reload(); // Recargamos para ver los cambios
+        } else {
+            alert("Aún no detectamos movimientos. Si acabas de enviar, espera 1 o 2 minutos.");
+        }
+    } catch (err) {
+        console.error("Error al verificar:", err);
+        alert("Error al conectar con la red. Intenta de nuevo.");
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
 async function getOrCreateWallet(userId) {
     // 1. Buscamos si el usuario ya tiene una dirección en Supabase
     let { data, error } = await supabase
