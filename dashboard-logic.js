@@ -1005,10 +1005,10 @@ async function handleSwap(amount, direction) {
 
     const userId = session.user.id;
 
-    // 1. Obtener datos frescos del perfil
+    // 1. Obtener datos con el nombre de columna correcto: pearls_balance
     const { data: profile, error: fetchError } = await window.supabase
         .from('profiles')
-        .select('balance_usdt, pearl_balance')
+        .select('balance_usdt, pearls_balance') // Corregido a plural según el error
         .eq('id', userId)
         .single();
 
@@ -1017,9 +1017,8 @@ async function handleSwap(amount, direction) {
         throw new Error("No se pudo cargar tu perfil para realizar el cambio.");
     }
 
-    // Aquí ya no dará error de 'null' porque validamos arriba
     let newUSDT = profile.balance_usdt;
-    let newPRL = profile.pearl_balance;
+    let newPRL = profile.pearls_balance; // Corregido a plural
 
     if (direction === "USDT_TO_PRL") {
         if (newUSDT < amount) throw new Error("Saldo USDT insuficiente");
@@ -1031,25 +1030,20 @@ async function handleSwap(amount, direction) {
         newUSDT += (amount / 100);
     }
 
-    // 2. Actualizar en Supabase
+    // 2. Actualizar en Supabase usando pearls_balance
     const { error: updateError } = await window.supabase
         .from('profiles')
         .update({ 
             balance_usdt: newUSDT, 
-            pearl_balance: newPRL 
+            pearls_balance: newPRL // Corregido a plural
         })
         .eq('id', userId);
 
     if (updateError) throw updateError;
 
-    // 3. Actualizar la interfaz (opcional si tienes una función updateUI)
-    if (typeof updateUI === 'function') {
-        updateUI(); 
-    } else {
-        // Recarga simple de saldos si no tienes updateUI global
-        document.getElementById('usdt-balance').innerText = newUSDT.toFixed(2);
-        document.getElementById('pearl-balance').innerText = Math.floor(newPRL);
-    }
+    // 3. Actualizar la interfaz visual
+    document.getElementById('usdt-balance').innerText = newUSDT.toFixed(2);
+    document.getElementById('pearl-balance').innerText = Math.floor(newPRL);
 
     alert("¡Intercambio realizado con éxito!");
 }
