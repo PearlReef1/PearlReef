@@ -461,10 +461,6 @@ async function completeFeeding(foodType) {
     
     isProcessingFeeding = false; 
 }
-function getNextLevelXP(currentLevel) {
-    const xpRequirements = { 1: 100, 2: 150, 3: 225, 4: 350, 5: 0 };
-    return xpRequirements[currentLevel] || 0;
-}
 
 function updateAquariumState() {
     const panel = document.getElementById('content-panel');
@@ -663,7 +659,7 @@ async function claimPearls(fishId) {
         }).eq('id', fishId);
 
         await loadProfile();
-        const { data } = await client.from('user_fish').select('*').eq('user_id', currentUser.id);
+        const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
         renderInventory(document.getElementById('panel-body'));
 
@@ -693,15 +689,6 @@ function getNextLevelXP(currentLevel) {
         5: 0 // Nivel máximo
     };
     return xpRequirements[currentLevel] || 0;
-}
-
-// Ejemplo de lógica al ganar XP:
-if (fish.current_xp >= fish.next_level_xp && fish.level < 5) {
-    fish.level += 1;
-    fish.current_xp = 0; // O la diferencia si quieres "carry over"
-    fish.next_level_xp = getNextLevelXP(fish.level);
-    
-    // Aquí disparas el UPDATE a la base de datos
 }
 
 async function openFishingGame() {
