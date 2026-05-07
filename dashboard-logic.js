@@ -1045,6 +1045,46 @@ async function handleSwap(amount, direction) {
 
     alert("¡Intercambio realizado con éxito!");
 }
+async function verifyDepositAction() {
+    const btn = document.getElementById('btn-verify-deposit');
+    const statusDiv = document.getElementById('deposit-status');
+
+    // Bloqueamos el botón para evitar múltiples clics
+    btn.disabled = true;
+    btn.innerHTML = "🔍 ESCANEANDO RED...";
+    statusDiv.innerHTML = `<span style="color: #ffb703;">Buscando depósitos en la Blockchain...</span>`;
+
+    try {
+        const { data: { session } } = await window.supabase.auth.getSession();
+        
+        // Llamamos a tu Edge Function directamente por su nombre
+        const { data, error } = await window.supabase.functions.invoke('verify-deposit-index-ts', {
+          body: { user_id: session.user.id }
+        });
+
+        if (error) throw error;
+
+        if (data.amountDetected > 0) {
+            // Si encontró algo, mostramos el éxito con el color verde de tu interfaz
+            statusDiv.innerHTML = `
+                <div style="background: rgba(46, 204, 113, 0.2); padding: 10px; border-radius: 10px; border: 1px solid #2ecc71; margin-top:10px;">
+                    <b style="color: #2ecc71;">¡DEPÓSITO DETECTADO! +${data.amountDetected} USDT</b>
+                </div>`;
+            
+            // Actualizamos los números del Sidebar automáticamente
+            await loadProfile(); 
+        } else {
+            statusDiv.innerHTML = `<span style="color: #94a3b8; font-size: 0.8rem;">No se encontraron transacciones nuevas. Reintenta en 1 minuto.</span>`;
+        }
+    } catch (err) {
+        console.error(err);
+        statusDiv.innerHTML = `<b style="color: #e63946;">Error: ${err.message}</b>`;
+    } finally {
+        // Devolvemos el botón a su estado original
+        btn.disabled = false;
+        btn.innerHTML = "✅ VERIFICAR DEPÓSITO";
+    }
+}
 async function getOrCreateWallet(userId) {
     // 1. Buscamos si el usuario ya tiene una dirección en Supabase
     let { data, error } = await supabase
