@@ -180,7 +180,7 @@ async function switchTab(tab, btn) {
     // Renderizado de contenido según la pestaña
     if (tab === 'inventario') renderInventory(body);
     if (tab === 'tienda') renderShop(body);
-    if (tab === 'deposito') renderDeposit(body); // Nueva llamada a la función de Tatum
+    if (tab === 'deposito') sit(body); // Nueva llamada a la función de Tatum
 }
 
 function renderInventory(container) {
@@ -864,26 +864,17 @@ async function finishFishing() {
 async function renderDeposit(container) {
     container.innerHTML = `<div style="text-align:center; padding:40px;">⌛ Cargando tu billetera segura...</div>`;
 
-    // Usamos el cliente de Supabase desde el objeto global window
     const sb = window.supabase;
 
     try {
-        // 1. Validación crítica: ¿Existe el cliente de Supabase?
-        if (!sb) {
-            throw new Error("El cliente de Supabase no se encontró. Verifica que el script esté cargado en el HTML.");
-        }
+        if (!sb) throw new Error("El cliente de Supabase no se encontró.");
 
-        // 2. Obtener la sesión actual de forma segura
         const { data: { session }, error: authError } = await sb.auth.getSession();
-        
-        if (authError || !session) {
-            throw new Error("No hay sesión activa. Por favor, inicia sesión de nuevo.");
-        }
+        if (authError || !session) throw new Error("No hay sesión activa.");
 
         const userId = session.user.id;
 
-        // 3. Intentar obtener la dirección de la base de datos
-        // maybeSingle devuelve null si no hay datos en lugar de lanzar error
+        // Intentar obtener la dirección de la base de datos
         let { data: walletData, error: dbError } = await sb
             .from('user_wallets')
             .select('address')
@@ -894,21 +885,17 @@ async function renderDeposit(container) {
 
         let address = walletData?.address;
 
-        // 4. Si no existe, llamar a la Edge Function correcta: 'dynamic-task'
+        // Si no existe, llamar a la Edge Function 'dynamic-task'
         if (!address) {
             const { data: newWallet, error: funcError } = await sb.functions.invoke('dynamic-task', {
                 body: { user_id: userId }
             });
             
             if (funcError) throw funcError;
-            if (!newWallet || !newWallet.address) {
-                throw new Error("La función no devolvió una dirección válida.");
-            }
-            
             address = newWallet.address;
         }
 
-        // 5. Renderizar la interfaz completa
+        // Renderizar la interfaz (Tu diseño original)
         container.innerHTML = `
             <div style="text-align: center; padding: 20px;">
                 <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">Envía USDT por la red <b>Binance Smart Chain (BEP20)</b></p>
@@ -933,70 +920,20 @@ async function renderDeposit(container) {
                     </small>
                 </div>
 
-                <button onclick="checkBalance('${address}')" 
+                <button id="btn-verify-deposit" onclick="verifyDepositAction()" 
                         style="margin-top: 20px; width: 100%; background: #2ecc71; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: background 0.3s;">
                     ✅ VERIFICAR DEPÓSITO
                 </button>
+                <div id="deposit-status" style="margin-top: 15px; text-align: center; font-size: 0.85rem; font-weight: bold;"></div>
             </div>
         `;
 
     } catch (err) {
         console.error("Detalle del error en Depósito:", err);
-        container.innerHTML = `
-            <div style="color: #e74c3c; padding: 20px; background: #fdf2f2; border-radius: 10px; border: 1px solid #f8d7da; text-align: center;">
-                <strong style="display: block; margin-bottom: 5px;">Error de conexión</strong>
-                <small style="display: block; line-height: 1.2;">${err.message}</small>
-                <button onclick="renderDeposit(document.getElementById('panel-body'))" 
-                        style="margin-top: 15px; background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;">
-                    REINTENTAR
-                </button>
-            </div>`;
+        container.innerHTML = `<div style="color: #e74c3c; padding: 20px; text-align: center;"><strong>Error:</strong> ${err.message}</div>`;
     }
 }
-async function checkBalance(address) {
-    const btn = event.target;
-    const originalText = btn.innerText;
-    btn.innerText = "🔍 BUSCANDO DEPÓSITO...";
-    btn.disabled = true;
 
-    try {
-        const TATUM_API_KEY = "t-69fa7455ef78608e39ec0781-d29f2d8b334c4f5db058367d";
-        const USDT_CONTRACT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT en BSC Mainnet
-
-        // 1. Consultar saldo de USDT en la blockchain a través de Tatum
-        const response = await fetch(`https://api.tatum.io/v3/blockchain/token/address/BSC/${address}/${USDT_CONTRACT_ADDRESS}`, {
-            headers: { 'x-api-key': TATUM_API_KEY }
-        });
-        const data = await response.json();
-        
-        const balanceOnChain = parseFloat(data.balance || 0);
-
-        if (balanceOnChain > 0) {
-            // 2. Si hay saldo, actualizar el balance_usdt en Supabase
-            // IMPORTANTE: Aquí podrías restar lo que ya se procesó antes, 
-            // pero para esta lógica simple, actualizaremos el saldo.
-            const { data: userData } = await supabase.auth.getUser();
-            
-            const { error } = await supabase
-                .from('profiles')
-                .update({ balance_usdt: balanceOnChain }) // Actualizamos el saldo real
-                .eq('id', userData.user.id);
-
-            if (error) throw error;
-
-            alert(`¡Depósito detectado! Tienes ${balanceOnChain} USDT listos.`);
-            location.reload(); // Recargamos para ver los cambios
-        } else {
-            alert("Aún no detectamos movimientos. Si acabas de enviar, espera 1 o 2 minutos.");
-        }
-    } catch (err) {
-        console.error("Error al verificar:", err);
-        alert("Error al conectar con la red. Intenta de nuevo.");
-    } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
-}
 async function handleSwap(amount, direction) {
     const { data: { session } } = await window.supabase.auth.getSession();
     if (!session) throw new Error("No hay sesión activa");
@@ -1049,15 +986,14 @@ async function verifyDepositAction() {
     const btn = document.getElementById('btn-verify-deposit');
     const statusDiv = document.getElementById('deposit-status');
 
-    // Bloqueamos el botón para evitar múltiples clics
     btn.disabled = true;
     btn.innerHTML = "🔍 ESCANEANDO RED...";
-    statusDiv.innerHTML = `<span style="color: #ffb703;">Buscando depósitos en la Blockchain...</span>`;
+    statusDiv.innerHTML = `<span style="color: #f39c12;">Consultando transacciones en la Blockchain...</span>`;
 
     try {
         const { data: { session } } = await window.supabase.auth.getSession();
         
-        // Llamamos a tu Edge Function directamente por su nombre
+        // Invocamos la Edge Function que ya configuramos con Tatum
         const { data, error } = await window.supabase.functions.invoke('verify-deposit-index-ts', {
           body: { user_id: session.user.id }
         });
@@ -1065,22 +1001,20 @@ async function verifyDepositAction() {
         if (error) throw error;
 
         if (data.amountDetected > 0) {
-            // Si encontró algo, mostramos el éxito con el color verde de tu interfaz
             statusDiv.innerHTML = `
-                <div style="background: rgba(46, 204, 113, 0.2); padding: 10px; border-radius: 10px; border: 1px solid #2ecc71; margin-top:10px;">
+                <div style="background: rgba(46, 204, 113, 0.2); padding: 10px; border-radius: 10px; border: 1px solid #2ecc71;">
                     <b style="color: #2ecc71;">¡DEPÓSITO DETECTADO! +${data.amountDetected} USDT</b>
                 </div>`;
             
-            // Actualizamos los números del Sidebar automáticamente
-            await loadProfile(); 
+            // Actualizamos la interfaz (asegúrate que loadProfile existe en tu script)
+            if (typeof loadProfile === 'function') await loadProfile(); 
         } else {
-            statusDiv.innerHTML = `<span style="color: #94a3b8; font-size: 0.8rem;">No se encontraron transacciones nuevas. Reintenta en 1 minuto.</span>`;
+            statusDiv.innerHTML = `<span style="color: #64748b;">No se detectaron depósitos nuevos aún.</span>`;
         }
     } catch (err) {
-        console.error(err);
-        statusDiv.innerHTML = `<b style="color: #e63946;">Error: ${err.message}</b>`;
+        console.error("Error al verificar:", err);
+        statusDiv.innerHTML = `<b style="color: #e63946;">Error: Reintenta en breve.</b>`;
     } finally {
-        // Devolvemos el botón a su estado original
         btn.disabled = false;
         btn.innerHTML = "✅ VERIFICAR DEPÓSITO";
     }
