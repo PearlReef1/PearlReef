@@ -180,7 +180,9 @@ async function switchTab(tab, btn) {
     // Renderizado de contenido según la pestaña
     if (tab === 'inventario') renderInventory(body);
     if (tab === 'tienda') renderShop(body);
-    if (tab === 'deposito') sit(body); // Nueva llamada a la función de Tatum
+    
+    // CORRECCIÓN AQUÍ: Cambiamos 'sit' por 'renderDeposit'
+    if (tab === 'deposito') renderDeposit(body); 
 }
 
 function renderInventory(container) {
