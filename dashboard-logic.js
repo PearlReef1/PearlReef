@@ -101,28 +101,25 @@ async function loadProfile() {
 }
 
 async function initAquarium() {
-    const { data, error } = await supabase
-        .from('user_fish')
-        .select('*')
-        .eq('user_id', currentUser.id);
-
+    const { data, error } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
+    
     if (error) {
-        console.error("Error cargando acuario:", error);
+        console.error("Error cargando peces:", error);
         return;
     }
-
+    
     allFish = data || [];
     
-    // Cambiamos el fondo del contenedor principal al fondo del acuario
     const container = document.getElementById('aquarium-bg');
     if (container) {
+        // Aplicamos el fondo al div principal
         container.style.backgroundImage = `url('${RAW_BASE}${AQUARIUM_BG_IMG}')`;
         container.style.backgroundSize = 'cover';
         container.style.backgroundPosition = 'center';
         container.style.backgroundAttachment = 'fixed';
     }
 
-    // Llamamos a la función que dibuja la cuadrícula
+    // Dibujamos la cuadrícula de peces
     renderFishGrid();
 }
 
