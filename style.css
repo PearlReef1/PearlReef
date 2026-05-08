@@ -274,32 +274,48 @@ body {
     50% { transform: translateY(-8px) rotate(1deg); }
 }
 /* Estilos para la cuadrícula del acuario principal */
+/* --- CUADRICULA ESTILO GLASS (Imagen Referencia) --- */
 .grid-main-wrapper {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-    padding-top: 80px; /* Para que no choque con el header si tienes uno */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 25px;
+    padding: 20px;
 }
 
 .card-main-aquarium {
-    background: rgba(15, 23, 42, 0.8);
+    background: rgba(15, 23, 42, 0.7); /* Azul oscuro traslúcido */
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
+    border-radius: 28px;
     padding: 20px;
-    width: 220px;
     color: white;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-main-aquarium:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .stats-header-main {
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(15px);
     border-radius: 20px;
     display: flex;
     justify-content: space-around;
-    padding: 15px;
-    margin: 0 auto 30px auto;
+    padding: 20px;
+    margin: 0 auto 40px auto;
     max-width: 800px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+.main-xp-bar { background: rgba(255,255,255,0.1); height: 6px; border-radius: 10px; margin: 12px 0; overflow: hidden; }
+.main-xp-fill { height: 100%; background: linear-gradient(90deg, #a855f7, #d946ef); }
+
+.main-energy-dots { display: flex; gap: 6px; justify-content: center; margin: 10px 0; }
+.energy-dot-main { width: 45%; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); }
+.energy-dot-main.active { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+
+.main-collect-box { background: rgba(0,0,0,0.3); border-radius: 14px; padding: 10px; margin: 15px 0; display: flex; justify-content: space-between; font-size: 0.8rem; }
