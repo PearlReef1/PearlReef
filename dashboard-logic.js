@@ -100,65 +100,77 @@ async function loadProfile() {
     }
 }
 
-async function initAquarium() {
-    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
+async function loadAquarium() {
+    const { data, error } = await supabase
+        .from('user_fishes')
+        .select('*')
+        .eq('user_id', currentUser.id);
+
+    if (error) {
+        console.error("Error cargando acuario:", error);
+        return;
+    }
+
     allFish = data || [];
-    
-    const container = document.getElementById('aquarium-bg');
-    if (container) {
-        container.innerHTML = ''; 
-        container.style.backgroundImage = `url('${RAW_BASE}${AQUARIUM_BG_IMG}')`;
-        container.style.backgroundSize = 'cover';
-        container.style.backgroundPosition = 'center';
+    renderFishGrid(); // Llamamos a la nueva función de cuadrícula
+}
 
-        allFish.forEach(fish => {
-            if (!fish.is_egg) createSwimmingFish(fish);
-        });
+function renderFishGrid() {
+    const container = document.getElementById('fish-grid-container');
+    if (!container) return;
+
+    container.innerHTML = ''; // Limpiamos el mensaje de carga
+
+    if (allFish.length === 0) {
+        container.innerHTML = `<div class="loading-message">Aún no tienes peces. ¡Ve a la tienda y compra tu primer huevo! 🥚</div>`;
+        return;
     }
-}
 
-function createSwimmingFish(fish) {
-    const fishGroup = document.createElement('div');
-    fishGroup.className = 'fish-container';
-    fishGroup.id = `fish-${fish.id}`;
-    
-    const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
-    const rarityAsset = fish.rarity.toLowerCase().replace(/\s+/g, '_');
-    
-    fishGroup.innerHTML = `
-        <div class="fish-label">
-            <span class="f-id">#${fish.id.substring(0, 4)}</span>
-            <span class="f-rarity rarity-text-${rarityClass}">${fish.rarity}</span>
-        </div>
-        <img src="${RAW_BASE}pez_${rarityAsset}.png" class="fish-img">
-    `;
-    
-    const startX = Math.random() * 70 + 10;
-    const startY = Math.random() * 50 + 20;
-    fishGroup.style.left = startX + "vw";
-    fishGroup.style.top = startY + "vh";
-    
-    document.getElementById('aquarium-bg').appendChild(fishGroup);
-    setTimeout(() => moveFishRandomly(fishGroup), 100);
-}
+    allFish.forEach(fish => {
+        const card = document.createElement('div');
+        // Usamos las clases que definimos en el CSS
+        const rarityClass = fish.rarity.toLowerCase().replace(" ", "-");
+        card.className = `fish-card ${rarityClass}`;
 
-function moveFishRandomly(element) {
-    if (!element) return;
-    const targetX = Math.random() * 75 + 10; 
-    const targetY = Math.random() * 55 + 15; 
-    const img = element.querySelector('.fish-img');
-    
-    if (img) {
-        const rect = element.getBoundingClientRect();
-        const currentXPercent = (rect.left / window.innerWidth) * 100;
-        img.style.transform = targetX > currentXPercent ? "scaleX(1)" : "scaleX(-1)";
-    }
-    
-    element.style.left = targetX + "vw";
-    element.style.top = targetY + "vh";
-    setTimeout(() => moveFishRandomly(element), 8000);
-}
+        // Cálculo de barras
+        const xpPercent = Math.min((fish.current_xp / fish.next_level_xp) * 100, 100);
+        const hungerPercent = (fish.hunger_units / MAX_HUNGER_UNITS) * 100;
 
+        card.innerHTML = `
+            <div class="fish-card-id">#${fish.id.toString().padStart(4, '0')}</div>
+            <img src="${fish.image_url}" class="fish-card-img" alt="Pez">
+            <div class="fish-card-rarity" style="color: var(--${rarityClass})">${fish.rarity}</div>
+            
+            <div class="card-stats">
+                <div class="stat-row">
+                    <div class="stat-label">
+                        <span>Nivel ${fish.level}</span>
+                        <span>${fish.current_xp}/${fish.next_level_xp} XP</span>
+                    </div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill xp-fill" style="width: ${xpPercent}%"></div>
+                    </div>
+                </div>
+
+                <div class="stat-row">
+                    <div class="stat-label">
+                        <span>Energía</span>
+                        <span>${fish.hunger_units}/${MAX_HUNGER_UNITS}</span>
+                    </div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill hunger-fill" style="width: ${hungerPercent}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-feed-mini" onclick="feedFish(${fish.id})" 
+                style="margin-top: 10px; ${fish.hunger_units >= MAX_HUNGER_UNITS ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                ${fish.hunger_units >= MAX_HUNGER_UNITS ? '¡LLENO!' : '🍎 ALIMENTAR'}
+            </button>
+        `;
+        container.appendChild(card);
+    });
+}
 async function switchTab(tab, btn) {
     // Manejo de clases activas
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
