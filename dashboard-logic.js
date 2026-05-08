@@ -102,7 +102,7 @@ async function loadProfile() {
 
 async function initAquarium() {
     const { data, error } = await supabase
-        .from('user_fishes')
+        .from('user_fish')
         .select('*')
         .eq('user_id', currentUser.id);
 
