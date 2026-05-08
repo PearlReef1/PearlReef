@@ -509,76 +509,85 @@ async function completeFeeding(foodType) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true; 
 
-    const fishId = sessionStorage.getItem('feeding_fish_id');
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-    const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
+    try {
+        const fishId = sessionStorage.getItem('feeding_fish_id');
+        
+        // 1. Obtener datos actuales
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+        const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
 
-    const now = new Date();
-    const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
-    
-    let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
-    
-    if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
-        alert("El pez ya está lleno.");
-        document.getElementById('minigame-modal').style.display = 'none';
-        isProcessingFeeding = false;
-        return;
-    }
+        const now = new Date();
+        const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        
+        let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
+        
+        if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
+            alert("El pez ya está lleno.");
+            document.getElementById('minigame-modal').style.display = 'none';
+            isProcessingFeeding = false;
+            return;
+        }
 
-    const foodCfg = FOOD_TYPES[foodType];
-    
-    // 1. Descontar comida
-    await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
+        const foodCfg = FOOD_TYPES[foodType];
+        
+        // 2. Descontar comida del perfil
+        await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
 
-    // --- CORRECCIÓN DE TIEMPO ---
-    let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
-    let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
-    let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
+        // 3. Calcular nuevo tiempo y XP
+        let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
+        let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
+        let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-    // 2. Lógica de XP
-    let newXP = (fish.current_xp || 0) + foodCfg.xp;
-    let newLevel = fish.level || 1;
-    let nextXP = fish.next_level_xp || 100;
+        let newXP = (fish.current_xp || 0) + foodCfg.xp;
+        let newLevel = fish.level || 1;
+        let nextXP = fish.next_level_xp || 100;
 
-    if (newLevel < 5) {
-        if (newXP >= nextXP) {
+        if (newLevel < 5 && newXP >= nextXP) {
             newLevel++;
             newXP = newXP - nextXP; 
             nextXP = getNextLevelXP(newLevel);
         }
-    }
 
-    // 3. Guardar en Supabase
-    await supabase.from('user_fish').update({ 
-        last_fed: newFedDate.toISOString(),
-        current_xp: newXP,
-        level: newLevel,
-        next_level_xp: nextXP
-    }).eq('id', fishId);
+        // 4. Guardar cambios del pez
+        await supabase.from('user_fish').update({ 
+            last_fed: newFedDate.toISOString(),
+            current_xp: newXP,
+            level: newLevel,
+            next_level_xp: nextXP
+        }).eq('id', fishId);
 
-    // --- REFRESCAR INTERFAZ ---
-    document.getElementById('minigame-modal').style.display = 'none';
-    
-    await loadProfile();
-
-    // CORRECCIÓN AQUÍ: Sintaxis correcta de .order()
-    const { data, error } = await supabase.from('user_fish')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: true }); // <--- Objeto con configuración
+        // --- REFRESCAR INTERFAZ ---
+        document.getElementById('minigame-modal').style.display = 'none';
         
-    if (error) {
-        console.error("Error cargando peces:", error);
-    } else {
-        allFish = data || [];
-    }
+        await loadProfile();
 
-    // Actualizamos vistas
-    const inventoryBody = document.getElementById('panel-body');
-    if (inventoryBody) renderInventory(inventoryBody);
-    if (typeof renderFishGrid === 'function') renderFishGrid();
-    
-    isProcessingFeeding = false; 
+        // Consulta simplificada para evitar el Error 400
+        const { data: updatedFish, error: loadError } = await supabase
+            .from('user_fish')
+            .select('*')
+            .eq('user_id', currentUser.id);
+            
+        if (loadError) {
+            console.error("Error cargando peces:", loadError);
+        } else {
+            // Ordenamos manualmente en JS para evitar problemas de URL con .order()
+            allFish = (updatedFish || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        }
+
+        // Actualizar Inventario lateral
+        const inventoryBody = document.getElementById('panel-body');
+        if (inventoryBody) renderInventory(inventoryBody);
+        
+        // Actualizar Acuario principal
+        if (typeof renderFishGrid === 'function') {
+            renderFishGrid();
+        }
+
+    } catch (err) {
+        console.error("Error crítico en feeding:", err);
+    } finally {
+        isProcessingFeeding = false; 
+    }
 }
 function updateAquariumState() {
     const panel = document.getElementById('content-panel');
