@@ -112,14 +112,14 @@ async function initAquarium() {
     }
 
     allFish = data || [];
-    renderFishGrid(); // Llamamos a la nueva función de cuadrícula
+    renderFishGrid(); 
 }
 
 function renderFishGrid() {
     const container = document.getElementById('fish-grid-container');
     if (!container) return;
 
-    container.innerHTML = ''; // Limpiamos el mensaje de carga
+    container.innerHTML = ''; 
 
     if (allFish.length === 0) {
         container.innerHTML = `<div class="loading-message">Aún no tienes peces. ¡Ve a la tienda y compra tu primer huevo! 🥚</div>`;
@@ -128,17 +128,24 @@ function renderFishGrid() {
 
     allFish.forEach(fish => {
         const card = document.createElement('div');
-        // Usamos las clases que definimos en el CSS
-        const rarityClass = fish.rarity.toLowerCase().replace(" ", "-");
+        
+        // Corregimos el nombre de la clase de rareza para el CSS (ej: "Poco Comun" -> "poco-comun")
+        const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
         card.className = `fish-card ${rarityClass}`;
 
-        // Cálculo de barras
+        // --- CORRECCIÓN DE URL DE IMAGEN ---
+        // Esto transforma el link de GitHub en un link que el navegador SI puede leer
+        let finalImgUrl = fish.image_url || "";
+        if (finalImgUrl.includes("github.com") && finalImgUrl.includes("/blob/")) {
+            finalImgUrl = finalImgUrl.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
+        }
+
         const xpPercent = Math.min((fish.current_xp / fish.next_level_xp) * 100, 100);
         const hungerPercent = (fish.hunger_units / MAX_HUNGER_UNITS) * 100;
 
         card.innerHTML = `
             <div class="fish-card-id">#${fish.id.toString().padStart(4, '0')}</div>
-            <img src="${fish.image_url}" class="fish-card-img" alt="Pez">
+            <img src="${finalImgUrl}" class="fish-card-img" alt="Pez" onerror="this.src='https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/pez_comun.png'">
             <div class="fish-card-rarity" style="color: var(--${rarityClass})">${fish.rarity}</div>
             
             <div class="card-stats">
