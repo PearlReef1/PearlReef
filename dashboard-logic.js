@@ -131,17 +131,53 @@ function renderFishGrid() {
     const now = new Date();
     const PRL_ICON_SMALL = `<img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" style="width:12px; height:12px; vertical-align:middle; margin-right:2px;">`;
 
-    if (allFish.length === 0) {
-        gridContainer.innerHTML = `<div style="color: white; text-align: center; width: 100%; padding: 40px;">Aún no tienes peces en tu ecosistema.</div>`;
-        return;
-    }
+    // 1. CALCULAR RESUMEN (Igual que en renderInventory)
+    let totalDailyProd = 0;
+    let totalPendingClaim = 0;
+    let hungryFishCount = 0;
 
+    allFish.forEach(f => {
+        if (!f.is_egg) {
+            const levelBonus = 1 + ((Math.min(f.level, 5) - 1) * 0.05);
+            const currentYield = f.daily_yield * levelBonus;
+            const msSinceFed = now - new Date(f.last_fed || 0);
+            
+            if (msSinceFed < (24 * 60 * 60 * 1000)) {
+                totalDailyProd += currentYield;
+            } else {
+                hungryFishCount++;
+            }
+            totalPendingClaim += Number(f.accumulated_pearls || 0);
+        }
+    });
+
+    // 2. INYECTAR EL RESUMEN EN LA PARTE SUPERIOR
+    const summaryHTML = `
+        <div style="background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border-radius: 16px; padding: 15px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center; color: white; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+            <div>
+                <small style="color: #94a3b8; font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 1px;">Prod / Día</small>
+                <strong style="color: #2ecc71; font-size: 1rem;">${PRL_ICON_SMALL} ${totalDailyProd.toFixed(0)}</strong>
+            </div>
+            <div style="border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">
+                <small style="color: #94a3b8; font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 1px;">Por Recoger</small>
+                <strong style="color: #3b82f6; font-size: 1rem;">${PRL_ICON_SMALL} ${totalPendingClaim.toFixed(2)}</strong>
+            </div>
+            <div>
+                <small style="color: #94a3b8; font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 1px;">Hambre</small>
+                <strong style="color: ${hungryFishCount > 0 ? '#ff4757' : '#2ecc71'}; font-size: 1rem;">🐟 ${hungryFishCount}</strong>
+            </div>
+        </div>
+        <div id="fish-cards-layout" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; width: 100%;"></div>
+    `;
+
+    gridContainer.innerHTML = summaryHTML;
+    const cardsLayout = document.getElementById('fish-cards-layout');
+
+    // 3. RENDERIZAR TARJETAS COMPACTAS AZULES
     allFish.forEach(fish => {
-        if (fish.is_egg) return; // Los huevos no van en la cuadrícula de peces vivos
+        if (fish.is_egg) return;
 
         const card = document.createElement('div');
-        
-        // --- LÓGICA DE ESTADOS (Copia fiel del Inventario) ---
         const lastFed = new Date(fish.last_fed || 0);
         const msSinceFed = now - lastFed;
         const maxReservaMs = 24 * 60 * 60 * 1000;
@@ -151,94 +187,64 @@ function renderFishGrid() {
         else if (msSinceFed < 24 * 60 * 60 * 1000) hungerUnits = 1;
 
         const isProducing = hungerUnits > 0;
-        const isMaxLevel = fish.level >= 5;
-        const levelBonus = 1 + ((Math.min(fish.level, 5) - 1) * 0.05);
-        const currentYield = (fish.daily_yield * levelBonus).toFixed(2);
-        
-        const currentXP = fish.current_xp || 0;
-        const nextXP = fish.next_level_xp || 100;
-        const xpPercent = isMaxLevel ? 100 : Math.min((currentXP / nextXP) * 100, 100);
-        const xpColor = isMaxLevel ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #a855f7, #d946ef)';
-
         const rarityKey = fish.rarity.toLowerCase().replace(/\s+/g, '_');
         const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
+        const xpPercent = Math.min(((fish.current_xp || 0) / (fish.next_level_xp || 100)) * 100, 100);
 
-        // --- DISEÑO DE TARJETA (Adaptado a Cuadrícula) ---
         card.className = `fish-card ${rarityClass}`;
         card.style = `
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;
-            padding: 15px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            border-top: 5px solid var(--${rarityClass});
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            gap: 8px;
+            width: 170px;
             position: relative;
-            color: #1e293b;
+            color: white;
+            transition: transform 0.2s;
         `;
 
         card.innerHTML = `
-            <div style="position: absolute; top: 10px; right: 10px; background: #334155; color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; font-family: monospace;">
-                #${fish.id.toString().slice(0, 4)}
-            </div>
-
-            <div class="fish-card-img-container" style="text-align: center; background: rgba(0,0,0,0.03); border-radius: 12px; padding: 10px;">
-                <img src="${RAW_BASE}pez_${rarityKey}.png" class="fish-card-img" style="width: 80px; height: 80px; filter: ${!isProducing ? 'grayscale(1)' : 'none'};">
-            </div>
-
+            <div style="position: absolute; top: 8px; right: 8px; color: rgba(255,255,255,0.3); font-size: 0.5rem;">#${fish.id.toString().slice(0, 4)}</div>
+            
             <div style="text-align: center;">
-                <strong class="rarity-text-${rarityClass}" style="font-size: 1rem; display: block; text-transform: uppercase;">${fish.rarity}</strong>
-                <span style="font-size: 0.8rem; color: ${isMaxLevel ? '#f59e0b' : '#64748b'}; font-weight: bold;">
-                    Nivel ${fish.level} ${isMaxLevel ? '(MAX)' : ''}
-                </span>
+                <img src="${RAW_BASE}pez_${rarityKey}.png" style="width: 65px; height: 65px; object-fit: contain; filter: ${!isProducing ? 'grayscale(1) brightness(0.6)' : 'none'};">
             </div>
 
-            <div style="width: 100%;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.6rem; margin-bottom: 2px; font-weight: bold;">
-                    <span>XP</span>
-                    <span>${isMaxLevel ? 'MAX' : `${currentXP}/${nextXP}`}</span>
-                </div>
-                <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
-                    <div style="width: ${xpPercent}%; height: 100%; background: ${xpColor}; transition: width 0.5s;"></div>
-                </div>
+            <div style="text-align: center; line-height: 1.2;">
+                <strong class="rarity-text-${rarityClass}" style="font-size: 0.75rem; text-transform: uppercase;">${fish.rarity}</strong>
+                <div style="font-size: 0.65rem; color: #94a3b8;">Nivel ${fish.level}</div>
             </div>
 
-            <div style="width: 100%;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.6rem; margin-bottom: 2px; font-weight: bold;">
-                    <span>ENERGÍA</span>
-                    <span style="color: ${isProducing ? '#2ecc71' : '#e63946'};">${isProducing ? 'PRODUCIENDO' : 'HAMBRIENTO'}</span>
-                </div>
-                <div style="display: flex; gap: 3px; height: 8px;">
-                    <div style="flex: 1; background: ${hungerUnits >= 1 ? '#3b82f6' : '#e2e8f0'}; border-radius: 4px;"></div>
-                    <div style="flex: 1; background: ${hungerUnits >= 2 ? '#3b82f6' : '#e2e8f0'}; border-radius: 4px;"></div>
+            <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                <div style="width: ${xpPercent}%; height: 100%; background: #a855f7;"></div>
+            </div>
+
+            <div style="display: flex; gap: 2px; height: 6px;">
+                <div style="flex: 1; background: ${hungerUnits >= 1 ? '#3b82f6' : 'rgba(255,255,255,0.1)'}; border-radius: 2px;"></div>
+                <div style="flex: 1; background: ${hungerUnits >= 2 ? '#3b82f6' : 'rgba(255,255,255,0.1)'}; border-radius: 2px;"></div>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; font-size: 0.65rem; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                    <span style="color: #94a3b8;">Recoger:</span>
+                    <strong style="color: #3b82f6;">${PRL_ICON_SMALL}${Number(fish.accumulated_pearls).toFixed(2)}</strong>
                 </div>
             </div>
 
-            <div style="background: #f8fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.75rem;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span style="color: #64748b;">Prod/Día:</span>
-                    <strong>${PRL_ICON_SMALL}${currentYield}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-top: 1px solid #eee; pt-4; margin-top: 4px; padding-top: 4px;">
-                    <span style="color: #64748b;">Acumulado:</span>
-                    <strong style="color: #023e8a;">${PRL_ICON_SMALL}${Number(fish.accumulated_pearls).toFixed(2)}</strong>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: auto;">
-                <button class="btn-buy" style="background:#2ecc71; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.7rem;" onclick="claimPearls('${fish.id}')">RECOLECTAR</button>
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: auto;">
+                <button class="btn-buy" style="background:#2ecc71; border:none; padding:6px; border-radius:6px; color:white; font-size:0.6rem; font-weight:bold; cursor:pointer;" onclick="claimPearls('${fish.id}')">RECOLECTAR</button>
                 
-                <button class="btn-feed-mini" style="background:#1e3a8a; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.7rem; display: ${hungerUnits < 2 ? 'block' : 'none'};" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>
-                
-                <div style="font-size:0.6rem; text-align:center; color:#64748b; padding:8px; border:1px dashed #cbd5e1; border-radius:8px; background: white; display: ${hungerUnits >= 2 ? 'block' : 'none'};">
-                    Satisfecho por:<br>
-                    <span style="font-weight: bold; color: #1e293b;">${formatTime((lastFed.getTime() + maxReservaMs) - now)}</span>
-                </div>
+                ${hungerUnits < 2 
+                    ? `<button class="btn-feed-mini" style="background:#1e40af; border:none; padding:6px; border-radius:6px; color:white; font-size:0.6rem; font-weight:bold; cursor:pointer;" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>`
+                    : `<div style="font-size:0.55rem; text-align:center; color:#64748b; background: rgba(255,255,255,0.05); border-radius:4px; padding:3px;">${formatTime((lastFed.getTime() + maxReservaMs) - now)}</div>`
+                }
             </div>
         `;
-        
-        gridContainer.appendChild(card);
+        cardsLayout.appendChild(card);
     });
 }
 
