@@ -516,8 +516,10 @@ async function completeFeeding(foodType) {
     const now = new Date();
     const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
     
+    // Cálculo de vida restante actual
     let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
     
+    // Limite: No permitir más de 24h de reserva (2 barras)
     if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
         alert("El pez ya está lleno.");
         document.getElementById('minigame-modal').style.display = 'none';
@@ -525,61 +527,6 @@ async function completeFeeding(foodType) {
         return;
     }
 
-    const foodCfg = FOOD_TYPES[foodType];
-    
-    // 1. Descontar comida
-    await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
-
-    // --- CORRECCIÓN DE TIEMPO ---
-    let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
-    let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
-    let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
-
-    // 2. Lógica de XP
-    let newXP = (fish.current_xp || 0) + foodCfg.xp;
-    let newLevel = fish.level || 1;
-    let nextXP = fish.next_level_xp || 100;
-
-    if (newLevel < 5) {
-        if (newXP >= nextXP) {
-            newLevel++;
-            newXP = newXP - nextXP; 
-            nextXP = getNextLevelXP(newLevel);
-        }
-    }
-
-    // 3. Guardar en Supabase
-    await supabase.from('user_fish').update({ 
-        last_fed: newFedDate.toISOString(),
-        current_xp: newXP,
-        level: newLevel,
-        next_level_xp: nextXP
-    }).eq('id', fishId);
-
-    // --- REFRESCAR INTERFAZ ---
-    document.getElementById('minigame-modal').style.display = 'none';
-    
-    await loadProfile();
-
-    // CORRECCIÓN AQUÍ: Sintaxis correcta de .order()
-    const { data, error } = await supabase.from('user_fish')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: true }); // <--- Objeto con configuración
-        
-    if (error) {
-        console.error("Error cargando peces:", error);
-    } else {
-        allFish = data || [];
-    }
-
-    // Actualizamos vistas
-    const inventoryBody = document.getElementById('panel-body');
-    if (inventoryBody) renderInventory(inventoryBody);
-    if (typeof renderFishGrid === 'function') renderFishGrid();
-    
-    isProcessingFeeding = false; 
-}
     const foodCfg = FOOD_TYPES[foodType];
     
     // 1. Descontar comida
