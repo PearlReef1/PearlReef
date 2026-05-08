@@ -201,7 +201,7 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // 1. Cálculos de totales
+    // 1. Cálculos de totales (Cabecera)
     let prod = 0, claim = 0, hungry = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
@@ -215,7 +215,7 @@ function renderInventory(container) {
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
     header.innerHTML = `
-        <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">PROD/DÍA</small><br><strong style="color:#2ecc71; font-size:1.1rem;">${PRL_ICON}${prod.toFixed(0)}</strong></div>
+        <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">PROD TOTAL/DÍA</small><br><strong style="color:#2ecc71; font-size:1.1rem;">${PRL_ICON}${prod.toFixed(0)}</strong></div>
         <div style="text-align:center; border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 20px;"><small style="color:#94a3b8; font-size:0.7rem;">ACUMULADO</small><br><strong style="color:#3b82f6; font-size:1.1rem;">${PRL_ICON}${claim.toFixed(2)}</strong></div>
         <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">HAMBRIENTOS</small><br><strong style="color:${hungry > 0 ? '#ff4757':'#2ecc71'}; font-size:1.1rem;">🐟 ${hungry}</strong></div>
     `;
@@ -243,9 +243,10 @@ function renderInventory(container) {
             const nextXP = fish.next_level_xp || 100;
             const xpPer = Math.min((currentXP / nextXP) * 100, 100);
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
-
-            // Lógica para el botón de recolectar
-            const canClaim = Number(fish.accumulated_pearls) > 0;
+            
+            // Lógica del botón de recolectar
+            const accAmount = Number(fish.accumulated_pearls || 0);
+            const canClaim = accAmount > 0;
 
             card.innerHTML = `
                 <div style="font-size:0.55rem; color:#64748b; text-align:right; margin-bottom:5px;">ID: #${fish.id.toString().slice(0,4)}</div>
@@ -260,7 +261,6 @@ function renderInventory(container) {
                     <span class="xp-text-overlay">${currentXP} / ${nextXP} XP</span>
                 </div>
 
-                <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 4px; text-align: left;">RESERVA COMIDA:</div>
                 <div class="main-energy-dots">
                     <div class="energy-dot-main ${hUnits >= 1 ? 'active' : ''}"></div>
                     <div class="energy-dot-main ${hUnits >= 2 ? 'active' : ''}"></div>
@@ -269,14 +269,18 @@ function renderInventory(container) {
                     ${hUnits === 0 ? '¡TIENE HAMBRE!' : `Hambre en: ${hoursLeft}h ${minsLeft}m`}
                 </div>
 
-                <div class="main-collect-box" style="flex-direction: column; gap: 5px; align-items: stretch;">
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+                <div class="main-collect-box" style="flex-direction: column; gap: 4px; align-items: stretch; text-align: left;">
+                    <div style="display:flex; justify-content:space-between; font-size: 0.7rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
+                        <span style="color:#64748b">Producción día:</span>
+                        <strong style="color:#2ecc71">${PRL_ICON}${fish.daily_yield} $PRL</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size: 0.75rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px; padding-top:2px;">
                         <span style="color:#94a3b8">Producido:</span>
-                        <strong style="color:white">${PRL_ICON}${Number(fish.accumulated_pearls).toFixed(2)}</strong>
+                        <strong style="color:white">${PRL_ICON}${accAmount.toFixed(2)} $PRL</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; padding-top:2px;">
-                        <span style="color:#64748b; font-size:0.65rem;">Total Generado:</span>
-                        <strong style="color:#94a3b8; font-size:0.65rem;">${Number(fish.total_generated || 0).toFixed(1)} PRL</strong>
+                        <span style="color:#64748b; font-size:0.6rem;">Total Generado:</span>
+                        <strong style="color:#94a3b8; font-size:0.6rem;">${PRL_ICON}${Number(fish.total_generated || 0).toFixed(1)} $PRL</strong>
                     </div>
                 </div>
 
@@ -287,7 +291,7 @@ function renderInventory(container) {
                            cursor:${canClaim ? 'pointer' : 'not-allowed'};
                            opacity:${canClaim ? '1' : '0.6'};"
                     ${canClaim ? `onclick="claimPearls('${fish.id}')"` : ''}>
-                    ${canClaim ? 'RECOLECTAR' : 'VACÍO'}
+                    ${canClaim ? 'RECOLECTAR' : '0 $PRL'}
                 </button>
 
                 ${hUnits < 2 ? 
