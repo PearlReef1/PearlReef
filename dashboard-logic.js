@@ -201,7 +201,7 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // 1. Cálculos de totales (Cabecera)
+    // 1. Cálculos de totales
     let prod = 0, claim = 0, hungry = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
@@ -234,8 +234,6 @@ function renderInventory(container) {
             const lastFed = new Date(fish.last_fed || 0);
             const msSinceFed = now - lastFed;
             const msUntilHungry = Math.max(0, (24 * 60 * 60 * 1000) - msSinceFed);
-            
-            // Formatear tiempo restante para el hambre
             const hoursLeft = Math.floor(msUntilHungry / (1000 * 60 * 60));
             const minsLeft = Math.floor((msUntilHungry % (1000 * 60 * 60)) / (1000 * 60));
             
@@ -246,6 +244,9 @@ function renderInventory(container) {
             const xpPer = Math.min((currentXP / nextXP) * 100, 100);
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
 
+            // Lógica para el botón de recolectar
+            const canClaim = Number(fish.accumulated_pearls) > 0;
+
             card.innerHTML = `
                 <div style="font-size:0.55rem; color:#64748b; text-align:right; margin-bottom:5px;">ID: #${fish.id.toString().slice(0,4)}</div>
                 
@@ -254,10 +255,10 @@ function renderInventory(container) {
                 <h4 style="margin:10px 0 5px 0; text-transform:uppercase; letter-spacing:1px;" class="rarity-text-${fish.rarity.toLowerCase().replace(/ /g,'-')}">${fish.rarity}</h4>
                 <div style="font-size:0.75rem; color:#94a3b8; font-weight:bold;">NIVEL ${fish.level}</div>
 
-<div class="main-xp-bar">
-    <div class="main-xp-fill" style="width:${xpPer}%; position: relative; z-index: 1;"></div>
-    <span class="xp-text-overlay">${currentXP} / ${nextXP} XP</span>
-</div>
+                <div class="main-xp-bar">
+                    <div class="main-xp-fill" style="width:${xpPer}%"></div>
+                    <span class="xp-text-overlay">${currentXP} / ${nextXP} XP</span>
+                </div>
 
                 <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 4px; text-align: left;">RESERVA COMIDA:</div>
                 <div class="main-energy-dots">
@@ -279,7 +280,16 @@ function renderInventory(container) {
                     </div>
                 </div>
 
-                <button class="btn-buy" style="background:#2ecc71; box-shadow: 0 4px 0 #1a9e5a; margin-bottom:8px;" onclick="claimPearls('${fish.id}')">RECOLECTAR</button>
+                <button class="btn-buy" 
+                    style="background:${canClaim ? '#2ecc71' : '#475569'}; 
+                           box-shadow: 0 4px 0 ${canClaim ? '#1a9e5a' : '#1e293b'}; 
+                           margin-bottom:8px; 
+                           cursor:${canClaim ? 'pointer' : 'not-allowed'};
+                           opacity:${canClaim ? '1' : '0.6'};"
+                    ${canClaim ? `onclick="claimPearls('${fish.id}')"` : ''}>
+                    ${canClaim ? 'RECOLECTAR' : 'VACÍO'}
+                </button>
+
                 ${hUnits < 2 ? 
                     `<button class="btn-feed-mini" style="background:#3b82f6; box-shadow: 0 4px 0 #1d4ed8;" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>` : 
                     `<div style="font-size:0.6rem; color:#64748b; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;">Satisfecho</div>`
