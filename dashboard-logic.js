@@ -100,7 +100,7 @@ async function loadProfile() {
     }
 }
 
-async function loadAquarium() {
+async function initAquarium() {
     const { data, error } = await supabase
         .from('user_fishes')
         .select('*')
