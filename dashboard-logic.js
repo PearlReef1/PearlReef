@@ -167,14 +167,20 @@ async function switchTab(tab, btn) {
     const panel = document.getElementById('content-panel');
     const body = document.getElementById('panel-body');
     const title = document.getElementById('panel-title');
+    const mainGrid = document.getElementById('main-aquarium-grid'); // Nuevo contenedor
 
-    // Si es acuario, cerramos el panel lateral
+    // Si es acuario, cerramos panel lateral y mostramos la cuadrícula principal
     if (tab === 'acuario') { 
         panel.style.display = 'none'; 
+        if (mainGrid) {
+            mainGrid.style.display = 'block';
+            renderInventory(mainGrid); // Renderiza la cuadrícula en el centro
+        }
         return; 
     }
 
-    // Abrimos el panel y configuramos el título
+    // Si vamos a otra pestaña, ocultamos la cuadrícula del acuario y mostramos el panel
+    if (mainGrid) mainGrid.style.display = 'none';
     panel.style.display = 'flex';
     
     // Personalización de títulos específicos
@@ -187,8 +193,6 @@ async function switchTab(tab, btn) {
     // Renderizado de contenido según la pestaña
     if (tab === 'inventario') renderInventory(body);
     if (tab === 'tienda') renderShop(body);
-    
-    // CORRECCIÓN AQUÍ: Cambiamos 'sit' por 'renderDeposit'
     if (tab === 'deposito') renderDeposit(body); 
 }
 
