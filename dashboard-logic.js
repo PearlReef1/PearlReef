@@ -160,42 +160,39 @@ function moveFishRandomly(element) {
 }
 
 async function switchTab(tab, btn) {
-    // Manejo de clases activas
+    // Manejo de clases activas en el menú
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
     
     const panel = document.getElementById('content-panel');
     const body = document.getElementById('panel-body');
     const title = document.getElementById('panel-title');
-    const mainGrid = document.getElementById('main-aquarium-grid'); // Nuevo contenedor
+    const mainGrid = document.getElementById('main-aquarium-grid');
 
-    // Si es acuario, cerramos panel lateral y mostramos la cuadrícula principal
+    // Lógica para mostrar la cuadrícula del Acuario o los paneles laterales
     if (tab === 'acuario') { 
         panel.style.display = 'none'; 
         if (mainGrid) {
             mainGrid.style.display = 'block';
-            renderInventory(mainGrid); // Renderiza la cuadrícula en el centro
+            renderInventory(mainGrid); // Renderizamos la nueva cuadrícula técnica
         }
         return; 
     }
 
-    // Si vamos a otra pestaña, ocultamos la cuadrícula del acuario y mostramos el panel
+    // Si entramos a otra pestaña (Tienda/Depósito), ocultamos la cuadrícula
     if (mainGrid) mainGrid.style.display = 'none';
     panel.style.display = 'flex';
     
-    // Personalización de títulos específicos
     if (tab === 'deposito') {
         title.innerText = "Depósito de USDT";
     } else {
         title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
     }
 
-    // Renderizado de contenido según la pestaña
-    if (tab === 'inventario') renderInventory(body);
+    // Solo renderizamos Tienda o Depósito en el panel lateral
     if (tab === 'tienda') renderShop(body);
     if (tab === 'deposito') renderDeposit(body); 
 }
-
 function renderInventory(container) {
     if (!container) return;
     const now = new Date();
@@ -339,6 +336,7 @@ async function startFeeding(fishId) {
     `;
     modal.style.display = 'flex';
 }
+
 async function completeFeeding(foodType) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true; 
@@ -366,18 +364,12 @@ async function completeFeeding(foodType) {
     // 1. Descontar comida
     await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
 
-    // --- CORRECCIÓN DE TIEMPO ---
-    // Si el pez tiene hambre acumulada (está por debajo de 'now'), empezamos desde su último last_fed.
-    // Si el pez ya estaba muerto (más de 24h sin comer), el nuevo punto de partida es 'ahora' - 12h,
-    // para que al sumarle 12h quede exactamente en el tiempo actual (revivido con 1 barra vacía).
-    
-    let limitPast = now.getTime() - (24 * 60 * 60 * 1000); // El punto máximo de muerte
+    // --- LÓGICA DE TIEMPO ---
+    let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
     let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
-    
-    // Sumamos exactamente 12 horas (1 barra)
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-    // 2. Lógica de XP (se mantiene igual)
+    // 2. Lógica de XP
     let newXP = (fish.current_xp || 0) + foodCfg.xp;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
@@ -398,16 +390,24 @@ async function completeFeeding(foodType) {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
-    // Refrescar Interfaz
+    // --- REFRESCAR INTERFAZ SINCRONIZADA ---
     document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
     const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
-    renderInventory(document.getElementById('panel-body'));
+
+    // Detectar dónde renderizar
+    const mainGrid = document.getElementById('main-aquarium-grid');
+    const panelBody = document.getElementById('panel-body');
+
+    if (mainGrid && mainGrid.style.display !== 'none') {
+        renderInventory(mainGrid); // Actualiza la cuadrícula azul central
+    } else {
+        renderInventory(panelBody); // Por si acaso se usa en el lateral
+    }
     
     isProcessingFeeding = false; 
 }
-
 function updateAquariumState() {
     const panel = document.getElementById('content-panel');
     const title = document.getElementById('panel-title');
@@ -604,10 +604,21 @@ async function claimPearls(fishId) {
             last_claim: new Date().toISOString() 
         }).eq('id', fishId);
 
+        // Recargamos datos actualizados
         await loadProfile();
         const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
-        renderInventory(document.getElementById('panel-body'));
+
+        // --- CAMBIO CLAVE AQUÍ: Actualización de la vista unificada ---
+        const mainGrid = document.getElementById('main-aquarium-grid');
+        const panelBody = document.getElementById('panel-body');
+
+        // Priorizamos actualizar la cuadrícula del acuario si está visible
+        if (mainGrid && mainGrid.style.display !== 'none') {
+            renderInventory(mainGrid);
+        } else {
+            renderInventory(panelBody);
+        }
 
     } catch (err) {
         console.error("Error en recolección:", err);
