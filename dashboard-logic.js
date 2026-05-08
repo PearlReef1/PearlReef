@@ -69,7 +69,14 @@ async function loadProfile() {
     }
     
     if (data) {
-        // Actualizar balance de perlas
+        // --- ACTUALIZACIÓN DE USDT (BEP20) ---
+        // Buscamos el ID que pusimos en el HTML y le pasamos balance_usdt
+        if (document.getElementById('usdt-balance')) {
+            const balanceUSDT = parseFloat(data.balance_usdt || 0);
+            document.getElementById('usdt-balance').innerText = balanceUSDT.toFixed(2);
+        }
+
+        // Actualizar balance de perlas ($PRL)
         if (document.getElementById('pearl-balance'))
             document.getElementById('pearl-balance').innerText = Math.floor(data.pearls_balance) || 0;
             
