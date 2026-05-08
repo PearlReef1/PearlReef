@@ -982,7 +982,7 @@ async function verifyDepositAction() {
     const btn = document.getElementById('btn-verify-deposit');
     const statusDiv = document.getElementById('deposit-status');
 
-    if (!btn || !statusDiv) return; // Evita errores si los elementos no existen
+    if (!btn || !statusDiv) return; 
 
     btn.disabled = true;
     btn.innerHTML = "🔍 ESCANEANDO RED...";
@@ -1002,19 +1002,21 @@ async function verifyDepositAction() {
 
         if (error) throw error;
 
-        // CAMBIO CLAVE: Usamos 'added' en lugar de 'amountDetected' para coincidir con la Edge Function
+        // Si la función detectó y sumó USDT
         if (data && data.added > 0) {
             statusDiv.innerHTML = `
                 <div style="background: rgba(46, 204, 113, 0.2); padding: 10px; border-radius: 10px; border: 1px solid #2ecc71; margin-top: 10px;">
                     <b style="color: #2ecc71;">¡DEPÓSITO DETECTADO! +${data.added} USDT</b>
                 </div>`;
             
-            // Actualizamos la interfaz
+            // --- ACTUALIZACIÓN AUTOMÁTICA ---
+            // Llamamos a la función que ya actualizamos para que refresque el contador visual
             if (typeof loadProfile === 'function') {
                 await loadProfile(); 
+                console.log("Interfaz actualizada con el nuevo saldo.");
             } else {
-                // Si loadProfile no funciona, recargamos para asegurar que vea su saldo
-                setTimeout(() => location.reload(), 2000);
+                // Si la función no existe por algún motivo, recargamos la web
+                setTimeout(() => location.reload(), 1500);
             }
         } else {
             statusDiv.innerHTML = `<span style="color: #64748b;">No se detectaron depósitos nuevos en USDT.</span>`;
