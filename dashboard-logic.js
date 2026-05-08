@@ -201,23 +201,39 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // 1. Cálculos de totales (Cabecera)
-    let prod = 0, claim = 0, hungry = 0;
+    // --- 1. SISTEMA DE MENSAJES ALEATORIOS (TIPS) ---
+    const tips = [
+        "💡 Un pez Nivel 5 produce un 20% más que uno Nivel 1.",
+        "⚠️ Si tu pez tiene hambre (0 barras), la producción se detiene.",
+        "✨ Cada nivel subido otorga un +5% de bono a la producción base.",
+        "🥣 ¡Alimentar a tus peces les da XP para alcanzar el siguiente nivel!",
+        "💎 ¡Recuerda recolectar tus perlas antes de que el pez tenga hambre!"
+    ];
+    const randomTip = tips[Math.floor(Math.random() * tips.length)];
+
+    // 2. Cálculos de totales (Cabecera)
+    let prodTotal = 0, claimTotal = 0, hungryCount = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
             const levelBonus = 1 + ((Math.min(f.level, 5) - 1) * 0.05);
-            if ((now - new Date(f.last_fed || 0)) < 86400000) prod += (f.daily_yield * levelBonus);
-            else hungry++;
-            claim += Number(f.accumulated_pearls || 0);
+            if ((now - new Date(f.last_fed || 0)) < 86400000) prodTotal += (f.daily_yield * levelBonus);
+            else hungryCount++;
+            claimTotal += Number(f.accumulated_pearls || 0);
         }
     });
 
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
+    header.style.flexDirection = 'column'; // Ajuste para el tip debajo
     header.innerHTML = `
-        <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">PROD TOTAL/DÍA</small><br><strong style="color:#2ecc71; font-size:1.1rem;">${PRL_ICON}${prod.toFixed(0)}</strong></div>
-        <div style="text-align:center; border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 20px;"><small style="color:#94a3b8; font-size:0.7rem;">ACUMULADO</small><br><strong style="color:#3b82f6; font-size:1.1rem;">${PRL_ICON}${claim.toFixed(2)}</strong></div>
-        <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">HAMBRIENTOS</small><br><strong style="color:${hungry > 0 ? '#ff4757':'#2ecc71'}; font-size:1.1rem;">🐟 ${hungry}</strong></div>
+        <div style="display:flex; width:100%; justify-content:space-around; margin-bottom:10px;">
+            <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">PROD TOTAL/DÍA</small><br><strong style="color:#2ecc71; font-size:1.1rem;">${PRL_ICON}${prodTotal.toFixed(0)}</strong></div>
+            <div style="text-align:center; border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 20px;"><small style="color:#94a3b8; font-size:0.7rem;">ACUMULADO</small><br><strong style="color:#3b82f6; font-size:1.1rem;">${PRL_ICON}${claimTotal.toFixed(2)}</strong></div>
+            <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">HAMBRIENTOS</small><br><strong style="color:${hungryCount > 0 ? '#ff4757':'#2ecc71'}; font-size:1.1rem;">🐟 ${hungryCount}</strong></div>
+        </div>
+        <div style="width:100%; text-align:center; padding: 5px; background:rgba(255,183,3,0.1); border-radius:10px; font-size:0.65rem; color:#ffb703; font-style:italic; border:1px dashed rgba(255,183,3,0.3);">
+            ${randomTip}
+        </div>
     `;
     container.appendChild(header);
 
@@ -238,20 +254,22 @@ function renderInventory(container) {
             const minsLeft = Math.floor((msUntilHungry % (1000 * 60 * 60)) / (1000 * 60));
             
             let hUnits = msSinceFed < 43200000 ? 2 : (msSinceFed < 86400000 ? 1 : 0);
+            const isHungry = hUnits === 0;
             
             const currentXP = fish.current_xp || 0;
             const nextXP = fish.next_level_xp || 100;
             const xpPer = Math.min((currentXP / nextXP) * 100, 100);
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
             
-            // Lógica del botón de recolectar
+            // --- 3. LÓGICA DE INFO (i) Y BONOS ---
+            const levelBonusPercent = (Math.min(fish.level, 5) - 1) * 5;
             const accAmount = Number(fish.accumulated_pearls || 0);
             const canClaim = accAmount > 0;
 
             card.innerHTML = `
                 <div style="font-size:0.55rem; color:#64748b; text-align:right; margin-bottom:5px;">ID: #${fish.id.toString().slice(0,4)}</div>
                 
-                <img src="${RAW_BASE}pez_${rarityKey}.png" class="img-pez-flotando" style="filter:${hUnits===0?'grayscale(1) brightness(0.6)':'none'}">
+                <img src="${RAW_BASE}pez_${rarityKey}.png" class="img-pez-flotando" style="filter:${isHungry ?'grayscale(1) brightness(0.6)':'none'}">
                 
                 <h4 style="margin:10px 0 5px 0; text-transform:uppercase; letter-spacing:1px;" class="rarity-text-${fish.rarity.toLowerCase().replace(/ /g,'-')}">${fish.rarity}</h4>
                 <div style="font-size:0.75rem; color:#94a3b8; font-weight:bold;">NIVEL ${fish.level}</div>
@@ -265,14 +283,18 @@ function renderInventory(container) {
                     <div class="energy-dot-main ${hUnits >= 1 ? 'active' : ''}"></div>
                     <div class="energy-dot-main ${hUnits >= 2 ? 'active' : ''}"></div>
                 </div>
-                <div style="font-size: 0.6rem; color: ${hUnits === 0 ? '#ff4757' : '#60a5fa'}; margin-bottom: 10px;">
-                    ${hUnits === 0 ? '¡TIENE HAMBRE!' : `Hambre en: ${hoursLeft}h ${minsLeft}m`}
+                <div style="font-size: 0.6rem; color: ${isHungry ? '#ff4757' : '#60a5fa'}; margin-bottom: 10px;">
+                    ${isHungry ? '¡SIN PRODUCCIÓN (HAMBRE)!' : `Hambre en: ${hoursLeft}h ${minsLeft}m`}
                 </div>
 
                 <div class="main-collect-box" style="flex-direction: column; gap: 4px; align-items: stretch; text-align: left;">
                     <div style="display:flex; justify-content:space-between; font-size: 0.7rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
-                        <span style="color:#64748b">Producción día:</span>
-                        <strong style="color:#2ecc71">${PRL_ICON}${fish.daily_yield} $PRL</strong>
+                        <span style="color:#64748b">
+                            Prod. día <span title="Bono de Nivel: +${levelBonusPercent}% aplicado" style="cursor:help; color:#3b82f6; font-size:0.75rem;">ⓘ</span>
+                        </span>
+                        <strong style="color:${isHungry ? '#64748b' : '#2ecc71'}; text-decoration:${isHungry ? 'line-through' : 'none'}">
+                            ${PRL_ICON}${fish.daily_yield} $PRL
+                        </strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size: 0.75rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px; padding-top:2px;">
                         <span style="color:#94a3b8">Producido:</span>
