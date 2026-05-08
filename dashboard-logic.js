@@ -201,7 +201,7 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // 1. Cálculos de totales
+    // 1. Cálculos de totales (Cabecera)
     let prod = 0, claim = 0, hungry = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
@@ -212,7 +212,6 @@ function renderInventory(container) {
         }
     });
 
-    // 2. Cabecera estilo Dashboard
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
     header.innerHTML = `
@@ -222,7 +221,6 @@ function renderInventory(container) {
     `;
     container.appendChild(header);
 
-    // 3. Wrapper de Grid
     const wrapper = document.createElement('div');
     wrapper.className = isMain ? 'grid-main-wrapper' : 'lista-lateral';
     
@@ -231,30 +229,54 @@ function renderInventory(container) {
         card.className = isMain ? 'card-main-aquarium' : 'mini-card';
 
         if (fish.is_egg) {
-            renderEggRow(card, fish, now); // Mantiene tu lógica de huevos
+            renderEggRow(card, fish, now);
         } else {
-            const msSinceFed = now - new Date(fish.last_fed || 0);
+            const lastFed = new Date(fish.last_fed || 0);
+            const msSinceFed = now - lastFed;
+            const msUntilHungry = Math.max(0, (24 * 60 * 60 * 1000) - msSinceFed);
+            
+            // Formatear tiempo restante para el hambre
+            const hoursLeft = Math.floor(msUntilHungry / (1000 * 60 * 60));
+            const minsLeft = Math.floor((msUntilHungry % (1000 * 60 * 60)) / (1000 * 60));
+            
             let hUnits = msSinceFed < 43200000 ? 2 : (msSinceFed < 86400000 ? 1 : 0);
-            const xpPer = Math.min(((fish.current_xp || 0) / (fish.next_level_xp || 100)) * 100, 100);
+            
+            const currentXP = fish.current_xp || 0;
+            const nextXP = fish.next_level_xp || 100;
+            const xpPer = Math.min((currentXP / nextXP) * 100, 100);
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
 
             card.innerHTML = `
                 <div style="font-size:0.55rem; color:#64748b; text-align:right; margin-bottom:5px;">ID: #${fish.id.toString().slice(0,4)}</div>
-                <img src="${RAW_BASE}pez_${rarityKey}.png" style="width:100px; height:80px; object-fit:contain; margin:0 auto; display:block; filter:${hUnits===0?'grayscale(1) brightness(0.6)':'none'}">
+                
+                <img src="${RAW_BASE}pez_${rarityKey}.png" class="img-pez-flotando" style="filter:${hUnits===0?'grayscale(1) brightness(0.6)':'none'}">
                 
                 <h4 style="margin:10px 0 5px 0; text-transform:uppercase; letter-spacing:1px;" class="rarity-text-${fish.rarity.toLowerCase().replace(/ /g,'-')}">${fish.rarity}</h4>
                 <div style="font-size:0.75rem; color:#94a3b8; font-weight:bold;">NIVEL ${fish.level}</div>
 
-                <div class="main-xp-bar"><div class="main-xp-fill" style="width:${xpPer}%"></div></div>
+                <div class="main-xp-bar" style="position:relative;">
+                    <div class="main-xp-fill" style="width:${xpPer}%"></div>
+                    <span class="xp-text-overlay">${currentXP} / ${nextXP} XP</span>
+                </div>
 
+                <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 4px; text-align: left;">RESERVA COMIDA:</div>
                 <div class="main-energy-dots">
                     <div class="energy-dot-main ${hUnits >= 1 ? 'active' : ''}"></div>
                     <div class="energy-dot-main ${hUnits >= 2 ? 'active' : ''}"></div>
                 </div>
+                <div style="font-size: 0.6rem; color: ${hUnits === 0 ? '#ff4757' : '#60a5fa'}; margin-bottom: 10px;">
+                    ${hUnits === 0 ? '¡TIENE HAMBRE!' : `Hambre en: ${hoursLeft}h ${minsLeft}m`}
+                </div>
 
-                <div class="main-collect-box">
-                    <span style="color:#94a3b8">Disponible:</span>
-                    <strong style="color:white">${PRL_ICON}${Number(fish.accumulated_pearls).toFixed(2)}</strong>
+                <div class="main-collect-box" style="flex-direction: column; gap: 5px; align-items: stretch;">
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+                        <span style="color:#94a3b8">Producido:</span>
+                        <strong style="color:white">${PRL_ICON}${Number(fish.accumulated_pearls).toFixed(2)}</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding-top:2px;">
+                        <span style="color:#64748b; font-size:0.65rem;">Total Generado:</span>
+                        <strong style="color:#94a3b8; font-size:0.65rem;">${Number(fish.total_generated || 0).toFixed(1)} PRL</strong>
+                    </div>
                 </div>
 
                 <button class="btn-buy" style="background:#2ecc71; box-shadow: 0 4px 0 #1a9e5a; margin-bottom:8px;" onclick="claimPearls('${fish.id}')">RECOLECTAR</button>
