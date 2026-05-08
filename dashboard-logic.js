@@ -369,17 +369,22 @@ async function completeFeeding(foodType) {
     let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-    // 2. Lógica de XP
+    // 2. Lógica de XP y Nivel
     let newXP = (fish.current_xp || 0) + foodCfg.xp;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
+    let leveledUp = false;
 
     if (newLevel < 5) {
         if (newXP >= nextXP) {
             newLevel++;
             newXP = newXP - nextXP; 
             nextXP = getNextLevelXP(newLevel);
+            leveledUp = true;
         }
+    } else {
+        // Si ya es nivel máximo, el XP no debería seguir sumando o se queda al tope
+        if (newXP > nextXP) newXP = nextXP;
     }
 
     // 3. Guardar en Supabase
@@ -390,20 +395,28 @@ async function completeFeeding(foodType) {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
+    // --- NOTIFICACIÓN DE NIVEL ---
+    if (leveledUp) {
+        // Una pequeña pausa para que el modal se cierre antes del alert
+        setTimeout(() => {
+            alert(`✨ ¡NIVEL SUBIDO! Tu pez ahora es Nivel ${newLevel} ✨\nSu producción ha aumentado.`);
+        }, 300);
+    }
+
     // --- REFRESCAR INTERFAZ SINCRONIZADA ---
     document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
     const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
 
-    // Detectar dónde renderizar
+    // Detectar dónde renderizar (Cuadrícula central o panel lateral)
     const mainGrid = document.getElementById('main-aquarium-grid');
     const panelBody = document.getElementById('panel-body');
 
     if (mainGrid && mainGrid.style.display !== 'none') {
-        renderInventory(mainGrid); // Actualiza la cuadrícula azul central
+        renderInventory(mainGrid); 
     } else {
-        renderInventory(panelBody); // Por si acaso se usa en el lateral
+        renderInventory(panelBody);
     }
     
     isProcessingFeeding = false; 
