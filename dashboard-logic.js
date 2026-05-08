@@ -975,6 +975,8 @@ async function verifyDepositAction() {
     const btn = document.getElementById('btn-verify-deposit');
     const statusDiv = document.getElementById('deposit-status');
 
+    if (!btn || !statusDiv) return; // Evita errores si los elementos no existen
+
     btn.disabled = true;
     btn.innerHTML = "🔍 ESCANEANDO RED...";
     statusDiv.innerHTML = `<span style="color: #f39c12;">Consultando transacciones en la Blockchain...</span>`;
@@ -982,23 +984,33 @@ async function verifyDepositAction() {
     try {
         const { data: { session } } = await window.supabase.auth.getSession();
         
-        // Invocamos la Edge Function que ya configuramos con Tatum
+        if (!session) {
+            throw new Error("Sesión no activa");
+        }
+        
+        // Invocamos la Edge Function
         const { data, error } = await window.supabase.functions.invoke('verify-deposit-index-ts', {
-          body: { user_id: session.user.id }
+            body: { user_id: session.user.id }
         });
 
         if (error) throw error;
 
-        if (data.amountDetected > 0) {
+        // CAMBIO CLAVE: Usamos 'added' en lugar de 'amountDetected' para coincidir con la Edge Function
+        if (data && data.added > 0) {
             statusDiv.innerHTML = `
-                <div style="background: rgba(46, 204, 113, 0.2); padding: 10px; border-radius: 10px; border: 1px solid #2ecc71;">
-                    <b style="color: #2ecc71;">¡DEPÓSITO DETECTADO! +${data.amountDetected} USDT</b>
+                <div style="background: rgba(46, 204, 113, 0.2); padding: 10px; border-radius: 10px; border: 1px solid #2ecc71; margin-top: 10px;">
+                    <b style="color: #2ecc71;">¡DEPÓSITO DETECTADO! +${data.added} USDT</b>
                 </div>`;
             
-            // Actualizamos la interfaz (asegúrate que loadProfile existe en tu script)
-            if (typeof loadProfile === 'function') await loadProfile(); 
+            // Actualizamos la interfaz
+            if (typeof loadProfile === 'function') {
+                await loadProfile(); 
+            } else {
+                // Si loadProfile no funciona, recargamos para asegurar que vea su saldo
+                setTimeout(() => location.reload(), 2000);
+            }
         } else {
-            statusDiv.innerHTML = `<span style="color: #64748b;">No se detectaron depósitos nuevos aún.</span>`;
+            statusDiv.innerHTML = `<span style="color: #64748b;">No se detectaron depósitos nuevos en USDT.</span>`;
         }
     } catch (err) {
         console.error("Error al verificar:", err);
