@@ -375,7 +375,7 @@ async function completeFeeding(foodType) {
     
     // Limite: No permitir más de 24h de reserva (2 barras)
     if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
-        alert("El pez ya está lleno.");
+        showToast("El pez ya está lleno", "❌");
         document.getElementById('minigame-modal').style.display = 'none';
         isProcessingFeeding = false;
         return;
@@ -405,7 +405,6 @@ async function completeFeeding(foodType) {
             leveledUp = true;
         }
     } else {
-        // Si ya es nivel máximo, el XP no debería seguir sumando o se queda al tope
         if (newXP > nextXP) newXP = nextXP;
     }
 
@@ -417,16 +416,17 @@ async function completeFeeding(foodType) {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
-    // --- NOTIFICACIÓN DE NIVEL ---
+    // --- NOTIFICACIONES DINÁMICAS ---
+    document.getElementById('minigame-modal').style.display = 'none';
+
     if (leveledUp) {
-        // Una pequeña pausa para que el modal se cierre antes del alert
-        setTimeout(() => {
-            alert(`✨ ¡NIVEL SUBIDO! Tu pez ahora es Nivel ${newLevel} ✨\nSu producción ha aumentado.`);
-        }, 300);
+        showToast(`¡NIVEL SUBIDO! Ahora eres Nivel ${newLevel}`, '🆙');
+    } else {
+        // Mostramos el icono del tipo de comida que se usó (🦠, 🌿, 🦐)
+        showToast(`¡Pez alimentado! +${foodCfg.xp} XP`, foodCfg.icon || '🥣');
     }
 
     // --- REFRESCAR INTERFAZ SINCRONIZADA ---
-    document.getElementById('minigame-modal').style.display = 'none';
     await loadProfile();
     const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
@@ -639,16 +639,21 @@ async function claimPearls(fishId) {
             last_claim: new Date().toISOString() 
         }).eq('id', fishId);
 
+        // --- FEEDBACK VISUAL (MENSAJE) ---
+        // Usamos la URL de la perla que ya tienes definida en tus constantes
+        const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
+        const iconHtml = `<img src="${prlImg}" style="width:20px; height:20px; vertical-align:middle;">`;
+        showToast(`¡Has recolectado ${amountToClaim.toFixed(2)} Perlas!`, iconHtml);
+
         // Recargamos datos actualizados
         await loadProfile();
         const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
 
-        // --- CAMBIO CLAVE AQUÍ: Actualización de la vista unificada ---
+        // --- ACTUALIZACIÓN DE VISTA ---
         const mainGrid = document.getElementById('main-aquarium-grid');
         const panelBody = document.getElementById('panel-body');
 
-        // Priorizamos actualizar la cuadrícula del acuario si está visible
         if (mainGrid && mainGrid.style.display !== 'none') {
             renderInventory(mainGrid);
         } else {
@@ -1160,4 +1165,23 @@ async function executeSwapAction() {
     } catch (err) {
         alert("Error al procesar el cambio: " + err.message);
     }
+}
+function showToast(message, icon = '✨') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `<span>${icon}</span> ${message}`;
+    
+    container.appendChild(toast);
+
+    // Eliminar del DOM después de que termine la animación
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
 }
