@@ -101,169 +101,64 @@ async function loadProfile() {
 }
 
 async function initAquarium() {
-    const { data, error } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
-    
-    if (error) {
-        console.error("Error cargando peces:", error);
-        return;
-    }
-    
+    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data || [];
     
     const container = document.getElementById('aquarium-bg');
     if (container) {
-        // Aplicamos el fondo al div principal
+        container.innerHTML = ''; 
         container.style.backgroundImage = `url('${RAW_BASE}${AQUARIUM_BG_IMG}')`;
         container.style.backgroundSize = 'cover';
         container.style.backgroundPosition = 'center';
-        container.style.backgroundAttachment = 'fixed';
+
+        allFish.forEach(fish => {
+            if (!fish.is_egg) createSwimmingFish(fish);
+        });
     }
-
-    // Dibujamos la cuadrícula de peces
-    renderFishGrid();
 }
 
-function renderFishGrid() {
-    const gridContainer = document.getElementById('fish-grid-container');
-    if (!gridContainer) return;
-
-    gridContainer.innerHTML = ''; 
-    const now = new Date();
-    const PRL_ICON_SMALL = `<img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" style="width:12px; height:12px; vertical-align:middle; margin-right:2px;">`;
-
-    // 1. CÁLCULO DE TOTALES (Resumen superior)
-    let totalDailyProd = 0;
-    let totalPendingClaim = 0;
-    let hungryFishCount = 0;
-
-    allFish.forEach(f => {
-        if (!f.is_egg) {
-            const levelBonus = 1 + ((Math.min(f.level, 5) - 1) * 0.05);
-            const currentYield = f.daily_yield * levelBonus;
-            const msSinceFed = now - new Date(f.last_fed || 0);
-            
-            if (msSinceFed < (24 * 60 * 60 * 1000)) {
-                totalDailyProd += currentYield;
-            } else {
-                hungryFishCount++;
-            }
-            totalPendingClaim += Number(f.accumulated_pearls || 0);
-        }
-    });
-
-    // 2. ESTRUCTURA DE CONTENEDORES (Para evitar que se solapen)
-    gridContainer.style.display = "flex";
-    gridContainer.style.flexDirection = "column";
-    gridContainer.style.alignItems = "center";
+function createSwimmingFish(fish) {
+    const fishGroup = document.createElement('div');
+    fishGroup.className = 'fish-container';
+    fishGroup.id = `fish-${fish.id}`;
     
-    const summaryHTML = `
-        <div style="background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border-radius: 16px; padding: 15px; margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.1); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center; color: white; width: 100%; max-width: 600px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
-            <div>
-                <small style="color: #94a3b8; font-size: 0.65rem; display: block; text-transform: uppercase;">Prod / Día</small>
-                <strong style="color: #2ecc71; font-size: 0.9rem;">${PRL_ICON_SMALL} ${totalDailyProd.toFixed(0)}</strong>
-            </div>
-            <div style="border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">
-                <small style="color: #94a3b8; font-size: 0.65rem; display: block; text-transform: uppercase;">Por Recoger</small>
-                <strong style="color: #3b82f6; font-size: 0.9rem;">${PRL_ICON_SMALL} ${totalPendingClaim.toFixed(2)}</strong>
-            </div>
-            <div>
-                <small style="color: #94a3b8; font-size: 0.65rem; display: block; text-transform: uppercase;">Hambre</small>
-                <strong style="color: ${hungryFishCount > 0 ? '#ff4757' : '#2ecc71'}; font-size: 0.9rem;">🐟 ${hungryFishCount}</strong>
-            </div>
+    const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
+    const rarityAsset = fish.rarity.toLowerCase().replace(/\s+/g, '_');
+    
+    fishGroup.innerHTML = `
+        <div class="fish-label">
+            <span class="f-id">#${fish.id.substring(0, 4)}</span>
+            <span class="f-rarity rarity-text-${rarityClass}">${fish.rarity}</span>
         </div>
-        <div id="cards-wrapper" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; width: 100%;"></div>
+        <img src="${RAW_BASE}pez_${rarityAsset}.png" class="fish-img">
     `;
-
-    gridContainer.innerHTML = summaryHTML;
-    const cardsWrapper = document.getElementById('cards-wrapper');
-
-    // 3. GENERACIÓN DE TARJETAS (Copia exacta del diseño original con color azul)
-    allFish.forEach(fish => {
-        if (fish.is_egg) return;
-
-        const lastFed = new Date(fish.last_fed || 0);
-        const msSinceFed = now - lastFed;
-        const maxReservaMs = 24 * 60 * 60 * 1000;
-        
-        let hungerUnits = 0;
-        if (msSinceFed < 12 * 60 * 60 * 1000) hungerUnits = 2;
-        else if (msSinceFed < 24 * 60 * 60 * 1000) hungerUnits = 1;
-
-        const isProducing = hungerUnits > 0;
-        const rarityKey = fish.rarity.toLowerCase().replace(/\s+/g, '_');
-        const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
-        const xpPercent = Math.min(((fish.current_xp || 0) / (fish.next_level_xp || 100)) * 100, 100);
-
-        const card = document.createElement('div');
-        card.className = `fish-card ${rarityClass}`;
-        card.style = `
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            padding: 20px;
-            width: 200px;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        `;
-
-        card.innerHTML = `
-            <div style="font-size: 0.6rem; color: #64748b; text-align: right; opacity: 0.5;">#${fish.id.toString().slice(0, 4)}</div>
-            
-            <img src="${RAW_BASE}pez_${rarityKey}.png" style="width: 80px; height: 80px; margin: 0 auto; object-fit: contain; filter: ${!isProducing ? 'grayscale(1) brightness(0.6)' : 'none'};">
-            
-            <div style="line-height: 1.2;">
-                <strong class="rarity-text-${rarityClass}" style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">${fish.rarity}</strong>
-                <div style="font-size: 0.75rem; color: #94a3b8; font-weight: bold;">Nivel ${fish.level}</div>
-            </div>
-
-            <div style="width: 100%;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.6rem; margin-bottom: 3px; color: #94a3b8;">
-                    <span>XP</span>
-                    <span>${Math.floor(fish.current_xp)} / ${fish.next_level_xp}</span>
-                </div>
-                <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
-                    <div style="width: ${xpPercent}%; height: 100%; background: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);"></div>
-                </div>
-            </div>
-
-            <div style="width: 100%;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.6rem; margin-bottom: 3px; color: #94a3b8;">
-                    <span>ENERGÍA</span>
-                    <span style="color: ${isProducing ? '#2ecc71' : '#ff4757'}">${isProducing ? 'PRODUCIENDO' : 'HAMBRIENTO'}</span>
-                </div>
-                <div style="display: flex; gap: 4px; height: 10px;">
-                    <div style="flex: 1; background: ${hungerUnits >= 1 ? '#3b82f6' : 'rgba(255,255,255,0.1)'}; border-radius: 4px; box-shadow: ${hungerUnits >= 1 ? '0 0 8px rgba(59, 130, 246, 0.5)' : 'none'};"></div>
-                    <div style="flex: 1; background: ${hungerUnits >= 2 ? '#3b82f6' : 'rgba(255,255,255,0.1)'}; border-radius: 4px; box-shadow: ${hungerUnits >= 2 ? '0 0 8px rgba(59, 130, 246, 0.5)' : 'none'};"></div>
-                </div>
-            </div>
-
-            <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #94a3b8;">Recoger:</span>
-                    <strong style="color: #3b82f6;">${PRL_ICON_SMALL}${Number(fish.accumulated_pearls).toFixed(2)}</strong>
-                </div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;">
-                <button class="btn-buy" style="background:#2ecc71; border:none; padding:10px; border-radius:10px; color:white; font-size:0.7rem; font-weight:bold; cursor:pointer; box-shadow: 0 4px 0 #1a9e5a;" onclick="claimPearls('${fish.id}')">RECOLECTAR</button>
-                
-                ${hungerUnits < 2 
-                    ? `<button class="btn-feed-mini" style="background:#1e40af; border:none; padding:10px; border-radius:10px; color:white; font-size:0.7rem; font-weight:bold; cursor:pointer; box-shadow: 0 4px 0 #1e3a8a;" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>`
-                    : `<div style="font-size:0.6rem; text-align:center; color:#94a3b8; background: rgba(255,255,255,0.05); border-radius:8px; padding:8px; border: 1px dashed rgba(255,255,255,0.1);">
-                        Satisfecho por:<br>
-                        <span style="font-weight: bold; color: white;">${formatTime((lastFed.getTime() + maxReservaMs) - now)}</span>
-                       </div>`
-                }
-            </div>
-        `;
-        cardsWrapper.appendChild(card);
-    });
+    
+    const startX = Math.random() * 70 + 10;
+    const startY = Math.random() * 50 + 20;
+    fishGroup.style.left = startX + "vw";
+    fishGroup.style.top = startY + "vh";
+    
+    document.getElementById('aquarium-bg').appendChild(fishGroup);
+    setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
+
+function moveFishRandomly(element) {
+    if (!element) return;
+    const targetX = Math.random() * 75 + 10; 
+    const targetY = Math.random() * 55 + 15; 
+    const img = element.querySelector('.fish-img');
+    
+    if (img) {
+        const rect = element.getBoundingClientRect();
+        const currentXPercent = (rect.left / window.innerWidth) * 100;
+        img.style.transform = targetX > currentXPercent ? "scaleX(1)" : "scaleX(-1)";
+    }
+    
+    element.style.left = targetX + "vw";
+    element.style.top = targetY + "vh";
+    setTimeout(() => moveFishRandomly(element), 8000);
+}
+
 async function switchTab(tab, btn) {
     // Manejo de clases activas
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -509,86 +404,71 @@ async function completeFeeding(foodType) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true; 
 
-    try {
-        const fishId = sessionStorage.getItem('feeding_fish_id');
-        
-        // 1. Obtener datos actuales
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-        const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
+    const fishId = sessionStorage.getItem('feeding_fish_id');
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+    const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
 
-        const now = new Date();
-        const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
-        
-        let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
-        
-        if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
-            alert("El pez ya está lleno.");
-            document.getElementById('minigame-modal').style.display = 'none';
-            isProcessingFeeding = false;
-            return;
-        }
+    const now = new Date();
+    const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
+    
+    // Cálculo de vida restante actual
+    let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
+    
+    // Limite: No permitir más de 24h de reserva (2 barras)
+    if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
+        alert("El pez ya está lleno.");
+        document.getElementById('minigame-modal').style.display = 'none';
+        isProcessingFeeding = false;
+        return;
+    }
 
-        const foodCfg = FOOD_TYPES[foodType];
-        
-        // 2. Descontar comida del perfil
-        await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
+    const foodCfg = FOOD_TYPES[foodType];
+    
+    // 1. Descontar comida
+    await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
 
-        // 3. Calcular nuevo tiempo y XP
-        let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
-        let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
-        let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
+    // --- CORRECCIÓN DE TIEMPO ---
+    // Si el pez tiene hambre acumulada (está por debajo de 'now'), empezamos desde su último last_fed.
+    // Si el pez ya estaba muerto (más de 24h sin comer), el nuevo punto de partida es 'ahora' - 12h,
+    // para que al sumarle 12h quede exactamente en el tiempo actual (revivido con 1 barra vacía).
+    
+    let limitPast = now.getTime() - (24 * 60 * 60 * 1000); // El punto máximo de muerte
+    let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
+    
+    // Sumamos exactamente 12 horas (1 barra)
+    let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-        let newXP = (fish.current_xp || 0) + foodCfg.xp;
-        let newLevel = fish.level || 1;
-        let nextXP = fish.next_level_xp || 100;
+    // 2. Lógica de XP (se mantiene igual)
+    let newXP = (fish.current_xp || 0) + foodCfg.xp;
+    let newLevel = fish.level || 1;
+    let nextXP = fish.next_level_xp || 100;
 
-        if (newLevel < 5 && newXP >= nextXP) {
+    if (newLevel < 5) {
+        if (newXP >= nextXP) {
             newLevel++;
             newXP = newXP - nextXP; 
             nextXP = getNextLevelXP(newLevel);
         }
-
-        // 4. Guardar cambios del pez
-        await supabase.from('user_fish').update({ 
-            last_fed: newFedDate.toISOString(),
-            current_xp: newXP,
-            level: newLevel,
-            next_level_xp: nextXP
-        }).eq('id', fishId);
-
-        // --- REFRESCAR INTERFAZ ---
-        document.getElementById('minigame-modal').style.display = 'none';
-        
-        await loadProfile();
-
-        // Consulta simplificada para evitar el Error 400
-        const { data: updatedFish, error: loadError } = await supabase
-            .from('user_fish')
-            .select('*')
-            .eq('user_id', currentUser.id);
-            
-        if (loadError) {
-            console.error("Error cargando peces:", loadError);
-        } else {
-            // Ordenamos manualmente en JS para evitar problemas de URL con .order()
-            allFish = (updatedFish || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        }
-
-        // Actualizar Inventario lateral
-        const inventoryBody = document.getElementById('panel-body');
-        if (inventoryBody) renderInventory(inventoryBody);
-        
-        // Actualizar Acuario principal
-        if (typeof renderFishGrid === 'function') {
-            renderFishGrid();
-        }
-
-    } catch (err) {
-        console.error("Error crítico en feeding:", err);
-    } finally {
-        isProcessingFeeding = false; 
     }
+
+    // 3. Guardar en Supabase
+    await supabase.from('user_fish').update({ 
+        last_fed: newFedDate.toISOString(),
+        current_xp: newXP,
+        level: newLevel,
+        next_level_xp: nextXP
+    }).eq('id', fishId);
+
+    // Refrescar Interfaz
+    document.getElementById('minigame-modal').style.display = 'none';
+    await loadProfile();
+    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
+    allFish = data;
+    renderInventory(document.getElementById('panel-body'));
+    
+    isProcessingFeeding = false; 
 }
+
 function updateAquariumState() {
     const panel = document.getElementById('content-panel');
     const title = document.getElementById('panel-title');
