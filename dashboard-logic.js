@@ -516,10 +516,8 @@ async function completeFeeding(foodType) {
     const now = new Date();
     const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
     
-    // Cálculo de vida restante actual
     let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
     
-    // Limite: No permitir más de 24h de reserva (2 barras)
     if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
         alert("El pez ya está lleno.");
         document.getElementById('minigame-modal').style.display = 'none';
@@ -535,8 +533,6 @@ async function completeFeeding(foodType) {
     // --- CORRECCIÓN DE TIEMPO ---
     let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
     let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
-    
-    // Sumamos exactamente 12 horas (1 barra)
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
     // 2. Lógica de XP
@@ -560,28 +556,27 @@ async function completeFeeding(foodType) {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
-    // --- REFRESCAR INTERFAZ (INVENTARIO Y ACUARIO) ---
+    // --- REFRESCAR INTERFAZ ---
     document.getElementById('minigame-modal').style.display = 'none';
     
-    // Recargamos el perfil (comida) y los peces de la DB
     await loadProfile();
-    const { data } = await supabase.from('user_fish')
+
+    // CORRECCIÓN AQUÍ: Sintaxis correcta de .order()
+    const { data, error } = await supabase.from('user_fish')
         .select('*')
         .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true }); // <--- Objeto con configuración
         
-    allFish = data || [];
+    if (error) {
+        console.error("Error cargando peces:", error);
+    } else {
+        allFish = data || [];
+    }
 
-    // Actualizamos el inventario lateral
+    // Actualizamos vistas
     const inventoryBody = document.getElementById('panel-body');
-    if (inventoryBody) {
-        renderInventory(inventoryBody);
-    }
-
-    // ACTUALIZAMOS EL ACUARIO (Para que se quite el hambre visualmente)
-    if (typeof renderFishGrid === 'function') {
-        renderFishGrid();
-    }
+    if (inventoryBody) renderInventory(inventoryBody);
+    if (typeof renderFishGrid === 'function') renderFishGrid();
     
     isProcessingFeeding = false; 
 }
