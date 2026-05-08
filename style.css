@@ -336,14 +336,27 @@ body {
     animation: floatingCard 3s ease-in-out infinite;
 }
 
-/* Texto de XP sobre la barra */
+/* Texto de XP sobre la barra - ACTUALIZADO */
 .xp-text-overlay {
-    font-size: 0.6rem;
+    font-size: 0.65rem;
     color: white;
-    font-weight: bold;
+    font-weight: 800;
     position: absolute;
     width: 100%;
     text-align: center;
-    top: -2px;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    top: 0;
+    left: 0;
+    line-height: 6px; /* Debe coincidir con la altura de la barra (6px) */
+    z-index: 10; /* Fuerza a estar encima de la carga de la barra */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+    pointer-events: none; /* Para que no interfiera con clics */
+}
+
+.main-xp-bar { 
+    background: rgba(255,255,255,0.1); 
+    height: 6px; 
+    border-radius: 10px; 
+    margin: 12px 0; 
+    overflow: visible; /* Cambiado a visible para que el texto no se corte */
+    position: relative; 
 }
