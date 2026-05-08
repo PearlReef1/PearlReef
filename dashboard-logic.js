@@ -254,10 +254,13 @@ function renderInventory(container) {
                 <h4 style="margin:10px 0 5px 0; text-transform:uppercase; letter-spacing:1px;" class="rarity-text-${fish.rarity.toLowerCase().replace(/ /g,'-')}">${fish.rarity}</h4>
                 <div style="font-size:0.75rem; color:#94a3b8; font-weight:bold;">NIVEL ${fish.level}</div>
 
-                <div class="main-xp-bar" style="position:relative;">
-                    <div class="main-xp-fill" style="width:${xpPer}%"></div>
-                    <span class="xp-text-overlay">${currentXP} / ${nextXP} XP</span>
-                </div>
+               // ... dentro de renderInventory, en el bloque de la tarjeta:
+
+/* BARRA DE XP CON TEXTO X de X */
+<div class="main-xp-bar">
+    <div class="main-xp-fill" style="width:${xpPer}%; position: relative; z-index: 1;"></div>
+    <span class="xp-text-overlay">${currentXP} / ${nextXP} XP</span>
+</div>
 
                 <div style="font-size: 0.6rem; color: #94a3b8; margin-bottom: 4px; text-align: left;">RESERVA COMIDA:</div>
                 <div class="main-energy-dots">
