@@ -137,20 +137,43 @@ async function initAquarium() {
     }
 }
 
+// 1. AGREGA ESTA FUNCIÓN (Que faltaba en tu script)
+function moveFishRandomly(element) {
+    if (!element) return;
+    
+    const targetX = Math.random() * 75 + 10; 
+    const targetY = Math.random() * 55 + 15; 
+    const img = element.querySelector('.fish-img');
+    
+    // Girar la imagen según la dirección del nado
+    if (img) {
+        const rect = element.getBoundingClientRect();
+        const currentXPercent = (rect.left / window.innerWidth) * 100;
+        img.style.transform = targetX > currentXPercent ? "scaleX(1)" : "scaleX(-1)";
+    }
+    
+    element.style.left = targetX + "vw";
+    element.style.top = targetY + "vh";
+    
+    // Bucle de movimiento cada 8 segundos
+    setTimeout(() => moveFishRandomly(element), 8000);
+}
+
+// 2. ACTUALIZA TU FUNCIÓN ACTUAL (Línea 154 en tu script)
 function createSwimmingFish(fish) {
+    const bg = document.getElementById('aquarium-bg');
+    if (!bg) return;
+
     const fishGroup = document.createElement('div');
     fishGroup.className = 'fish-container';
     fishGroup.id = `fish-${fish.id}`;
     
-    // --- LÓGICA DE ACTIVOS CORREGIDA ---
     const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
     const rarityAsset = fish.rarity.toLowerCase().replace(/\s+/g, '_');
     
-    // 1. Usar el nombre de archivo específico de la DB, o fallback a la rareza
+    // Usar image_name de la DB o el asset genérico
     const imgFile = fish.image_name || `pez_${rarityAsset}`;
-    // 2. Usar el nombre de la especie (ej: Pez León) o la rareza
     const displayName = fish.species_name || fish.rarity;
-    // -----------------------------------
 
     fishGroup.innerHTML = `
         <div class="fish-label">
@@ -165,7 +188,9 @@ function createSwimmingFish(fish) {
     fishGroup.style.left = startX + "vw";
     fishGroup.style.top = startY + "vh";
     
-    document.getElementById('aquarium-bg').appendChild(fishGroup);
+    bg.appendChild(fishGroup);
+    
+    // Ahora sí funcionará porque la función ya existe arriba
     setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
 async function switchTab(tab, btn) {
