@@ -221,17 +221,7 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // --- 1. SISTEMA DE MENSAJES ALEATORIOS (TIPS) ---
-    const tips = [
-        "💡 Un pez Nivel 5 produce un 20% más que uno Nivel 1.",
-        "⚠️ Si tu pez tiene hambre (0 barras), la producción se detiene.",
-        "✨ Cada nivel subido otorga un +5% de bono a la producción base.",
-        "🥣 ¡Alimentar a tus peces les da XP para alcanzar el siguiente nivel!",
-        "💎 ¡Recuerda recolectar tus perlas antes de que el pez tenga hambre!"
-    ];
-    const randomTip = tips[Math.floor(Math.random() * tips.length)];
-
-    // 2. Cálculos de totales (Cabecera)
+    // 1. Cálculos de totales (Cabecera)
     let prodTotal = 0, claimTotal = 0, hungryCount = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
@@ -244,15 +234,17 @@ function renderInventory(container) {
 
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
-    header.style.flexDirection = 'column'; // Ajuste para el tip debajo
+    header.style.flexDirection = 'column';
     header.innerHTML = `
         <div style="display:flex; width:100%; justify-content:space-around; margin-bottom:10px;">
             <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">PROD TOTAL/DÍA</small><br><strong style="color:#2ecc71; font-size:1.1rem;">${PRL_ICON}${prodTotal.toFixed(0)}</strong></div>
             <div style="text-align:center; border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 20px;"><small style="color:#94a3b8; font-size:0.7rem;">ACUMULADO</small><br><strong style="color:#3b82f6; font-size:1.1rem;">${PRL_ICON}${claimTotal.toFixed(2)}</strong></div>
             <div style="text-align:center;"><small style="color:#94a3b8; font-size:0.7rem;">HAMBRIENTOS</small><br><strong style="color:${hungryCount > 0 ? '#ff4757':'#2ecc71'}; font-size:1.1rem;">🐟 ${hungryCount}</strong></div>
         </div>
-        <div style="width:100%; text-align:center; padding: 5px; background:rgba(255,183,3,0.1); border-radius:10px; font-size:0.65rem; color:#ffb703; font-style:italic; border:1px dashed rgba(255,183,3,0.3);">
-            ${randomTip}
+        <div style="width:100%; text-align:center; padding: 8px; background:rgba(255,183,3,0.1); border-radius:10px; border:1px dashed rgba(255,183,3,0.3);">
+            <div id="random-tip-display" style="font-size:0.65rem; color:#ffb703; font-style:italic; transition: opacity 0.5s ease;">
+                ${tips[currentTipIndex]}
+            </div>
         </div>
     `;
     container.appendChild(header);
@@ -281,7 +273,6 @@ function renderInventory(container) {
             const xpPer = Math.min((currentXP / nextXP) * 100, 100);
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
             
-            // --- 3. LÓGICA DE INFO (i) Y BONOS ---
             const levelBonusPercent = (Math.min(fish.level, 5) - 1) * 5;
             const accAmount = Number(fish.accumulated_pearls || 0);
             const canClaim = accAmount > 0;
