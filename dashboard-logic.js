@@ -342,17 +342,40 @@ function renderEggRow(container, fish, now) {
     const msLeft = hatchTime - now;
     const isReady = msLeft <= 0;
 
+    // 1. Mapeamos el tipo de huevo a su imagen correspondiente en GitHub
+    // Asegúrate de que estos nombres coincidan con tus archivos .png
+    const eggImages = {
+        'Arrecife': 'huevo_arrecife.png',
+        'Abisal': 'huevo_abisal.png',
+        'Ancestral': 'huevo_ancestral.png'
+    };
+    
+    // Si por alguna razón no encuentra el tipo, usa la imagen por defecto
+    const currentEggImg = eggImages[fish.egg_type] || 'pez_huevo.png';
+
     container.innerHTML = `
         <div style="text-align: center; min-width: 70px;">
-            <img src="${RAW_BASE}pez_huevo.png" style="width:50px; height:50px; object-fit:contain;">
+            <img src="${RAW_BASE}${currentEggImg}?raw=true" 
+                 style="width:50px; height:50px; object-fit:contain; 
+                 filter: ${isReady ? 'drop-shadow(0 0 10px #f59e0b) brightness(1.2)' : 'grayscale(0.3)'};">
         </div>
         <div style="flex-grow:1;">
-            <strong style="color: #64748b;">Huevo ${fish.rarity}</strong>
-            <div style="font-size: 0.75rem; color: #94a3b8;">
-                ${isReady ? '¡Listo para eclosionar!' : `Eclosiona en: ${formatTime(msLeft)}`}
+            <strong style="color: #e2e8f0;">Huevo ${fish.egg_type || 'Misterioso'}</strong>
+            <div style="font-size: 0.75rem; color: ${isReady ? '#f59e0b' : '#94a3b8'}; font-weight: ${isReady ? 'bold' : 'normal'};">
+                ${isReady ? '¡LISTO PARA ABRIR!' : `Eclosiona en: ${formatTime(msLeft)}`}
             </div>
         </div>
-        <button class="btn-buy" style="background: ${isReady ? '#f59e0b' : '#cbd5e1'}; color:white; border:none; padding:8px 15px; border-radius:6px; font-weight:bold; cursor: ${isReady ? 'pointer' : 'default'};" ${isReady ? `onclick="hatchFish('${fish.id}')"` : ''}>
+        <button class="btn-buy" 
+            style="background: ${isReady ? '#f59e0b' : '#334155'}; 
+                   color: white; 
+                   border: none; 
+                   padding: 8px 15px; 
+                   border-radius: 6px; 
+                   font-weight: bold; 
+                   box-shadow: 0 4px 0 ${isReady ? '#b45309' : '#1e293b'};
+                   cursor: ${isReady ? 'pointer' : 'default'};
+                   transition: all 0.2s;" 
+            ${isReady ? `onclick="hatchFish('${fish.id}')"` : ''}>
             ${isReady ? 'ABRIR' : 'ESPERANDO'}
         </button>
     `;
