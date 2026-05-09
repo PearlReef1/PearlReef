@@ -142,15 +142,22 @@ function createSwimmingFish(fish) {
     fishGroup.className = 'fish-container';
     fishGroup.id = `fish-${fish.id}`;
     
+    // --- LÓGICA DE ACTIVOS CORREGIDA ---
     const rarityClass = fish.rarity.toLowerCase().replace(/\s+/g, '-');
     const rarityAsset = fish.rarity.toLowerCase().replace(/\s+/g, '_');
     
+    // 1. Usar el nombre de archivo específico de la DB, o fallback a la rareza
+    const imgFile = fish.image_name || `pez_${rarityAsset}`;
+    // 2. Usar el nombre de la especie (ej: Pez León) o la rareza
+    const displayName = fish.species_name || fish.rarity;
+    // -----------------------------------
+
     fishGroup.innerHTML = `
         <div class="fish-label">
-            <span class="f-id">#${fish.id.substring(0, 4)}</span>
-            <span class="f-rarity rarity-text-${rarityClass}">${fish.rarity}</span>
+            <span class="f-id">#${fish.id.toString().substring(0, 4)}</span>
+            <span class="f-rarity rarity-text-${rarityClass}">${displayName}</span>
         </div>
-        <img src="${RAW_BASE}pez_${rarityAsset}.png" class="fish-img">
+        <img src="${RAW_BASE}${imgFile}.png?raw=true" class="fish-img">
     `;
     
     const startX = Math.random() * 70 + 10;
@@ -161,24 +168,6 @@ function createSwimmingFish(fish) {
     document.getElementById('aquarium-bg').appendChild(fishGroup);
     setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
-
-function moveFishRandomly(element) {
-    if (!element) return;
-    const targetX = Math.random() * 75 + 10; 
-    const targetY = Math.random() * 55 + 15; 
-    const img = element.querySelector('.fish-img');
-    
-    if (img) {
-        const rect = element.getBoundingClientRect();
-        const currentXPercent = (rect.left / window.innerWidth) * 100;
-        img.style.transform = targetX > currentXPercent ? "scaleX(1)" : "scaleX(-1)";
-    }
-    
-    element.style.left = targetX + "vw";
-    element.style.top = targetY + "vh";
-    setTimeout(() => moveFishRandomly(element), 8000);
-}
-
 async function switchTab(tab, btn) {
     // Manejo de clases activas en el menú
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -221,7 +210,7 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // 1. Cálculos de totales (Cabecera)
+    // 1. Cálculos de totales
     let prodTotal = 0, claimTotal = 0, hungryCount = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
@@ -232,6 +221,7 @@ function renderInventory(container) {
         }
     });
 
+    // ... (Mantengo el bloque del header igual porque no afecta a las imágenes de los peces)
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
     header.style.flexDirection = 'column';
@@ -272,13 +262,12 @@ function renderInventory(container) {
             const nextXP = fish.next_level_xp || 100;
             const xpPer = Math.min((currentXP / nextXP) * 100, 100);
             
-            // --- CAMBIOS PARA EL NUEVO SISTEMA ---
+            // --- CORRECCIÓN DE IMÁGENES ---
+            // 1. Usamos fish.image_name que es el que tiene el número (ej: pez_comun_1)
+            // 2. Si por algún motivo está vacío, usamos la rareza como fallback
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
-            // Prioriza la imagen específica de la especie, si no, usa la genérica por rareza
             const imgFile = fish.image_name || `pez_${rarityKey}`;
-            // Prioriza el nombre de la especie (ej: Sardina Neón), si no, muestra la rareza
             const displayName = fish.species_name || fish.rarity;
-            // -------------------------------------
             
             const levelBonusPercent = (Math.min(fish.level, 5) - 1) * 5;
             const accAmount = Number(fish.accumulated_pearls || 0);
@@ -406,7 +395,7 @@ async function hatchFish(fishId) {
     try {
         const { data: egg } = await supabase.from('user_fish').select('egg_type').eq('id', fishId).single();
         
-        // 1. Decidir la rareza según el tipo de huevo (Tus probabilidades)
+        // 1. Decidir la rareza según el tipo de huevo
         const roll = Math.random() * 100;
         let selectedRarity;
 
@@ -416,32 +405,55 @@ async function hatchFish(fishId) {
             selectedRarity = (roll < 80) ? 'Raro' : 'Legendario';
         } else if (egg.egg_type === 'Ancestral') {
             selectedRarity = (roll < 90) ? 'Legendario' : 'Mitico';
+        } else {
+            selectedRarity = 'Comun'; // Fallback por seguridad
         }
 
         // 2. Buscar un pez al azar de esa rareza en la biblioteca
-        const { data: pool } = await supabase.from('fish_library').select('*').eq('rarity', selectedRarity);
+        const { data: pool, error: poolError } = await supabase.from('fish_library').select('*').eq('rarity', selectedRarity);
+        
+        if (poolError || !pool || pool.length === 0) {
+            throw new Error(`No se encontraron peces de rareza ${selectedRarity} en la biblioteca`);
+        }
+
         const species = pool[Math.floor(Math.random() * pool.length)];
 
         // 3. Transformar el huevo en el pez final
-        await supabase.from('user_fish').update({
+        // NOTA: Asegúrate de que los nombres de las columnas coincidan con tu tabla user_fish
+        const { error: updateError } = await supabase.from('user_fish').update({
             is_egg: false,
             rarity: species.rarity,
-            species_name: species.name,
+            species_name: species.name,           // Nombre real: ej. "Pez Payaso"
+            image_name: species.image_filename,    // Nombre archivo: ej. "pez_comun_1"
             daily_yield: species.base_yield,
-            image_name: species.image_filename,
-            last_fed: new Date().toISOString()
+            last_fed: new Date().toISOString(),
+            current_xp: 0,
+            level: 1,
+            next_level_xp: 100
         }).eq('id', fishId);
+
+        if (updateError) throw updateError;
 
         showToast(`¡SORPRESA! Ha nacido un ${species.name} (${species.rarity})`, "✨");
         
+        // 4. Refrescar datos
         await loadProfile();
         const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
+
+        // 5. Re-renderizar ambas vistas
         renderInventory(document.getElementById('main-aquarium-grid'));
+        
+        // Limpiar el acuario visual y volver a crearlos para que aparezca el nuevo pez nadando
+        const bg = document.getElementById('aquarium-bg');
+        if (bg) {
+            bg.innerHTML = ''; 
+            allFish.forEach(f => { if(!f.is_egg) createSwimmingFish(f); });
+        }
 
     } catch (err) {
-        console.error(err);
-        showToast("Error al abrir", "❌");
+        console.error("Error en hatchFish:", err);
+        showToast("Error al abrir el huevo", "❌");
     } finally {
         isProcessingFeeding = false;
     }
