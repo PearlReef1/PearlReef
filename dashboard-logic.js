@@ -368,15 +368,52 @@ function formatTime(ms) {
 }
 
 async function hatchFish(fishId) {
-    const { error } = await supabase.from('user_fish').update({ is_egg: false }).eq('id', fishId);
-    if (!error) {
+    if (isProcessingFeeding) return;
+    isProcessingFeeding = true;
+
+    try {
+        const { data: egg } = await supabase.from('user_fish').select('egg_type').eq('id', fishId).single();
+        
+        // 1. Decidir la rareza según el tipo de huevo (Tus probabilidades)
+        const roll = Math.random() * 100;
+        let selectedRarity;
+
+        if (egg.egg_type === 'Arrecife') {
+            selectedRarity = (roll < 85) ? 'Comun' : 'Poco Comun';
+        } else if (egg.egg_type === 'Abisal') {
+            selectedRarity = (roll < 80) ? 'Raro' : 'Legendario';
+        } else if (egg.egg_type === 'Ancestral') {
+            selectedRarity = (roll < 90) ? 'Legendario' : 'Mitico';
+        }
+
+        // 2. Buscar un pez al azar de esa rareza en la biblioteca
+        const { data: pool } = await supabase.from('fish_library').select('*').eq('rarity', selectedRarity);
+        const species = pool[Math.floor(Math.random() * pool.length)];
+
+        // 3. Transformar el huevo en el pez final
+        await supabase.from('user_fish').update({
+            is_egg: false,
+            rarity: species.rarity,
+            species_name: species.name,
+            daily_yield: species.base_yield,
+            image_name: species.image_filename,
+            last_fed: new Date().toISOString()
+        }).eq('id', fishId);
+
+        showToast(`¡SORPRESA! Ha nacido un ${species.name} (${species.rarity})`, "✨");
+        
+        await loadProfile();
         const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
-        await initAquarium();
-        renderInventory(document.getElementById('panel-body'));
+        renderInventory(document.getElementById('main-aquarium-grid'));
+
+    } catch (err) {
+        console.error(err);
+        showToast("Error al abrir", "❌");
+    } finally {
+        isProcessingFeeding = false;
     }
 }
-
 async function startFeeding(fishId) {
     if (isProcessingFeeding) return; 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
@@ -586,40 +623,36 @@ async function buyFood(type, cost, quantity) {
 
 async function buyEgg(type, cost) {
     const { data: profile } = await supabase.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
-    if (profile.pearls_balance < cost) return alert("No tienes suficientes perlas ⚪");
+    if (profile.pearls_balance < cost) return showToast("No tienes suficientes perlas ⚪", "❌");
     
-    let rarity, yieldAmount, hatchHours = 3; 
-    const roll = Math.random() * 100;
-    
-    if (type === 'Arrecife') {
-        if (roll < 85) { rarity = 'Comun'; yieldAmount = YIELD_CONFIG['Comun']; }
-        else { rarity = 'Poco Comun'; yieldAmount = YIELD_CONFIG['Poco Comun']; }
-    } else if (type === 'Abisal') {
-        if (roll < 80) { rarity = 'Raro'; yieldAmount = YIELD_CONFIG['Raro']; }
-        else { rarity = 'Legendario'; yieldAmount = YIELD_CONFIG['Legendario']; }
-        hatchHours = 6;
-    } else if (type === 'Ancestral') {
-        if (roll < 90) { rarity = 'Legendario'; yieldAmount = YIELD_CONFIG['Legendario']; }
-        else { rarity = 'Mitico'; yieldAmount = YIELD_CONFIG['Mitico']; }
-        hatchHours = 12;
-    }
-
+    let hatchHours = (type === 'Arrecife') ? 3 : (type === 'Abisal' ? 6 : 12);
     const hatchDate = new Date();
     hatchDate.setHours(hatchDate.getHours() + hatchHours);
 
+    // Descontar balance
     await supabase.from('profiles').update({ pearls_balance: profile.pearls_balance - cost }).eq('id', currentUser.id);
+    
+    // Insertar el huevo sin saber la rareza aún
     await supabase.from('user_fish').insert([{
-        user_id: currentUser.id, rarity, daily_yield: yieldAmount, is_egg: true,
-        egg_hatch_time: hatchDate.toISOString(), level: 1, current_xp: 0,
-        next_level_xp: 100, last_fed: new Date().toISOString(), total_generated: 0
+        user_id: currentUser.id, 
+        is_egg: true,
+        egg_type: type, // 'Arrecife', 'Abisal' o 'Ancestral'
+        egg_hatch_time: hatchDate.toISOString(),
+        rarity: 'Huevo', // Valor temporal
+        level: 1, 
+        current_xp: 0,
+        next_level_xp: 100, 
+        last_fed: new Date().toISOString(), 
+        total_generated: 0
     }]);
 
+    showToast(`¡Has comprado un Huevo de ${type}!`, "🥚");
     await loadProfile();
+    // Refrescar lista local
     const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
     renderInventory(document.getElementById('panel-body'));
 }
-
 async function buyItem(column, price, qty) {
     try {
         // 1. Obtener saldo actual del perfil
