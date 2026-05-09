@@ -246,7 +246,6 @@ function renderInventory(container) {
         }
     });
 
-    // ... (Mantengo el bloque del header igual porque no afecta a las imágenes de los peces)
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
     header.style.flexDirection = 'column';
@@ -287,10 +286,9 @@ function renderInventory(container) {
             const nextXP = fish.next_level_xp || 100;
             const xpPer = Math.min((currentXP / nextXP) * 100, 100);
             
-            // --- CORRECCIÓN DE IMÁGENES ---
-            // 1. Usamos fish.image_name que es el que tiene el número (ej: pez_comun_1)
-            // 2. Si por algún motivo está vacío, usamos la rareza como fallback
+            // --- CORRECCIÓN DE IMÁGENES Y NOMBRES ---
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
+            const rarityClass = fish.rarity.toLowerCase().replace(/ /g,'-');
             const imgFile = fish.image_name || `pez_${rarityKey}`;
             const displayName = fish.species_name || fish.rarity;
             
@@ -301,11 +299,18 @@ function renderInventory(container) {
             card.innerHTML = `
                 <div style="font-size:0.55rem; color:#64748b; text-align:right; margin-bottom:5px;">ID: #${fish.id.toString().slice(0,4)}</div>
                 
-                <img src="${RAW_BASE}${imgFile}.png?raw=true" class="img-pez-flotando" style="filter:${isHungry ?'grayscale(1) brightness(0.6)':'none'}">
+                <img src="${RAW_BASE}${imgFile}.png?raw=true" 
+                     class="img-pez-flotando ${isHungry ? 'hungry' : ''}">
                 
-                <h4 style="margin:10px 0 5px 0; text-transform:uppercase; letter-spacing:1px;" class="rarity-text-${fish.rarity.toLowerCase().replace(/ /g,'-')}">
-                    ${displayName}
-                </h4>
+                <div style="margin: 12px 0;">
+                    <span class="rarity-text-${rarityClass}" style="font-size: 0.6rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; display: block;">
+                        ${fish.rarity}
+                    </span>
+                    <h4 style="margin: 2px 0 0 0; color: white; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                        ${displayName}
+                    </h4>
+                </div>
+
                 <div style="font-size:0.75rem; color:#94a3b8; font-weight:bold;">NIVEL ${fish.level}</div>
 
                 <div class="main-xp-bar">
