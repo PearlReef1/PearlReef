@@ -271,7 +271,14 @@ function renderInventory(container) {
             const currentXP = fish.current_xp || 0;
             const nextXP = fish.next_level_xp || 100;
             const xpPer = Math.min((currentXP / nextXP) * 100, 100);
+            
+            // --- CAMBIOS PARA EL NUEVO SISTEMA ---
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
+            // Prioriza la imagen específica de la especie, si no, usa la genérica por rareza
+            const imgFile = fish.image_name || `pez_${rarityKey}`;
+            // Prioriza el nombre de la especie (ej: Sardina Neón), si no, muestra la rareza
+            const displayName = fish.species_name || fish.rarity;
+            // -------------------------------------
             
             const levelBonusPercent = (Math.min(fish.level, 5) - 1) * 5;
             const accAmount = Number(fish.accumulated_pearls || 0);
@@ -280,9 +287,11 @@ function renderInventory(container) {
             card.innerHTML = `
                 <div style="font-size:0.55rem; color:#64748b; text-align:right; margin-bottom:5px;">ID: #${fish.id.toString().slice(0,4)}</div>
                 
-                <img src="${RAW_BASE}pez_${rarityKey}.png" class="img-pez-flotando" style="filter:${isHungry ?'grayscale(1) brightness(0.6)':'none'}">
+                <img src="${RAW_BASE}${imgFile}.png?raw=true" class="img-pez-flotando" style="filter:${isHungry ?'grayscale(1) brightness(0.6)':'none'}">
                 
-                <h4 style="margin:10px 0 5px 0; text-transform:uppercase; letter-spacing:1px;" class="rarity-text-${fish.rarity.toLowerCase().replace(/ /g,'-')}">${fish.rarity}</h4>
+                <h4 style="margin:10px 0 5px 0; text-transform:uppercase; letter-spacing:1px;" class="rarity-text-${fish.rarity.toLowerCase().replace(/ /g,'-')}">
+                    ${displayName}
+                </h4>
                 <div style="font-size:0.75rem; color:#94a3b8; font-weight:bold;">NIVEL ${fish.level}</div>
 
                 <div class="main-xp-bar">
