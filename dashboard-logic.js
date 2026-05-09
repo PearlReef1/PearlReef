@@ -6,6 +6,26 @@ let targetPos = 50;
 let progress = 0;
 let fishingInterval = null; // Variable global para controlar el cierre real
 let swapDirection = "USDT_TO_PRL";
+let currentTipIndex = 0;
+const tips = [
+    "💡 Un pez Nivel 5 produce un 20% más que uno Nivel 1.",
+    "⚠️ Si tu pez tiene hambre (0 barras), la producción se detiene.",
+    "✨ Cada nivel subido otorga un +5% de bono a la producción base.",
+    "🥣 ¡Alimentar a tus peces les da XP para alcanzar el siguiente nivel!",
+    ];
+
+// Función para actualizar el texto del tip en la pantalla sin recargar todo
+setInterval(() => {
+    currentTipIndex = (currentTipIndex + 1) % tips.length;
+    const tipElement = document.getElementById('random-tip-display');
+    if (tipElement) {
+        tipElement.style.opacity = 0; // Efecto de desvanecimiento
+        setTimeout(() => {
+            tipElement.innerText = tips[currentTipIndex];
+            tipElement.style.opacity = 1;
+        }, 500);
+    }
+}, 6000); // Cambia cada 6 segundos
 const RAW_BASE = "https://raw.githubusercontent.com/PearlReef1/PearlReef/main/assets/";
 
 // --- CONFIGURACIÓN ECONOMÍA HÍBRIDA ---
