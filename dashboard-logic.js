@@ -1382,7 +1382,7 @@ async function openWithdrawModal() {
         const currentBalance = profile?.balance_usdt || 0;
         const currentTax = tax || 50;
 
-        // 4. Inyectar el HTML compatible con TU calculadora
+        // 4. Inyectar el HTML con la calculadora y la información de reducción de impuestos
         container.innerHTML = `
             <div class="withdraw-wrapper" style="padding: 20px; text-align: center; color: #333;">
                 <h3 style="color:var(--primary); margin-bottom:20px;">Retirar Fondos (USDT)</h3>
@@ -1407,6 +1407,13 @@ async function openWithdrawModal() {
                            style="width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 0.9rem; color:#000;">
                     
                     <div id="withdraw-summary" style="margin-top: 15px; padding: 12px; background: #f0f7ff; border-radius: 8px; display: none; border: 1px solid #d0e3ff;">
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; border-radius: 4px;">
+                        <p style="margin: 0; font-size: 0.8rem; color: #1e40af; line-height: 1.4;">
+                            <strong>ℹ️ Info de Seguridad:</strong><br>
+                            El impuesto disminuye un <strong>5% cada 24 horas</strong> desde tu inversión, hasta alcanzar un mínimo del <strong>5% fijo</strong>.
+                        </p>
                     </div>
 
                     <button onclick="confirmWithdrawal()" class="btn-buy" id="btn-confirm-withdraw" 
