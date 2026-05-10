@@ -1427,9 +1427,14 @@ async function confirmWithdrawal() {
     const amount = parseFloat(amountInput.value);
     const address = addressInput.value.trim();
 
-    // Validaciones previas
-    if (isNaN(amount) || amount < 1) return showToast("Monto mínimo 5 USDT", "❌");
-    if (!address.startsWith('0x') || address.length < 42) return showToast("Billetera inválida", "❌");
+    // VALIDACIÓN CORREGIDA
+    if (isNaN(amount) || amount < 0.01) {
+        return showToast("Monto mínimo 0.01 USDT", "❌");
+    }
+    
+    if (!address.startsWith('0x') || address.length < 42) {
+        return showToast("Billetera inválida", "❌");
+    }
 
     // Bloqueo de seguridad
     btn.disabled = true;
@@ -1437,19 +1442,21 @@ async function confirmWithdrawal() {
 
     try {
         // Invocamos tu Edge Function de Deno
-        // IMPORTANTE: Asegúrate que el nombre 'process-withdrawal' sea el correcto
         const { data, error } = await supabase.functions.invoke('process-withdrawal', {
             body: { user_id: currentUser.id, amount: amount, address: address }
         });
 
         if (error) throw error;
-        if (data.error) throw new Error(data.error);
+        
+        // Si el servidor (Deno) devuelve un error, lo lanzamos para que lo atrape el catch
+        if (data && data.error) throw new Error(data.error);
 
         showToast("¡Retiro enviado con éxito!", "✅");
         const panel = document.getElementById('content-panel');
         if (panel) panel.style.display = 'none';
 
     } catch (err) {
+        // Aquí se mostrará el mensaje que venga de la Edge Function (ej: "Saldo insuficiente")
         showToast(err.message || "Error en el servidor", "❌");
         btn.disabled = false;
         btn.innerText = "CONFIRMAR RETIRO";
