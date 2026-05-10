@@ -691,6 +691,7 @@ async function buyFood(type, cost, quantity) {
     }).eq('id', currentUser.id);
 
     await loadProfile();
+    await checkFirstInvestment(); // <--- AGREGAR AQUÍ
     const body = document.getElementById('panel-body');
     if (body) renderShop(body);
 }
@@ -722,6 +723,7 @@ async function buyEgg(type, cost) {
 
     showToast(`¡Has comprado un Huevo de ${type}!`, "🥚");
     await loadProfile();
+    await checkFirstInvestment(); // <--- AGREGAR AQUÍ
     // Refrescar lista local
     const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
@@ -759,6 +761,7 @@ async function buyItem(column, price, qty) {
 
         // 4. Éxito: Actualizar la interfaz
         alert(`¡Compra exitosa! Has recibido ${qty} unidad(es).`);
+        await checkFirstInvestment(); // <--- AGREGAR AQUÍ
         
         // Recargar datos para que se vea el nuevo saldo y cantidad
         await loadProfile();
@@ -1338,4 +1341,20 @@ function showToast(message, icon = '✨') {
     setTimeout(() => {
         toast.remove();
     }, 3000);
+}
+async function checkFirstInvestment() {
+    // Solo actualiza si first_investment_at es NULL
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_investment_at')
+        .eq('id', currentUser.id)
+        .single();
+
+    if (!profile.first_investment_at) {
+        console.log(">>> [LOG] Primera inversión detectada. Activando reloj de retiro...");
+        await supabase
+            .from('profiles')
+            .update({ first_investment_at: new Date().toISOString() })
+            .eq('id', currentUser.id);
+    }
 }
