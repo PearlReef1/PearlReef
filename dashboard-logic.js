@@ -1358,3 +1358,92 @@ async function checkFirstInvestment() {
             .eq('id', currentUser.id);
     }
 }
+async function openWithdrawModal() {
+    const container = document.getElementById('panel-body');
+    if (!container) return;
+
+    // 1. Cargamos el tax actual y el balance
+    const { data: tax } = await supabase.rpc('get_withdrawal_tax', { user_uuid: currentUser.id });
+    const { data: profile } = await supabase.from('profiles').select('balance_usdt, first_investment_at').eq('id', currentUser.id).single();
+
+    const currentBalance = profile.balance_usdt || 0;
+    const currentTax = tax || 50;
+
+    container.innerHTML = `
+        <div class="withdraw-wrapper" style="padding: 20px; text-align: center;">
+            <h3 style="color:var(--primary); margin-bottom:20px;">Retirar Fondos (USDT)</h3>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ddd;">
+                <p style="margin: 5px 0;">Balance disponible: <strong>${currentBalance} USDT</strong></p>
+                <p style="margin: 5px 0; color: ${currentTax > 5 ? '#e67e22' : '#27ae60'};">
+                    Impuesto de salida actual: <strong>${currentTax}%</strong>
+                </p>
+                ${currentTax > 5 ? `<small style="color:#666;">El impuesto baja 5% cada día después de tu inversión.</small>` : ''}
+            </div>
+
+            <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                <label style="font-size: 0.9rem; color: #555;">Cantidad a retirar (Mínimo 5 USDT):</label>
+                <input type="number" id="withdraw-amount" placeholder="0.00" oninput="updateWithdrawCalc(${currentTax})" 
+                       style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc;">
+
+                <label style="font-size: 0.9rem; color: #555;">Billetera de destino (BEP20):</label>
+                <input type="text" id="withdraw-address" placeholder="0x..." 
+                       style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc;">
+                
+                <div id="withdraw-summary" style="margin-top: 15px; padding: 10px; background: #e8f4fd; border-radius: 5px; display: none;">
+                    </div>
+
+                <button onclick="confirmWithdrawal()" class="btn-buy" id="btn-confirm-withdraw" 
+                        style="width: 100%; margin-top: 20px; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    Confirmar Retiro
+                </button>
+            </div>
+        </div>
+    `;
+}
+function updateWithdrawCalc(taxPercent) {
+    const amount = parseFloat(document.getElementById('withdraw-amount').value);
+    const summary = document.getElementById('withdraw-summary');
+    
+    if (isNaN(amount) || amount <= 0) {
+        summary.style.display = 'none';
+        return;
+    }
+
+    const fee = (amount * (taxPercent / 100)).toFixed(2);
+    const neto = (amount - fee).toFixed(2);
+
+    summary.style.display = 'block';
+    summary.innerHTML = `
+        <p style="margin: 0; font-size: 0.85rem;">Impuesto (${taxPercent}%): <strong>-${fee} USDT</strong></p>
+        <p style="margin: 5px 0 0 0; font-size: 1rem; color: #2c3e50;">Recibirás: <strong>${neto} USDT</strong></p>
+    `;
+}
+async function confirmWithdrawal() {
+    const amount = parseFloat(document.getElementById('withdraw-amount').value);
+    const address = document.getElementById('withdraw-address').value.trim();
+    const btn = document.getElementById('btn-confirm-withdraw');
+
+    if (amount < 5) return alert("El mínimo de retiro es 5 USDT");
+    if (!address.startsWith('0x') || address.length < 40) return alert("Dirección de billetera inválida");
+
+    btn.disabled = true;
+    btn.innerText = "Procesando...";
+
+    try {
+        const { data, error } = await supabase.functions.invoke('process-withdrawal', {
+            body: { user_id: currentUser.id, amount: amount, address: address }
+        });
+
+        if (error) throw error;
+
+        alert("¡Retiro solicitado con éxito! Recibirás tus fondos en breve.");
+        await loadProfile(); // Recargar balance
+        renderInventory(document.getElementById('panel-body')); // Volver al inicio
+
+    } catch (err) {
+        alert("Error: " + err.message);
+        btn.disabled = false;
+        btn.innerText = "Confirmar Retiro";
+    }
+}
