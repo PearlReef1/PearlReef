@@ -1428,7 +1428,7 @@ async function confirmWithdrawal() {
     const address = addressInput.value.trim();
 
     // Validaciones previas
-    if (isNaN(amount) || amount < 5) return showToast("Monto mínimo 5 USDT", "❌");
+    if (isNaN(amount) || amount < 1) return showToast("Monto mínimo 5 USDT", "❌");
     if (!address.startsWith('0x') || address.length < 42) return showToast("Billetera inválida", "❌");
 
     // Bloqueo de seguridad
