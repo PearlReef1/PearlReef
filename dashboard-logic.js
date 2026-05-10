@@ -1449,52 +1449,58 @@ function updateWithdrawCalc() {
 async function confirmWithdrawal() {
     const amountInput = document.getElementById('withdraw-amount');
     const addressInput = document.getElementById('withdraw-address');
+    
+    if (!amountInput || !addressInput) return;
+
     const amount = parseFloat(amountInput.value);
     const address = addressInput.value.trim();
 
-    // 1. Obtener balance actual del perfil (para asegurar que la validación es real)
-    const { data: profile } = await supabase.from('profiles')
-        .select('balance_usdt')
-        .eq('id', currentUser.id)
-        .single();
-
-    const currentBalance = profile?.balance_usdt || 0;
-
-    // VALIDACIONES
-    if (isNaN(amount) || amount < 5) {
-        showNotification("El monto mínimo de retiro es 5 USDT", "error");
-        return;
-    }
-
-    if (amount > currentBalance) {
-        showNotification("Fondos insuficientes en tu balance", "error");
-        return;
-    }
-
-    if (!address.startsWith('0x') || address.length < 42) {
-        showNotification("Dirección BEP20 no válida", "error");
-        return;
-    }
-
-    // Si pasa las validaciones, procedemos al registro
     try {
+        // Consultamos el balance real antes de proceder
+        const { data: profile } = await supabase.from('profiles')
+            .select('balance_usdt')
+            .eq('id', currentUser.id)
+            .single();
+
+        const currentBalance = profile?.balance_usdt || 0;
+
+        // VALIDACIONES CON TU FUNCIÓN SHOWTOAST
+        if (isNaN(amount) || amount < 5) {
+            showToast("El monto mínimo es 5 USDT", "❌");
+            return;
+        }
+
+        if (amount > currentBalance) {
+            showToast("Fondos insuficientes", "❌");
+            return;
+        }
+
+        if (!address.startsWith('0x') || address.length < 42) {
+            showToast("Dirección BEP20 inválida", "❌");
+            return;
+        }
+
+        // Si pasa las validaciones, insertar en la tabla de retiros
         const { error } = await supabase.from('withdrawals').insert([
             {
                 user_id: currentUser.id,
                 amount: amount,
                 address: address,
-                status: 'pending',
-                created_at: new Date()
+                status: 'pending'
             }
         ]);
 
         if (error) throw error;
 
-        showNotification("Solicitud de retiro enviada con éxito", "success");
-        closeAllPanels(); // Cerramos el panel tras el éxito
+        // Éxito
+        showToast("Retiro solicitado con éxito", "✅");
+        
+        // Cerrar el panel (ajusta el ID si es diferente, p.ej. 'content-panel')
+        const panel = document.getElementById('content-panel');
+        if (panel) panel.style.display = 'none';
         
     } catch (err) {
         console.error(err);
-        showNotification("Error al procesar el retiro", "error");
+        showToast("Error al procesar retiro", "❌");
     }
 }
