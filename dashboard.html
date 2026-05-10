@@ -12,7 +12,7 @@
     <div id="main-aquarium-grid" style="position: fixed; top: 0; left: 260px; right: 0; bottom: 0; z-index: 10; overflow-y: auto; display: none; padding: 40px; background: rgba(0,0,0,0.2);">
     </div>
 
-    <aside class="sidebar">
+  <aside class="sidebar">
         <div class="sidebar-header">
             <h2 class="logo-text" style="margin-bottom: 20px;">Pearl Reef</h2>
             
@@ -25,16 +25,19 @@
                     <span id="user-name" style="font-weight: 600; font-size: 0.95rem; color: #f8fafc; letter-spacing: 0.5px;">...</span>
                 </div>
 
-                <!-- Balance USDT -->
-                <div style="display: flex; align-items: center; gap: 10px; background: rgba(46, 204, 113, 0.15); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(46, 204, 113, 0.2); margin-bottom: 8px;">
-                    <span style="font-size: 1.2rem;">💵</span>
-                    <div>
-                        <span id="usdt-balance" style="font-size: 1.1rem; font-weight: 800; color: #2ecc71; display: block; line-height: 1;">0.00</span>
-                        <span style="font-size: 0.6rem; color: #2ecc71; text-transform: uppercase; font-weight: bold;">USDT (BEP20)</span>
+                <div style="background: rgba(46, 204, 113, 0.15); padding: 10px; border-radius: 12px; border: 1px solid rgba(46, 204, 113, 0.2); margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <span style="font-size: 1.2rem;">💵</span>
+                        <div>
+                            <span id="usdt-balance" style="font-size: 1.1rem; font-weight: 800; color: #2ecc71; display: block; line-height: 1;">0.00</span>
+                            <span style="font-size: 0.6rem; color: #2ecc71; text-transform: uppercase; font-weight: bold;">USDT (BEP20)</span>
+                        </div>
                     </div>
+                    <button onclick="openWithdrawModal()" style="width: 100%; background: #ef4444; color: white; border: none; padding: 6px; border-radius: 8px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase;">
+                        📤 Retirar Fondos
+                    </button>
                 </div>
 
-                <!-- Balance $PRL -->
                 <div style="display: flex; align-items: center; gap: 10px; background: rgba(0, 0, 0, 0.2); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
                     <img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" alt="Perla" style="width: 24px; height: 24px;">
                     <div>
@@ -51,7 +54,6 @@
                     <span title="Plancton" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">🦠 <span id="food-plancton-count">0</span></span>
                     <span title="Algas" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">🌿 <span id="food-basic-count">0</span></span>
                     <span title="Cebos" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">🦐 <span id="food-rare-count">0</span></span>
-                    <!-- Restos Marinos Restaurados -->
                     <span title="Restos Marinos" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; opacity: 0.6;">⚓ <span id="marine-trash-count">0</span></span>
                 </div>
             </div>
@@ -66,7 +68,6 @@
 
         <button onclick="handleLogout()" class="btn-logout">Salir del Mar</button>
     </aside>
-
     <main class="content-panel" id="content-panel" style="display: none;">
         <div class="panel-header">
             <h2 id="panel-title">Panel</h2>
