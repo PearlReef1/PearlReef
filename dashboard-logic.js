@@ -1359,20 +1359,17 @@ async function checkFirstInvestment() {
     }
 }
 async function openWithdrawModal() {
-    // 1. Referencias a los elementos del panel (asegúrate que los IDs coincidan con tu HTML)
     const container = document.getElementById('panel-body');
     const panel = document.getElementById('content-panel');
     const title = document.getElementById('panel-title');
 
     if (!container || !panel) return;
 
-    // 2. Abrir el panel y poner un estado de carga
     title.innerText = "Retirar Fondos";
     panel.style.display = 'block';
     container.innerHTML = `<p style="text-align:center; padding:20px; color:#666;">Consultando balance y seguridad...</p>`;
 
     try {
-        // 3. Consultar datos de Supabase
         const { data: tax } = await supabase.rpc('get_withdrawal_tax', { user_uuid: currentUser.id });
         const { data: profile } = await supabase.from('profiles')
             .select('balance_usdt')
@@ -1382,50 +1379,49 @@ async function openWithdrawModal() {
         const currentBalance = profile?.balance_usdt || 0;
         const currentTax = tax || 50;
 
-        // 4. Inyectar el HTML con la calculadora y la información de reducción de impuestos
+        // Inyectamos el HTML con ajustes de espaciado para evitar desbordamiento
         container.innerHTML = `
-            <div class="withdraw-wrapper" style="padding: 20px; text-align: center; color: #333;">
-                <h3 style="color:var(--primary); margin-bottom:20px;">Retirar Fondos (USDT)</h3>
+            <div class="withdraw-wrapper" style="padding: 10px 15px; text-align: center; color: #333;">
+                <h3 style="color:var(--primary); margin-bottom:15px; font-size: 1.2rem;">Retirar Fondos (USDT)</h3>
                 
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ddd;">
-                    <p style="margin: 5px 0;">Balance disponible: <strong>${currentBalance} USDT</strong></p>
-                    <p style="margin: 5px 0; color: ${currentTax > 5 ? '#e67e22' : '#27ae60'};">
-                        Impuesto de salida actual: <strong>${currentTax}%</strong>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd;">
+                    <p style="margin: 0; font-size: 0.9rem;">Balance disponible: <strong>${currentBalance} USDT</strong></p>
+                    <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: ${currentTax > 5 ? '#e67e22' : '#27ae60'};">
+                        Impuesto actual: <strong>${currentTax}%</strong>
                     </p>
                 </div>
 
-                <div style="text-align: left; max-width: 400px; margin: 0 auto;">
-                    <label style="font-size: 0.9rem; color: #555;">Monto a retirar (Mín. 5 USDT):</label>
+                <div style="text-align: left; max-width: 100%; margin: 0 auto;">
+                    <label style="font-size: 0.85rem; color: #555;">Monto a retirar (Mín. 5 USDT):</label>
                     <input type="number" id="withdraw-amount" 
                            data-tax="${currentTax}" 
                            placeholder="0.00" 
                            oninput="updateWithdrawCalc()" 
-                           style="width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; color:#000;">
+                           style="width: 100%; padding: 10px; margin: 5px 0 10px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; color:#000; box-sizing: border-box;">
 
-                    <label style="font-size: 0.9rem; color: #555; margin-top: 10px; display:block;">Dirección de destino (Red BSC / BEP20):</label>
+                    <label style="font-size: 0.85rem; color: #555;">Billetera de destino (BEP20):</label>
                     <input type="text" id="withdraw-address" placeholder="0x..." 
-                           style="width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 0.9rem; color:#000;">
+                           style="width: 100%; padding: 10px; margin: 5px 0 10px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 0.85rem; color:#000; box-sizing: border-box;">
                     
-                    <div id="withdraw-summary" style="margin-top: 15px; padding: 12px; background: #f0f7ff; border-radius: 8px; display: none; border: 1px solid #d0e3ff;">
+                    <div id="withdraw-summary" style="margin-top: 5px; padding: 10px; background: #f0f7ff; border-radius: 8px; display: none; border: 1px solid #d0e3ff; font-size: 0.85rem;">
                     </div>
 
-                    <div style="margin-top: 20px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; border-radius: 4px;">
-                        <p style="margin: 0; font-size: 0.8rem; color: #1e40af; line-height: 1.4;">
-                            <strong>ℹ️ Info de Seguridad:</strong><br>
-                            El impuesto disminuye un <strong>5% cada 24 horas</strong> desde tu inversión, hasta alcanzar un mínimo del <strong>5% fijo</strong>.
+                    <div style="margin-top: 10px; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3b82f6; border-radius: 4px;">
+                        <p style="margin: 0; font-size: 0.75rem; color: #1e40af; line-height: 1.3;">
+                            <strong>ℹ️ Info:</strong> El impuesto baja 5% cada 24h hasta el 5% fijo.
                         </p>
                     </div>
 
                     <button onclick="confirmWithdrawal()" class="btn-buy" id="btn-confirm-withdraw" 
-                            style="width: 100%; margin-top: 25px; padding: 15px; background: #ef4444; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1rem;">
-                        CONFIRMAR RETIRO
+                            style="width: 100%; margin-top: 15px; margin-bottom: 10px; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 0.9rem; text-transform: uppercase;">
+                        Confirmar Retiro
                     </button>
                 </div>
             </div>
         `;
     } catch (err) {
         console.error("Error al abrir retiro:", err);
-        container.innerHTML = `<p style="color:red; text-align:center;">Error al conectar con la red. Intenta de nuevo.</p>`;
+        container.innerHTML = `<p style="color:red; text-align:center;">Error al conectar con la red.</p>`;
     }
 }
 function updateWithdrawCalc() {
@@ -1451,30 +1447,54 @@ function updateWithdrawCalc() {
     `;
 }
 async function confirmWithdrawal() {
-    const amount = parseFloat(document.getElementById('withdraw-amount').value);
-    const address = document.getElementById('withdraw-address').value.trim();
-    const btn = document.getElementById('btn-confirm-withdraw');
+    const amountInput = document.getElementById('withdraw-amount');
+    const addressInput = document.getElementById('withdraw-address');
+    const amount = parseFloat(amountInput.value);
+    const address = addressInput.value.trim();
 
-    if (amount < 5) return alert("El mínimo de retiro es 5 USDT");
-    if (!address.startsWith('0x') || address.length < 40) return alert("Dirección de billetera inválida");
+    // 1. Obtener balance actual del perfil (para asegurar que la validación es real)
+    const { data: profile } = await supabase.from('profiles')
+        .select('balance_usdt')
+        .eq('id', currentUser.id)
+        .single();
 
-    btn.disabled = true;
-    btn.innerText = "Procesando...";
+    const currentBalance = profile?.balance_usdt || 0;
 
+    // VALIDACIONES
+    if (isNaN(amount) || amount < 5) {
+        showNotification("El monto mínimo de retiro es 5 USDT", "error");
+        return;
+    }
+
+    if (amount > currentBalance) {
+        showNotification("Fondos insuficientes en tu balance", "error");
+        return;
+    }
+
+    if (!address.startsWith('0x') || address.length < 42) {
+        showNotification("Dirección BEP20 no válida", "error");
+        return;
+    }
+
+    // Si pasa las validaciones, procedemos al registro
     try {
-        const { data, error } = await supabase.functions.invoke('process-withdrawal', {
-            body: { user_id: currentUser.id, amount: amount, address: address }
-        });
+        const { error } = await supabase.from('withdrawals').insert([
+            {
+                user_id: currentUser.id,
+                amount: amount,
+                address: address,
+                status: 'pending',
+                created_at: new Date()
+            }
+        ]);
 
         if (error) throw error;
 
-        alert("¡Retiro solicitado con éxito! Recibirás tus fondos en breve.");
-        await loadProfile(); // Recargar balance
-        renderInventory(document.getElementById('panel-body')); // Volver al inicio
-
+        showNotification("Solicitud de retiro enviada con éxito", "success");
+        closeAllPanels(); // Cerramos el panel tras el éxito
+        
     } catch (err) {
-        alert("Error: " + err.message);
-        btn.disabled = false;
-        btn.innerText = "Confirmar Retiro";
+        console.error(err);
+        showNotification("Error al procesar el retiro", "error");
     }
 }
