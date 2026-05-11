@@ -751,17 +751,22 @@ async function buyFood(type, cost, quantity) {
 }
 
 async function buyEgg(type, cost) {
+    // 1. Obtener balance actual
     const { data: profile } = await supabase.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
-    if (profile.pearls_balance < cost) return showToast("No tienes suficientes perlas ⚪", "❌");
     
+    // Limpiamos el costo (por si viene con comas como "1,000")
+    const costoNumerico = Number(cost.toString().replace(/,/g, ''));
+    
+    if (profile.pearls_balance < costoNumerico) return showToast("No tienes suficientes perlas ⚪", "❌");
+    
+    // 2. Calcular tiempo de eclosión
     let hatchHours = (type === 'Arrecife') ? 3 : (type === 'Abisal' ? 6 : 12);
     const hatchDate = new Date();
     hatchDate.setHours(hatchDate.getHours() + hatchHours);
 
-    // Descontar balance
-    await supabase.from('profiles').update({ pearls_balance: profile.pearls_balance - cost }).eq('id', currentUser.id);
+    // 3. Descontar balance y crear el huevo en la base de datos
+    await supabase.from('profiles').update({ pearls_balance: profile.pearls_balance - costoNumerico }).eq('id', currentUser.id);
     
-    // Insertar el huevo
     await supabase.from('user_fish').insert([{
         user_id: currentUser.id, 
         is_egg: true,
@@ -775,21 +780,33 @@ async function buyEgg(type, cost) {
         total_generated: 0
     }]);
 
-    // --- REGISTRO EN EL HISTORIAL ---
+    // 4. Registro en el historial
     await registrarLog('acuario_logs', {
         accion: 'tienda',
-        monto_prl: -cost,
+        monto_prl: -costoNumerico,
         descripcion: `Compró Huevo de tipo: ${type.toUpperCase()} 🥚`
     });
 
     showToast(`¡Has comprado un Huevo de ${type}!`, "🥚");
+
+    // 5. REFRESCAR INTERFAZ
     await loadProfile();
     await checkFirstInvestment(); 
+    
+    // Actualizamos la lista local de peces
     const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
-    renderInventory(document.getElementById('panel-body'));
-}
 
+    // CERRAMOS EL PANEL DE TIENDA (Para evitar la "ventana rara")
+    const sidePanel = document.getElementById('side-panel');
+    if (sidePanel) sidePanel.classList.remove('open');
+
+    // RENDERIZAMOS EN EL ACUARIO PRINCIPAL
+    const mainGrid = document.getElementById('main-aquarium-grid');
+    if (mainGrid) {
+        renderInventory(mainGrid); 
+    }
+}
 async function buyItem(column, price, qty) {
     try {
         const { data: profile, error: fetchError } = await supabase.from('profiles')
