@@ -602,13 +602,20 @@ async function completeFeeding(foodType) {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
-    // --- REGISTRO EN EL HISTORIAL (NUEVO) ---
+    // --- REGISTRO EN EL HISTORIAL (TRADUCCIÓN DE NOMBRES) ---
+    const nombresComida = {
+        'plancton': 'PLANCTON 🦠',
+        'basic': 'ALGAS 🌿',
+        'rare': 'CEBO 🦐'
+    };
+    const nombreBonito = nombresComida[foodType] || foodType.toUpperCase();
+
     // Registramos la alimentación
     await registrarLog('acuario_logs', {
         pez_id: fishId,
         accion: 'comida',
         monto_prl: 0,
-        descripcion: `Alimentado con ${foodType.toUpperCase()} (+${foodCfg.xp} XP). Pez ID #${fishId.toString().slice(0,4)}`
+        descripcion: `Alimentado con ${nombreBonito} (+${foodCfg.xp} XP). Pez ID #${fishId.toString().slice(0,4)}`
     });
 
     // Si subió de nivel, registramos el evento por separado para que resalte
@@ -627,7 +634,6 @@ async function completeFeeding(foodType) {
     if (leveledUp) {
         showToast(`¡NIVEL SUBIDO! Ahora eres Nivel ${newLevel}`, '🆙');
     } else {
-        // Mostramos el icono del tipo de comida que se usó (🦠, 🌿, 🦐)
         showToast(`¡Pez alimentado! +${foodCfg.xp} XP`, foodCfg.icon || '🥣');
     }
 
