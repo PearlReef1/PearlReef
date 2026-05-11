@@ -549,7 +549,6 @@ async function completeFeeding(foodType) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true; 
 
-    // 1. Obtener datos iniciales (Mantenemos el await inicial necesario)
     const fishId = sessionStorage.getItem('feeding_fish_id');
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
     const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
@@ -567,7 +566,7 @@ async function completeFeeding(foodType) {
 
     const foodCfg = FOOD_TYPES[foodType];
     
-    // --- CÁLCULOS LÓGICOS ---
+    // --- CÁLCULOS ---
     let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
     let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
@@ -588,8 +587,16 @@ async function completeFeeding(foodType) {
         newXP = nextXP;
     }
 
+    // --- TRADUCCIÓN PARA EL LOG ---
+    const nombresComida = {
+        'plancton': 'PLANCTON 🦠',
+        'basic': 'ALGAS 🌿',
+        'rare': 'CEBO 🦐'
+    };
+    const nombreBonito = nombresComida[foodType] || foodType.toUpperCase();
+    const shortId = fishId.toString().slice(0, 4); // Recuperamos el ID corto
+
     // --- ACTUALIZACIÓN OPTIMISTA (INSTANTÁNEA) ---
-    // Actualizamos el pez en nuestro array local antes de enviarlo a la DB
     const fishIndex = allFish.findIndex(f => f.id == fishId);
     if (fishIndex !== -1) {
         allFish[fishIndex].level = newLevel;
@@ -598,7 +605,6 @@ async function completeFeeding(foodType) {
         allFish[fishIndex].last_fed = newFedDate.toISOString();
     }
 
-    // Renderizado inmediato en la interfaz
     const mainGrid = document.getElementById('main-aquarium-grid');
     const panelBody = document.getElementById('panel-body');
     (mainGrid && mainGrid.style.display !== 'none') ? renderInventory(mainGrid) : renderInventory(panelBody);
@@ -606,8 +612,7 @@ async function completeFeeding(foodType) {
     document.getElementById('minigame-modal').style.display = 'none';
     leveledUp ? showToast(`¡NIVEL SUBIDO! Nivel ${newLevel}`, '🆙') : showToast(`¡Pez alimentado!`, foodCfg.icon || '🥣');
 
-    // --- PROCESAMIENTO EN PARALELO (BACKEND) ---
-    // Lanzamos todas las peticiones a la vez para ahorrar tiempo de espera
+    // --- PROCESAMIENTO EN PARALELO ---
     try {
         const promesas = [
             supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id),
@@ -621,7 +626,7 @@ async function completeFeeding(foodType) {
                 pez_id: fishId,
                 accion: 'comida',
                 monto_prl: 0,
-                descripcion: `Alimentado con ${(foodType === 'basic' ? 'ALGAS 🌿' : foodType.toUpperCase())} (+${foodCfg.xp} XP)`
+                descripcion: `Alimentado con ${nombreBonito} (+${foodCfg.xp} XP). Pez ID #${shortId}`
             })
         ];
 
@@ -630,13 +635,11 @@ async function completeFeeding(foodType) {
                 pez_id: fishId,
                 accion: 'subida_nivel',
                 monto_prl: 0,
-                descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}.`
+                descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}. Pez ID #${shortId}`
             }));
         }
 
         await Promise.all(promesas);
-        
-        // Actualizar perfil (monedas/comida) en segundo plano
         loadProfile(); 
 
     } catch (err) {
