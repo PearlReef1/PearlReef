@@ -240,7 +240,7 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // 1. Cálculos de totales
+    // 1. Cálculos de totales (Se mantiene igual)
     let prodTotal = 0, claimTotal = 0, hungryCount = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
@@ -251,6 +251,7 @@ function renderInventory(container) {
         }
     });
 
+    // 2. Render del Header de estadísticas (Se mantiene igual)
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
     header.style.flexDirection = 'column';
@@ -268,6 +269,29 @@ function renderInventory(container) {
     `;
     container.appendChild(header);
 
+    // --- NUEVA VALIDACIÓN PARA JUGADORES SIN PECES ---
+    if (!allFish || allFish.length === 0) {
+        const emptyState = document.createElement('div');
+        emptyState.style.cssText = `
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 60px 20px; text-align: center; color: white; width: 100%;
+        `;
+        emptyState.innerHTML = `
+            <div style="font-size: 4rem; margin-bottom: 15px;">🌊</div>
+            <h2 style="margin: 0; font-size: 1.5rem; color: #ffb703;">Tu Acuario está vacío</h2>
+            <p style="color: #94a3b8; font-size: 0.9rem; margin: 10px 0 25px 0; max-width: 300px;">
+                Adquiere tu primer submarino en la tienda para empezar a producir Perlas.
+            </p>
+            <button class="nav-btn" onclick="switchTab('tienda', this)" 
+                    style="background: #3b82f6; padding: 12px 30px; border-radius: 12px; border: none; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #1d4ed8;">
+                IR A LA TIENDA 🛒
+            </button>
+        `;
+        container.appendChild(emptyState);
+        return; // Terminamos la función aquí si no hay peces
+    }
+
+    // 3. Render del Wrapper y Cards (Solo si hay peces)
     const wrapper = document.createElement('div');
     wrapper.className = isMain ? 'grid-main-wrapper' : 'lista-lateral';
     
@@ -275,9 +299,12 @@ function renderInventory(container) {
         const card = document.createElement('div');
         card.className = isMain ? 'card-main-aquarium' : 'mini-card';
 
+        // ... El resto de tu código original de renderizado de cards ...
+        // (Pega aquí todo el bloque de fish.is_egg y las cards que ya tenías)
         if (fish.is_egg) {
             renderEggRow(card, fish, now);
         } else {
+            // ... (resto de tu lógica de renderizado que me pasaste arriba)
             const lastFed = new Date(fish.last_fed || 0);
             const msSinceFed = now - lastFed;
             const msUntilHungry = Math.max(0, (24 * 60 * 60 * 1000) - msSinceFed);
@@ -291,7 +318,6 @@ function renderInventory(container) {
             const nextXP = fish.next_level_xp || 100;
             const xpPer = Math.min((currentXP / nextXP) * 100, 100);
             
-            // --- CORRECCIÓN DE IMÁGENES Y NOMBRES ---
             const rarityKey = fish.rarity.toLowerCase().replace(/ /g,'_');
             const rarityClass = fish.rarity.toLowerCase().replace(/ /g,'-');
             const imgFile = fish.image_name || `pez_${rarityKey}`;
@@ -303,26 +329,16 @@ function renderInventory(container) {
 
             card.innerHTML = `
                 <div style="font-size:0.55rem; color:#64748b; text-align:right; margin-bottom:5px;">ID: #${fish.id.toString().slice(0,4)}</div>
-                
-                <img src="${RAW_BASE}${imgFile}.png?raw=true" 
-                     class="img-pez-flotando ${isHungry ? 'hungry' : ''}">
-                
+                <img src="${RAW_BASE}${imgFile}.png?raw=true" class="img-pez-flotando ${isHungry ? 'hungry' : ''}">
                 <div style="margin: 12px 0;">
-                    <span class="rarity-text-${rarityClass}" style="font-size: 0.6rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; display: block;">
-                        ${fish.rarity}
-                    </span>
-                    <h4 style="margin: 2px 0 0 0; color: white; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                        ${displayName}
-                    </h4>
+                    <span class="rarity-text-${rarityClass}" style="font-size: 0.6rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; display: block;">${fish.rarity}</span>
+                    <h4 style="margin: 2px 0 0 0; color: white; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${displayName}</h4>
                 </div>
-
                 <div style="font-size:0.75rem; color:#94a3b8; font-weight:bold;">NIVEL ${fish.level}</div>
-
                 <div class="main-xp-bar">
                     <div class="main-xp-fill" style="width:${xpPer}%"></div>
                     <span class="xp-text-overlay">${currentXP} / ${nextXP} XP</span>
                 </div>
-
                 <div class="main-energy-dots">
                     <div class="energy-dot-main ${hUnits >= 1 ? 'active' : ''}"></div>
                     <div class="energy-dot-main ${hUnits >= 2 ? 'active' : ''}"></div>
@@ -330,15 +346,10 @@ function renderInventory(container) {
                 <div style="font-size: 0.6rem; color: ${isHungry ? '#ff4757' : '#60a5fa'}; margin-bottom: 10px;">
                     ${isHungry ? '¡SIN PRODUCCIÓN (HAMBRE)!' : `Hambre en: ${hoursLeft}h ${minsLeft}m`}
                 </div>
-
                 <div class="main-collect-box" style="flex-direction: column; gap: 4px; align-items: stretch; text-align: left;">
                     <div style="display:flex; justify-content:space-between; font-size: 0.7rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
-                        <span style="color:#64748b">
-                            Prod. día <span title="Bono de Nivel: +${levelBonusPercent}% aplicado" style="cursor:help; color:#3b82f6; font-size:0.75rem;">ⓘ</span>
-                        </span>
-                        <strong style="color:${isHungry ? '#64748b' : '#2ecc71'}; text-decoration:${isHungry ? 'line-through' : 'none'}">
-                            ${PRL_ICON}${fish.daily_yield} $PRL
-                        </strong>
+                        <span style="color:#64748b">Prod. día <span title="Bono de Nivel: +${levelBonusPercent}% aplicado" style="cursor:help; color:#3b82f6; font-size:0.75rem;">ⓘ</span></span>
+                        <strong style="color:${isHungry ? '#64748b' : '#2ecc71'}; text-decoration:${isHungry ? 'line-through' : 'none'}">${PRL_ICON}${fish.daily_yield} $PRL</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size: 0.75rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px; padding-top:2px;">
                         <span style="color:#94a3b8">Producido:</span>
@@ -349,17 +360,11 @@ function renderInventory(container) {
                         <strong style="color:#94a3b8; font-size:0.6rem;">${PRL_ICON}${Number(fish.total_generated || 0).toFixed(1)} $PRL</strong>
                     </div>
                 </div>
-
                 <button class="btn-buy" 
-                    style="background:${canClaim ? '#2ecc71' : '#475569'}; 
-                           box-shadow: 0 4px 0 ${canClaim ? '#1a9e5a' : '#1e293b'}; 
-                           margin-bottom:8px; 
-                           cursor:${canClaim ? 'pointer' : 'not-allowed'};
-                           opacity:${canClaim ? '1' : '0.6'};"
+                    style="background:${canClaim ? '#2ecc71' : '#475569'}; box-shadow: 0 4px 0 ${canClaim ? '#1a9e5a' : '#1e293b'}; margin-bottom:8px; cursor:${canClaim ? 'pointer' : 'not-allowed'}; opacity:${canClaim ? '1' : '0.6'};"
                     ${canClaim ? `onclick="claimPearls('${fish.id}')"` : ''}>
                     ${canClaim ? 'RECOLECTAR' : '0 $PRL'}
                 </button>
-
                 ${hUnits < 2 ? 
                     `<button class="btn-feed-mini" style="background:#3b82f6; box-shadow: 0 4px 0 #1d4ed8;" onclick="startFeeding('${fish.id}')">ALIMENTAR</button>` : 
                     `<div style="font-size:0.6rem; color:#64748b; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;">Satisfecho</div>`
