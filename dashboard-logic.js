@@ -744,7 +744,7 @@ async function buyFood(type, cost, quantity) {
 
 async function buyEgg(type, cost) {
     try {
-        // 1. Obtener balance
+        // 1. Obtener balance del perfil
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('pearls_balance')
@@ -758,27 +758,26 @@ async function buyEgg(type, cost) {
             return showToast("No tienes suficientes perlas ⚪", "❌");
         }
 
-        // 2. Tiempos de eclosión (según tu lógica: 3h, 6h, 12h)
+        // 2. Configurar tiempos (3h, 6h, 12h)
         let hatchHours = (type === 'Arrecife') ? 3 : (type === 'Abisal' ? 6 : 12);
         const hatchDate = new Date();
         hatchDate.setHours(hatchDate.getHours() + hatchHours);
 
-        // 3. Descontar balance
-        const { error: updateError } = await supabase.from('profiles')
+        // 3. Ejecutar transacciones
+        // Descontar balance
+        await supabase.from('profiles')
             .update({ pearls_balance: profile.pearls_balance - costoNumerico })
             .eq('id', currentUser.id);
-        
-        if (updateError) throw updateError;
 
-        // 4. INSERTAR EL HUEVO (Ajustado a tus columnas de Supabase)
+        // INSERTAR EL HUEVO (Ajustado a tus nombres de columna reales)
         const { error: insertError } = await supabase.from('user_fish').insert([{
             user_id: currentUser.id,
             is_egg: true,
             egg_type: type,
             egg_hatch_time: hatchDate.toISOString(),
-            rarity: 'Huevo',           // Se sobreescribirá al eclosionar
-            species_name: 'Incubando', // Se sobreescribirá al eclosionar
-            image_name: 'pez_huevo',   // Imagen temporal
+            rarity: 'Huevo',            // IMPORTANTE: Esto es temporal para el renderizado
+            species_name: 'Incubando',  // IMPORTANTE: Esto es temporal
+            image_name: 'pez_huevo',    // Imagen base
             level: 1,
             current_xp: 0,
             next_level_xp: 100,
@@ -790,12 +789,11 @@ async function buyEgg(type, cost) {
         }]);
 
         if (insertError) {
-            // Si esto sale en consola, revisa las políticas RLS en Supabase
-            console.error("Error al crear registro:", insertError.message);
-            return showToast(`Error BD: ${insertError.message}`, "❌");
+            console.error("Error de Supabase:", insertError.message);
+            return showToast(`Error: ${insertError.message}`, "❌");
         }
 
-        // 5. Historial y Feedback
+        // 4. Historial
         await registrarLog('acuario_logs', {
             accion: 'tienda',
             monto_prl: -costoNumerico,
@@ -804,26 +802,29 @@ async function buyEgg(type, cost) {
 
         showToast(`¡Has comprado un Huevo de ${type}!`, "🥚");
 
-        // 6. Actualizar y Cerrar
+        // 5. ACTUALIZACIÓN CRÍTICA: Forzamos la recarga de allFish
         await loadProfile();
         
-        // Recargamos la lista global para que renderInventory lo vea
-        const { data: refreshedFish } = await supabase
+        const { data: updatedList, error: fetchError } = await supabase
             .from('user_fish')
             .select('*')
             .eq('user_id', currentUser.id);
-        allFish = refreshedFish;
+            
+        if (!fetchError) {
+            allFish = updatedList; // Ahora allFish tiene el huevo recién creado
+        }
 
-        // Cerramos la tienda para evitar conflictos visuales
+        // 6. Cerrar tienda y renderizar acuario
         const sidePanel = document.getElementById('side-panel');
         if (sidePanel) sidePanel.classList.remove('open');
 
-        // Renderizamos el acuario
         const mainGrid = document.getElementById('main-aquarium-grid');
-        if (mainGrid) renderInventory(mainGrid);
+        if (mainGrid) {
+            renderInventory(mainGrid);
+        }
 
     } catch (err) {
-        console.error("Fallo crítico en buyEgg:", err);
+        console.error("Error crítico en buyEgg:", err);
         showToast("Error en la operación", "❌");
     }
 }
