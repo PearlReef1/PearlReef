@@ -194,35 +194,35 @@ function createSwimmingFish(fish) {
     setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
 async function switchTab(tab, btn) {
-    // 1. Manejo de clases activas en el menú
+    // 1. Manejo de clases activas
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
     
     const panel = document.getElementById('content-panel');
-    const body = document.getElementById('panel-body');
-    const title = document.getElementById('panel-title');
     const mainGrid = document.getElementById('main-aquarium-grid');
 
-    // 2. Lógica para mostrar el Acuario (Grid Principal)
     if (tab === 'acuario') { 
         if (panel) panel.style.display = 'none'; 
         if (mainGrid) {
-            mainGrid.style.display = 'block'; // Lo hacemos visible
+            mainGrid.style.display = 'block'; 
             
-            // Verificamos si el usuario ya cargó para renderizar los peces
-            if (currentUser) {
+            // LOGICA CRÍTICA: Esperar a que allFish tenga datos
+            if (allFish && allFish.length > 0) {
                 renderInventory(mainGrid); 
             } else {
-                // Si no ha cargado, esperamos un poco y reintentamos solo el render
-                setTimeout(() => { if(currentUser) renderInventory(mainGrid); }, 500);
+                console.log("Esperando a que carguen los peces...");
+                // Reintentamos en medio segundo si la DB está lenta
+                setTimeout(() => renderInventory(mainGrid), 800);
             }
         }
         return; 
     }
 
-    // 3. Lógica para otras pestañas (Tienda/Depósito) en el panel lateral
     if (mainGrid) mainGrid.style.display = 'none';
     if (panel) panel.style.display = 'flex';
+    
+    const body = document.getElementById('panel-body');
+    const title = document.getElementById('panel-title');
     
     if (tab === 'deposito') {
         title.innerText = "Depósito de USDT";
@@ -230,29 +230,8 @@ async function switchTab(tab, btn) {
     } else if (tab === 'tienda') {
         title.innerText = "Tienda";
         renderShop(body);
-    } else {
-        title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
     }
 }
-
-// --- SISTEMA DE INICIO AUTOMÁTICO ---
-// Esta función se asegura de que el Acuario se active SOLO cuando el usuario esté listo
-function checkAndBoot() {
-    const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
-                             .find(btn => btn.innerText.includes('Acuario'));
-
-    // Si el botón existe Y ya tenemos los datos del usuario (currentUser)
-    if (aquariumBtn && currentUser) {
-        console.log("Sistema listo. Activando Acuario...");
-        switchTab('acuario', aquariumBtn);
-    } else {
-        // Si falta algo, reintentamos cada 100ms hasta que todo esté listo
-        setTimeout(checkAndBoot, 100);
-    }
-}
-
-// Ejecutamos la vigilancia de inicio
-checkAndBoot();
 function renderInventory(container) {
     if (!container) return;
     const now = new Date();
@@ -1521,3 +1500,21 @@ function updateWithdrawCalc() {
         <p style="margin: 5px 0 0 0; font-size: 1rem; color: #2ecc71;">Recibirás: <strong>${neto} USDT</strong></p>
     `;
 }
+// --- DISPARADOR DE INICIO SEGURO ---
+function bootGame() {
+    // 1. Buscamos el botón
+    const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
+                             .find(btn => btn.innerText.includes('Acuario'));
+
+    // 2. Solo arrancamos si: Existe el botón Y el usuario cargó Y los peces ya están en memoria
+    if (aquariumBtn && currentUser && allFish.length >= 0) {
+        console.log("Todo listo. Ejecutando vista inicial...");
+        switchTab('acuario', aquariumBtn);
+    } else {
+        // Si la base de datos de Supabase aún no responde, reintenta en 100ms
+        setTimeout(bootGame, 100);
+    }
+}
+
+// Iniciamos la vigilancia
+bootGame();
