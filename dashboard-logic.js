@@ -390,16 +390,21 @@ function renderEggRow(container, fish, now) {
     const msLeft = hatchTime - now;
     const isReady = msLeft <= 0;
 
-    // 1. Mapeamos el tipo de huevo a su imagen correspondiente en GitHub
-    // Asegúrate de que estos nombres coincidan con tus archivos .png
+    // 1. Mapeamos el tipo de huevo a los nombres REALES de tus archivos en GitHub
     const eggImages = {
-        'Arrecife': 'huevo_arrecife.png',
-        'Abisal': 'huevo_abisal.png',
-        'Ancestral': 'huevo_ancestral.png'
+        'Arrecife': 'huevo_comun.png',    // Antes tenías huevo_arrecife.png
+        'Abisal': 'huevo_raro.png',       // Antes tenías huevo_abisal.png
+        'Ancestral': 'huevo_legendario.png' // Antes tenías huevo_ancestral.png
     };
     
-    // Si por alguna razón no encuentra el tipo, usa la imagen por defecto
-    const currentEggImg = eggImages[fish.egg_type] || 'pez_huevo.png';
+    // 2. Intentamos obtener la imagen del objeto, si no, usamos la de la base de datos, 
+    // y si no, el mapeo manual.
+    let currentEggImg = eggImages[fish.egg_type] || fish.image_name || 'huevo_comun.png';
+
+    // Asegurarse de que no tenga duplicado el .png si ya viene de la base de datos
+    if (!currentEggImg.endsWith('.png')) {
+        currentEggImg += '.png';
+    }
 
     container.innerHTML = `
         <div style="text-align: center; min-width: 70px;">
@@ -428,7 +433,6 @@ function renderEggRow(container, fish, now) {
         </button>
     `;
 }
-
 function formatTime(ms) {
     if (ms < 0) return "0s";
     const s = Math.floor(ms / 1000);
