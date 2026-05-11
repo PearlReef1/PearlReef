@@ -470,14 +470,20 @@ async function hatchFish(fishId) {
         }
 
         // 2. Buscar un pez al azar de esa rareza en la biblioteca
-        const { data: pool, error: poolError } = await supabase.from('fish_library').select('*').eq('rarity', selectedRarity);
-        
-        if (poolError || !pool || pool.length === 0) {
-            throw new Error(`No se encontraron peces de rareza ${selectedRarity} en la biblioteca`);
-        }
+// Cambiamos .eq por .ilike para ser más flexibles con el texto de la base de datos
+const { data: pool, error: poolError } = await supabase
+    .from('fish_library')
+    .select('*')
+    .ilike('rarity', selectedRarity); // ilike es más seguro que eq para strings
 
-        const species = pool[Math.floor(Math.random() * pool.length)];
-
+if (poolError || !pool || pool.length === 0) {
+    // Si falla, intentamos un fallback para que el usuario no pierda el huevo
+    console.warn(`Rareza ${selectedRarity} no encontrada, buscando Comun por defecto.`);
+    const { data: fallback } = await supabase.from('fish_library').select('*').ilike('rarity', 'Comun');
+    var species = fallback[Math.floor(Math.random() * fallback.length)];
+} else {
+    var species = pool[Math.floor(Math.random() * pool.length)];
+}
         // 3. Transformar el huevo en el pez final
         // NOTA: Asegúrate de que los nombres de las columnas coincidan con tu tabla user_fish
         const { error: updateError } = await supabase.from('user_fish').update({
