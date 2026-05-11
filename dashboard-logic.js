@@ -194,43 +194,38 @@ function createSwimmingFish(fish) {
     setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
 async function switchTab(tab, btn) {
-    // 1. Manejo de clases activas
+    // Manejo de clases activas en el menú
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
     
     const panel = document.getElementById('content-panel');
+    const body = document.getElementById('panel-body');
+    const title = document.getElementById('panel-title');
     const mainGrid = document.getElementById('main-aquarium-grid');
 
-    // 2. Lógica específica para Acuario
+    // Lógica para mostrar la cuadrícula del Acuario o los paneles laterales
     if (tab === 'acuario') { 
-        if (panel) panel.style.display = 'none'; 
+        if (panel) panel.style.display = 'none'; // Oculta el panel lateral
         if (mainGrid) {
-            mainGrid.style.display = 'block'; // Mostramos el contenedor
-            // Esperamos un instante a que el usuario esté cargado
-            if (currentUser) {
-                renderInventory(mainGrid); 
-            } else {
-                // Si aún no carga el usuario, reintentamos en breve
-                setTimeout(() => renderInventory(mainGrid), 500);
-            }
+            mainGrid.style.display = 'block';
+            renderInventory(mainGrid); 
         }
         return; 
     }
 
-    // 3. Resto de pestañas
+    // Si entramos a otra pestaña (Tienda/Depósito), ocultamos la cuadrícula
     if (mainGrid) mainGrid.style.display = 'none';
     if (panel) panel.style.display = 'flex';
     
-    const body = document.getElementById('panel-body');
-    const title = document.getElementById('panel-title');
-    
     if (tab === 'deposito') {
         title.innerText = "Depósito de USDT";
-        renderDeposit(body);
-    } else if (tab === 'tienda') {
-        title.innerText = "Tienda";
-        renderShop(body);
+    } else {
+        title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
     }
+
+    // Solo renderizamos Tienda o Depósito en el panel lateral
+    if (tab === 'tienda') renderShop(body);
+    if (tab === 'deposito') renderDeposit(body); 
 }
 function renderInventory(container) {
     if (!container) return;
@@ -1500,14 +1495,17 @@ function updateWithdrawCalc() {
         <p style="margin: 5px 0 0 0; font-size: 1rem; color: #2ecc71;">Recibirás: <strong>${neto} USDT</strong></p>
     `;
 }
-// Este bloque debe ir al final de dashboard-logic.js
-supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' || session) {
-        // Un pequeño delay para asegurar que el DOM está listo
-        setTimeout(() => {
-            const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
-                                     .find(btn => btn.innerText.includes('Acuario'));
-            switchTab('acuario', aquariumBtn);
-        }, 300);
+// Forzar que el Acuario sea la vista inicial al cargar el Dashboard
+document.addEventListener('DOMContentLoaded', () => {
+    // Buscamos el botón de la navegación que abre el acuario
+    // (Asegúrate de que tu botón tenga la clase .nav-btn)
+    const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
+                             .find(btn => btn.innerText.toLowerCase().includes('acuario'));
+
+    if (aquariumBtn) {
+        switchTab('acuario', aquariumBtn);
+    } else {
+        // Si no encuentra el botón por el texto, ejecuta la lógica directamente
+        switchTab('acuario', null);
     }
 });
