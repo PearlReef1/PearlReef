@@ -737,8 +737,16 @@ async function buyFood(type, cost, quantity) {
         [col]: (Number(profile[col]) || 0) + Number(quantity)
     }).eq('id', currentUser.id);
 
+    // --- REGISTRO EN EL HISTORIAL ---
+    const nombresComida = { 'plancton': 'PLANCTON 🦠', 'basic': 'ALGAS 🌿', 'rare': 'CEBO 🦐' };
+    await registrarLog('acuario_logs', {
+        accion: 'tienda',
+        monto_prl: -cost,
+        descripcion: `Compró ${quantity}x ${nombresComida[type] || type.toUpperCase()}`
+    });
+
     await loadProfile();
-    await checkFirstInvestment(); // <--- AGREGAR AQUÍ
+    await checkFirstInvestment(); 
     const body = document.getElementById('panel-body');
     if (body) renderShop(body);
 }
@@ -754,13 +762,13 @@ async function buyEgg(type, cost) {
     // Descontar balance
     await supabase.from('profiles').update({ pearls_balance: profile.pearls_balance - cost }).eq('id', currentUser.id);
     
-    // Insertar el huevo sin saber la rareza aún
+    // Insertar el huevo
     await supabase.from('user_fish').insert([{
         user_id: currentUser.id, 
         is_egg: true,
-        egg_type: type, // 'Arrecife', 'Abisal' o 'Ancestral'
+        egg_type: type, 
         egg_hatch_time: hatchDate.toISOString(),
-        rarity: 'Huevo', // Valor temporal
+        rarity: 'Huevo', 
         level: 1, 
         current_xp: 0,
         next_level_xp: 100, 
@@ -768,17 +776,23 @@ async function buyEgg(type, cost) {
         total_generated: 0
     }]);
 
+    // --- REGISTRO EN EL HISTORIAL ---
+    await registrarLog('acuario_logs', {
+        accion: 'tienda',
+        monto_prl: -cost,
+        descripcion: `Compró Huevo de tipo: ${type.toUpperCase()} 🥚`
+    });
+
     showToast(`¡Has comprado un Huevo de ${type}!`, "🥚");
     await loadProfile();
-    await checkFirstInvestment(); // <--- AGREGAR AQUÍ
-    // Refrescar lista local
+    await checkFirstInvestment(); 
     const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
     allFish = data;
     renderInventory(document.getElementById('panel-body'));
 }
+
 async function buyItem(column, price, qty) {
     try {
-        // 1. Obtener saldo actual del perfil
         const { data: profile, error: fetchError } = await supabase.from('profiles')
             .select('pearls_balance, ' + column)
             .eq('id', currentUser.id)
@@ -789,13 +803,11 @@ async function buyItem(column, price, qty) {
             return;
         }
 
-        // 2. Verificar si tiene suficiente dinero
         if (profile.pearls_balance < price) {
             alert("❌ No tienes suficientes perlas (PRL).");
             return;
         }
 
-        // 3. Procesar la compra en Supabase
         const { error: updateError } = await supabase.from('profiles').update({
             pearls_balance: profile.pearls_balance - price,
             [column]: (profile[column] || 0) + qty
@@ -806,14 +818,18 @@ async function buyItem(column, price, qty) {
             return;
         }
 
-        // 4. Éxito: Actualizar la interfaz
+        // --- REGISTRO EN EL HISTORIAL ---
+        await registrarLog('acuario_logs', {
+            accion: 'tienda',
+            monto_prl: -price,
+            descripcion: `Compró ${qty}x artículo (${column.replace('_', ' ').toUpperCase()})`
+        });
+
         alert(`¡Compra exitosa! Has recibido ${qty} unidad(es).`);
-        await checkFirstInvestment(); // <--- AGREGAR AQUÍ
+        await checkFirstInvestment(); 
         
-        // Recargar datos para que se vea el nuevo saldo y cantidad
         await loadProfile();
         
-        // Volver a renderizar la tienda para que el modal se actualice
         const panelBody = document.getElementById('panel-body');
         if (panelBody) renderShop(panelBody);
 
