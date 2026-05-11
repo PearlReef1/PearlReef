@@ -407,12 +407,12 @@ function renderEggRow(container, fish, now) {
     if (!currentEggImg.endsWith('.png')) currentEggImg += '.png';
 
     container.innerHTML = `
-        <div style="text-align: center; padding: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-            <div class="egg-container" style="position: relative;">
-                <img src="${RAW_BASE}${currentEggImg}?raw=true" 
-                     style="width:80px; height:80px; object-fit:contain; 
-                     filter: ${isReady ? 'drop-shadow(0 0 15px #f59e0b) brightness(1.1)' : 'drop-shadow(0 0 5px rgba(255,255,255,0.1))'};
-                     animation: ${isReady ? 'pulse 1.5s infinite' : 'none'};">
+    <div style="text-align: center; padding: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div class="egg-container" style="position: relative;">
+            <img src="${RAW_BASE}${currentEggImg}?raw=true" 
+                 class="${isReady ? 'egg-pulse egg-ready-glow' : ''}" 
+                 style="width:85px; height:85px; object-fit:contain; 
+                 transition: all 0.3s ease;">
             </div>
 
             <div style="width: 100%;">
