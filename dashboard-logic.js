@@ -194,38 +194,43 @@ function createSwimmingFish(fish) {
     setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
 async function switchTab(tab, btn) {
-    // Manejo de clases activas en el menú
+    // 1. Manejo de clases activas
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
     
     const panel = document.getElementById('content-panel');
-    const body = document.getElementById('panel-body');
-    const title = document.getElementById('panel-title');
     const mainGrid = document.getElementById('main-aquarium-grid');
 
+    // 2. Lógica específica para Acuario
     if (tab === 'acuario') { 
         if (panel) panel.style.display = 'none'; 
         if (mainGrid) {
-            mainGrid.style.display = 'block';
-            // IMPORTANTE: Solo renderizamos si tenemos los datos del usuario
+            mainGrid.style.display = 'block'; // Mostramos el contenedor
+            // Esperamos un instante a que el usuario esté cargado
             if (currentUser) {
                 renderInventory(mainGrid); 
+            } else {
+                // Si aún no carga el usuario, reintentamos en breve
+                setTimeout(() => renderInventory(mainGrid), 500);
             }
         }
         return; 
     }
 
+    // 3. Resto de pestañas
     if (mainGrid) mainGrid.style.display = 'none';
     if (panel) panel.style.display = 'flex';
     
+    const body = document.getElementById('panel-body');
+    const title = document.getElementById('panel-title');
+    
     if (tab === 'deposito') {
         title.innerText = "Depósito de USDT";
-    } else {
-        title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
+        renderDeposit(body);
+    } else if (tab === 'tienda') {
+        title.innerText = "Tienda";
+        renderShop(body);
     }
-
-    if (tab === 'tienda') renderShop(body);
-    if (tab === 'deposito') renderDeposit(body); 
 }
 function renderInventory(container) {
     if (!container) return;
@@ -1495,20 +1500,14 @@ function updateWithdrawCalc() {
         <p style="margin: 5px 0 0 0; font-size: 1rem; color: #2ecc71;">Recibirás: <strong>${neto} USDT</strong></p>
     `;
 }
-// Reemplaza el bloque final de tu dashboard-logic.js con esto:
-async function initDashboard() {
-    // 1. Esperamos un momento a que la sesión de Supabase se asiente
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-        // Buscamos el botón de acuario
-        const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
-                                 .find(btn => btn.innerText.includes('Acuario'));
-        
-        // Ejecutamos el switchTab
-        switchTab('acuario', aquariumBtn);
+// Este bloque debe ir al final de dashboard-logic.js
+supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' || session) {
+        // Un pequeño delay para asegurar que el DOM está listo
+        setTimeout(() => {
+            const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
+                                     .find(btn => btn.innerText.includes('Acuario'));
+            switchTab('acuario', aquariumBtn);
+        }, 300);
     }
-}
-
-// Ejecutar inicialización
-document.addEventListener('DOMContentLoaded', initDashboard);
+});
