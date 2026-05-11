@@ -397,3 +397,12 @@ body {
     50% { transform: scale(1.1); }
     100% { transform: scale(1); }
 }
+.egg-pulse {
+    animation: pulse 1.5s infinite ease-in-out;
+    display: inline-block; /* Asegura que el transform funcione bien */
+}
+
+/* Opcional: un brillo extra cuando esté listo */
+.egg-ready-glow {
+    filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.7)) brightness(1.2);
+}
