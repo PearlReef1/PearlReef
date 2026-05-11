@@ -206,12 +206,13 @@ async function switchTab(tab, btn) {
         if (panel) panel.style.display = 'none'; 
         if (mainGrid) {
             mainGrid.style.display = 'block'; // Mostramos el contenedor
-            // Esperamos un instante a que el usuario esté cargado
+            
+            // Si el usuario ya cargó, renderizamos. Si no, esperamos a que el flujo de Supabase termine.
             if (currentUser) {
                 renderInventory(mainGrid); 
             } else {
-                // Si aún no carga el usuario, reintentamos en breve
-                setTimeout(() => renderInventory(mainGrid), 500);
+                // Pequeño reintento por si la sesión de Supabase tarda milisegundos más
+                setTimeout(() => { if(currentUser) renderInventory(mainGrid); }, 500);
             }
         }
         return; 
@@ -231,6 +232,30 @@ async function switchTab(tab, btn) {
         title.innerText = "Tienda";
         renderShop(body);
     }
+}
+
+/**
+ * LÓGICA DE AUTOCLICK INICIAL
+ * Busca el botón de Acuario y lo presiona automáticamente al cargar
+ */
+function autoActivateAcuario() {
+    const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
+                             .find(btn => btn.innerText.includes('Acuario'));
+
+    if (aquariumBtn) {
+        console.log("Sistema: Activando vista de Acuario automáticamente...");
+        switchTab('acuario', aquariumBtn);
+    } else {
+        // Si los botones aún no se han renderizado, reintenta en 100ms
+        setTimeout(autoActivateAcuario, 100);
+    }
+}
+
+// Disparamos la búsqueda en cuanto el DOM base esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoActivateAcuario);
+} else {
+    autoActivateAcuario();
 }
 function renderInventory(container) {
     if (!container) return;
@@ -1500,14 +1525,20 @@ function updateWithdrawCalc() {
         <p style="margin: 5px 0 0 0; font-size: 1rem; color: #2ecc71;">Recibirás: <strong>${neto} USDT</strong></p>
     `;
 }
-// Este bloque debe ir al final de dashboard-logic.js
-supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' || session) {
-        // Un pequeño delay para asegurar que el DOM está listo
-        setTimeout(() => {
-            const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
-                                     .find(btn => btn.innerText.includes('Acuario'));
-            switchTab('acuario', aquariumBtn);
-        }, 300);
+// Al final de dashboard-logic.js
+const forceInitialTab = () => {
+    // Buscamos el botón que tenga el texto "Acuario"
+    const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
+                             .find(btn => btn.innerText.includes('Acuario'));
+
+    if (aquariumBtn) {
+        console.log("Simulando clic en Acuario...");
+        aquariumBtn.click();
+    } else {
+        // Si aún no aparece el botón, reintentamos en 100ms
+        setTimeout(forceInitialTab, 100);
     }
-});
+};
+
+// Iniciamos la búsqueda en cuanto cargue el DOM
+document.addEventListener('DOMContentLoaded', forceInitialTab);
