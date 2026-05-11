@@ -664,7 +664,6 @@ function renderShop(container) {
         <div class="shop-wrapper">
             <h4 style="color:var(--primary); margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:5px;">Mercado de Huevos</h4>
             <div class="shop-row eggs-row">
-                <!-- Se pasan las URLs directas de los assets proporcionados -->
                 ${renderEggCard('Arrecife', '1,000', 'Común (85%) / Poco Común (15%)', '3h', 'https://github.com/PearlReef1/PearlReef/blob/main/assets/huevo_comun.png?raw=true')}
                 ${renderEggCard('Abisal', '2,500', 'Raro (80%) / Legendario (20%)', '6h', 'https://github.com/PearlReef1/PearlReef/blob/main/assets/huevo_raro.png?raw=true')}
                 ${renderEggCard('Ancestral', '6,000', 'Legendario (90%) / Mítico (10%)', '12h', 'https://github.com/PearlReef1/PearlReef/blob/main/assets/huevo_legendario.png?raw=true')}
@@ -680,7 +679,7 @@ function renderShop(container) {
                             <p style="font-size:0.75rem; color:#666; margin:2px 0 0 0;">Contiene 2 cañas. Límite diario: 4 sesiones de pesca.</p>
                         </div>
                     </div>
-                    <button class="btn-buy" onclick="buyItem('fishing_rods', 15, 2)" style="min-width: 120px;">${PRL_ICON} 15 $PRL</button>
+                    <button class="btn-buy" onclick="if(confirm('¿Comprar Pack de Cañas por 15 $PRL?')) { buyItem('fishing_rods', 15, 2); } " style="min-width: 120px;">${PRL_ICON} 15 $PRL</button>
                 </div>
             </div>
 
@@ -690,19 +689,19 @@ function renderShop(container) {
                     <div style="font-size:2rem;">${FOOD_TYPES.plancton.icon}</div>
                     <h5>Plancton (x10)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.plancton.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('plancton', 20, 10)">${PRL_ICON} 20 $PRL</button>
+                    <button class="btn-buy" onclick="if(confirm('¿Comprar 10x Plancton por 20 $PRL?')) { buyFood('plancton', 20, 10); } ">${PRL_ICON} 20 $PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.basic.icon}</div>
                     <h5>Pack Algas (x10)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.basic.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('basic', 50, 10)">${PRL_ICON} 50 $PRL</button>
+                    <button class="btn-buy" onclick="if(confirm('¿Comprar 10x Algas por 50 $PRL?')) { buyFood('basic', 50, 10); } ">${PRL_ICON} 50 $PRL</button>
                 </div>
                 <div class="shop-card">
                     <div style="font-size:2rem;">${FOOD_TYPES.rare.icon}</div>
                     <h5>Cebo Especial (x5)</h5>
                     <p style="font-size:0.75rem; color:#666;">+${FOOD_TYPES.rare.xp} XP por unidad</p>
-                    <button class="btn-buy" onclick="buyFood('rare', 250, 5)">${PRL_ICON} 250 $PRL</button>
+                    <button class="btn-buy" onclick="if(confirm('¿Comprar 5x Cebos por 250 $PRL?')) { buyFood('rare', 250, 5); } ">${PRL_ICON} 250 $PRL</button>
                 </div>
             </div>
         </div>
