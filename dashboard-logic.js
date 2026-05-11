@@ -194,36 +194,35 @@ function createSwimmingFish(fish) {
     setTimeout(() => moveFishRandomly(fishGroup), 100);
 }
 async function switchTab(tab, btn) {
-    // 1. Manejo de clases activas
+    // 1. Manejo de clases activas en el menú
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
     
     const panel = document.getElementById('content-panel');
+    const body = document.getElementById('panel-body');
+    const title = document.getElementById('panel-title');
     const mainGrid = document.getElementById('main-aquarium-grid');
 
-    // 2. Lógica específica para Acuario
+    // 2. Lógica para mostrar el Acuario (Grid Principal)
     if (tab === 'acuario') { 
         if (panel) panel.style.display = 'none'; 
         if (mainGrid) {
-            mainGrid.style.display = 'block'; // Mostramos el contenedor
+            mainGrid.style.display = 'block'; // Lo hacemos visible
             
-            // Si el usuario ya cargó, renderizamos. Si no, esperamos a que el flujo de Supabase termine.
+            // Verificamos si el usuario ya cargó para renderizar los peces
             if (currentUser) {
                 renderInventory(mainGrid); 
             } else {
-                // Pequeño reintento por si la sesión de Supabase tarda milisegundos más
+                // Si no ha cargado, esperamos un poco y reintentamos solo el render
                 setTimeout(() => { if(currentUser) renderInventory(mainGrid); }, 500);
             }
         }
         return; 
     }
 
-    // 3. Resto de pestañas
+    // 3. Lógica para otras pestañas (Tienda/Depósito) en el panel lateral
     if (mainGrid) mainGrid.style.display = 'none';
     if (panel) panel.style.display = 'flex';
-    
-    const body = document.getElementById('panel-body');
-    const title = document.getElementById('panel-title');
     
     if (tab === 'deposito') {
         title.innerText = "Depósito de USDT";
@@ -231,32 +230,29 @@ async function switchTab(tab, btn) {
     } else if (tab === 'tienda') {
         title.innerText = "Tienda";
         renderShop(body);
+    } else {
+        title.innerText = tab.charAt(0).toUpperCase() + tab.slice(1);
     }
 }
 
-/**
- * LÓGICA DE AUTOCLICK INICIAL
- * Busca el botón de Acuario y lo presiona automáticamente al cargar
- */
-function autoActivateAcuario() {
+// --- SISTEMA DE INICIO AUTOMÁTICO ---
+// Esta función se asegura de que el Acuario se active SOLO cuando el usuario esté listo
+function checkAndBoot() {
     const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
                              .find(btn => btn.innerText.includes('Acuario'));
 
-    if (aquariumBtn) {
-        console.log("Sistema: Activando vista de Acuario automáticamente...");
+    // Si el botón existe Y ya tenemos los datos del usuario (currentUser)
+    if (aquariumBtn && currentUser) {
+        console.log("Sistema listo. Activando Acuario...");
         switchTab('acuario', aquariumBtn);
     } else {
-        // Si los botones aún no se han renderizado, reintenta en 100ms
-        setTimeout(autoActivateAcuario, 100);
+        // Si falta algo, reintentamos cada 100ms hasta que todo esté listo
+        setTimeout(checkAndBoot, 100);
     }
 }
 
-// Disparamos la búsqueda en cuanto el DOM base esté listo
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', autoActivateAcuario);
-} else {
-    autoActivateAcuario();
-}
+// Ejecutamos la vigilancia de inicio
+checkAndBoot();
 function renderInventory(container) {
     if (!container) return;
     const now = new Date();
@@ -1525,20 +1521,3 @@ function updateWithdrawCalc() {
         <p style="margin: 5px 0 0 0; font-size: 1rem; color: #2ecc71;">Recibirás: <strong>${neto} USDT</strong></p>
     `;
 }
-// Al final de dashboard-logic.js
-const forceInitialTab = () => {
-    // Buscamos el botón que tenga el texto "Acuario"
-    const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
-                             .find(btn => btn.innerText.includes('Acuario'));
-
-    if (aquariumBtn) {
-        console.log("Simulando clic en Acuario...");
-        aquariumBtn.click();
-    } else {
-        // Si aún no aparece el botón, reintentamos en 100ms
-        setTimeout(forceInitialTab, 100);
-    }
-};
-
-// Iniciamos la búsqueda en cuanto cargue el DOM
-document.addEventListener('DOMContentLoaded', forceInitialTab);
