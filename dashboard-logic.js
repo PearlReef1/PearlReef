@@ -1656,18 +1656,29 @@ async function renderHistory(container) {
                             if(log.accion === 'recoleccion') icon = "✨";
                             if(log.accion === 'comida') icon = "🥣";
                             if(log.accion === 'subida_nivel') icon = "🆙";
+                            if(log.accion === 'tienda') icon = "🛍️";
+
+                            // --- TRADUCTOR VISUAL (Limpia "BASIC" por "ALGAS", etc.) ---
+                            let descripcionLimpia = log.descripcion
+                                .replace('BASIC', 'ALGAS 🌿')
+                                .replace('PLANCTON', 'PLANCTON 🦠')
+                                .replace('RARE', 'CEBO 🦐');
                             
                             return `
                             <div style="padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <span style="font-size: 1.2rem;">${icon}</span>
                                     <div>
-                                        <div style="font-size: 0.8rem; font-weight: 600; color: #475569;">${log.descripcion}</div>
+                                        <div style="font-size: 0.8rem; font-weight: 600; color: #475569;">${descripcionLimpia}</div>
                                         <div style="font-size: 0.7rem; color: #94a3b8;">${new Date(log.created_at).toLocaleString()}</div>
                                     </div>
                                 </div>
                                 <div style="text-align: right;">
-                                    ${log.monto_prl > 0 ? `<div style="font-weight: bold; color: #3b82f6;">+${log.monto_prl} $PRL</div>` : ''}
+                                    ${log.monto_prl !== 0 ? `
+                                        <div style="font-weight: bold; color: ${log.monto_prl > 0 ? '#3b82f6' : '#e74c3c'};">
+                                            ${log.monto_prl > 0 ? '+' : ''}${log.monto_prl} $PRL
+                                        </div>
+                                    ` : ''}
                                 </div>
                             </div>
                             `;
