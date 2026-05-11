@@ -20,9 +20,13 @@ async function registrarLog(tabla, datos) {
         const { error } = await supabase
             .from(tabla)
             .insert([{ ...datos, user_id: currentUser.id }]);
-        if (error) console.error("Error guardando log:", error);
+        
+        if (error) {
+            // Esto te dará el mensaje real (ej: "new row violates row-level security policy")
+            console.error(`Error en tabla ${tabla}:`, error.message, error.details);
+        }
     } catch (e) {
-        console.error("Error en sistema de logs:", e);
+        console.error("Error crítico en sistema de logs:", e);
     }
 }
 // Función para actualizar el texto del tip en la pantalla sin recargar todo
