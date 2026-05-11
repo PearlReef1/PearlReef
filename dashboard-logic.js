@@ -549,17 +549,15 @@ async function completeFeeding(foodType) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true; 
 
+    // 1. Obtener datos iniciales (Mantenemos el await inicial necesario)
     const fishId = sessionStorage.getItem('feeding_fish_id');
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
     const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
 
     const now = new Date();
     const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
-    
-    // Cálculo de vida restante actual
     let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
     
-    // Limite: No permitir más de 24h de reserva (2 barras)
     if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
         showToast("El pez ya está lleno", "❌");
         document.getElementById('minigame-modal').style.display = 'none';
@@ -569,15 +567,11 @@ async function completeFeeding(foodType) {
 
     const foodCfg = FOOD_TYPES[foodType];
     
-    // 1. Descontar comida
-    await supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id);
-
-    // --- LÓGICA DE TIEMPO ---
+    // --- CÁLCULOS LÓGICOS ---
     let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
     let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
     let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
 
-    // 2. Lógica de XP y Nivel
     let newXP = (fish.current_xp || 0) + foodCfg.xp;
     let newLevel = fish.level || 1;
     let nextXP = fish.next_level_xp || 100;
@@ -590,69 +584,66 @@ async function completeFeeding(foodType) {
             nextXP = getNextLevelXP(newLevel);
             leveledUp = true;
         }
-    } else {
-        if (newXP > nextXP) newXP = nextXP;
+    } else if (newXP > nextXP) {
+        newXP = nextXP;
     }
 
-    // 3. Guardar en Supabase
-    await supabase.from('user_fish').update({ 
-        last_fed: newFedDate.toISOString(),
-        current_xp: newXP,
-        level: newLevel,
-        next_level_xp: nextXP
-    }).eq('id', fishId);
-
-    // --- REGISTRO EN EL HISTORIAL (TRADUCCIÓN DE NOMBRES) ---
-    const nombresComida = {
-        'plancton': 'PLANCTON 🦠',
-        'basic': 'ALGAS 🌿',
-        'rare': 'CEBO 🦐'
-    };
-    const nombreBonito = nombresComida[foodType] || foodType.toUpperCase();
-
-    // Registramos la alimentación
-    await registrarLog('acuario_logs', {
-        pez_id: fishId,
-        accion: 'comida',
-        monto_prl: 0,
-        descripcion: `Alimentado con ${nombreBonito} (+${foodCfg.xp} XP). Pez ID #${fishId.toString().slice(0,4)}`
-    });
-
-    // Si subió de nivel, registramos el evento por separado para que resalte
-    if (leveledUp) {
-        await registrarLog('acuario_logs', {
-            pez_id: fishId,
-            accion: 'subida_nivel',
-            monto_prl: 0,
-            descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}. Pez ID #${fishId.toString().slice(0,4)}`
-        });
+    // --- ACTUALIZACIÓN OPTIMISTA (INSTANTÁNEA) ---
+    // Actualizamos el pez en nuestro array local antes de enviarlo a la DB
+    const fishIndex = allFish.findIndex(f => f.id == fishId);
+    if (fishIndex !== -1) {
+        allFish[fishIndex].level = newLevel;
+        allFish[fishIndex].current_xp = newXP;
+        allFish[fishIndex].next_level_xp = nextXP;
+        allFish[fishIndex].last_fed = newFedDate.toISOString();
     }
 
-    // --- NOTIFICACIONES DINÁMICAS ---
-    document.getElementById('minigame-modal').style.display = 'none';
-
-    if (leveledUp) {
-        showToast(`¡NIVEL SUBIDO! Ahora eres Nivel ${newLevel}`, '🆙');
-    } else {
-        showToast(`¡Pez alimentado! +${foodCfg.xp} XP`, foodCfg.icon || '🥣');
-    }
-
-    // --- REFRESCAR INTERFAZ SINCRONIZADA ---
-    await loadProfile();
-    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
-    allFish = data;
-
-    // Detectar dónde renderizar (Cuadrícula central o panel lateral)
+    // Renderizado inmediato en la interfaz
     const mainGrid = document.getElementById('main-aquarium-grid');
     const panelBody = document.getElementById('panel-body');
-
-    if (mainGrid && mainGrid.style.display !== 'none') {
-        renderInventory(mainGrid); 
-    } else {
-        renderInventory(panelBody);
-    }
+    (mainGrid && mainGrid.style.display !== 'none') ? renderInventory(mainGrid) : renderInventory(panelBody);
     
-    isProcessingFeeding = false; 
+    document.getElementById('minigame-modal').style.display = 'none';
+    leveledUp ? showToast(`¡NIVEL SUBIDO! Nivel ${newLevel}`, '🆙') : showToast(`¡Pez alimentado!`, foodCfg.icon || '🥣');
+
+    // --- PROCESAMIENTO EN PARALELO (BACKEND) ---
+    // Lanzamos todas las peticiones a la vez para ahorrar tiempo de espera
+    try {
+        const promesas = [
+            supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id),
+            supabase.from('user_fish').update({ 
+                last_fed: newFedDate.toISOString(),
+                current_xp: newXP,
+                level: newLevel,
+                next_level_xp: nextXP
+            }).eq('id', fishId),
+            registrarLog('acuario_logs', {
+                pez_id: fishId,
+                accion: 'comida',
+                monto_prl: 0,
+                descripcion: `Alimentado con ${(foodType === 'basic' ? 'ALGAS 🌿' : foodType.toUpperCase())} (+${foodCfg.xp} XP)`
+            })
+        ];
+
+        if (leveledUp) {
+            promesas.push(registrarLog('acuario_logs', {
+                pez_id: fishId,
+                accion: 'subida_nivel',
+                monto_prl: 0,
+                descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}.`
+            }));
+        }
+
+        await Promise.all(promesas);
+        
+        // Actualizar perfil (monedas/comida) en segundo plano
+        loadProfile(); 
+
+    } catch (err) {
+        console.error("Error en la sincronización:", err);
+    } finally {
+        isProcessingFeeding = false; 
+    }
 }
 function updateAquariumState() {
     const panel = document.getElementById('content-panel');
