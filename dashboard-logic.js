@@ -241,6 +241,9 @@ async function switchTab(tab, btn) {
     } else if (tab === 'tienda') {
         title.innerText = "Tienda";
         renderShop(body);
+    } else if (tab === 'historial') {
+        title.innerText = "Historial de Actividad";
+        renderHistory(body); // Llama a la función que renderiza las tablas de logs
     }
 }
 function renderInventory(container) {
@@ -1580,3 +1583,83 @@ function bootGame() {
 
 // Iniciamos la vigilancia
 bootGame();
+async function renderHistory(container) {
+    container.innerHTML = `<div style="text-align:center; padding:40px; color:#3b82f6;">⌛ Cargando tus registros...</div>`;
+
+    try {
+        // 1. Consultar ambas tablas en paralelo
+        const [finanzasRes, acuarioRes] = await Promise.all([
+            supabase.from('finanzas_logs').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(20),
+            supabase.from('acuario_logs').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(30)
+        ]);
+
+        if (finanzasRes.error) throw finanzasRes.error;
+        if (acuarioRes.error) throw acuarioRes.error;
+
+        const fLogs = finanzasRes.data || [];
+        const aLogs = acuarioRes.data || [];
+
+        container.innerHTML = `
+            <div style="padding: 15px; display: flex; flex-direction: column; gap: 25px;">
+                
+                <div>
+                    <h3 style="color: #1e293b; margin-bottom: 10px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                        💰 Movimientos de USDT
+                    </h3>
+                    <div style="background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+                        ${fLogs.length === 0 ? '<p style="padding:20px; color:#94a3b8; text-align:center;">No hay movimientos de dinero aún.</p>' : 
+                        fLogs.map(log => `
+                            <div style="padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: ${log.tipo === 'deposito' ? '#2ecc71' : '#e74c3c'};">
+                                        ${log.tipo.toUpperCase()}
+                                    </div>
+                                    <div style="font-size: 0.7rem; color: #94a3b8;">${new Date(log.created_at).toLocaleString()}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-weight: bold; color: #1e293b;">${log.monto_usdt > 0 ? '+' : ''}${log.monto_usdt} USDT</div>
+                                    <div style="font-size: 0.65rem; color: #64748b;">${log.detalles || ''}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="color: #1e293b; margin-bottom: 10px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                        🐠 Actividad de los Peces
+                    </h3>
+                    <div style="background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+                        ${aLogs.length === 0 ? '<p style="padding:20px; color:#94a3b8; text-align:center;">No hay actividad registrada.</p>' : 
+                        aLogs.map(log => {
+                            let icon = "📝";
+                            if(log.accion === 'recoleccion') icon = "✨";
+                            if(log.accion === 'comida') icon = "🥣";
+                            if(log.accion === 'subida_nivel') icon = "🆙";
+                            
+                            return `
+                            <div style="padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.2rem;">${icon}</span>
+                                    <div>
+                                        <div style="font-size: 0.8rem; font-weight: 600; color: #475569;">${log.descripcion}</div>
+                                        <div style="font-size: 0.7rem; color: #94a3b8;">${new Date(log.created_at).toLocaleString()}</div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    ${log.monto_prl > 0 ? `<div style="font-weight: bold; color: #3b82f6;">+${log.monto_prl} $PRL</div>` : ''}
+                                </div>
+                            </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+            </div>
+        `;
+
+    } catch (err) {
+        console.error("Error al renderizar historial:", err);
+        container.innerHTML = `<div style="padding:20px; color:red;">Error al cargar el historial.</div>`;
+    }
+}
