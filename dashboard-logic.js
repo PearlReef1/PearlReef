@@ -14,6 +14,17 @@ const tips = [
     "🥣 ¡Alimentar a tus peces les da XP para alcanzar el siguiente nivel!",
     ];
 
+// Función para registrar eventos en el historial
+async function registrarLog(tabla, datos) {
+    try {
+        const { error } = await supabase
+            .from(tabla)
+            .insert([{ ...datos, user_id: currentUser.id }]);
+        if (error) console.error("Error guardando log:", error);
+    } catch (e) {
+        console.error("Error en sistema de logs:", e);
+    }
+}
 // Función para actualizar el texto del tip en la pantalla sin recargar todo
 setInterval(() => {
     currentTipIndex = (currentTipIndex + 1) % tips.length;
@@ -584,6 +595,25 @@ async function completeFeeding(foodType) {
         next_level_xp: nextXP
     }).eq('id', fishId);
 
+    // --- REGISTRO EN EL HISTORIAL (NUEVO) ---
+    // Registramos la alimentación
+    await registrarLog('acuario_logs', {
+        pez_id: fishId,
+        accion: 'comida',
+        monto_prl: 0,
+        descripcion: `Alimentado con ${foodType.toUpperCase()} (+${foodCfg.xp} XP). Pez ID #${fishId.toString().slice(0,4)}`
+    });
+
+    // Si subió de nivel, registramos el evento por separado para que resalte
+    if (leveledUp) {
+        await registrarLog('acuario_logs', {
+            pez_id: fishId,
+            accion: 'subida_nivel',
+            monto_prl: 0,
+            descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}. Pez ID #${fishId.toString().slice(0,4)}`
+        });
+    }
+
     // --- NOTIFICACIONES DINÁMICAS ---
     document.getElementById('minigame-modal').style.display = 'none';
 
@@ -799,6 +829,7 @@ async function claimPearls(fishId) {
         const amountToClaim = Number(fish.accumulated_pearls);
         const newBalance = Number(profile.pearls_balance) + amountToClaim;
         
+        // Ejecutamos las actualizaciones
         await supabase.from('profiles').update({ pearls_balance: newBalance }).eq('id', currentUser.id);
         await supabase.from('user_fish').update({ 
             accumulated_pearls: 0, 
@@ -806,8 +837,15 @@ async function claimPearls(fishId) {
             last_claim: new Date().toISOString() 
         }).eq('id', fishId);
 
+        // --- REGISTRO EN EL HISTORIAL (LOGS) ---
+        await registrarLog('acuario_logs', {
+            pez_id: fishId,
+            accion: 'recoleccion',
+            monto_prl: amountToClaim,
+            descripcion: `Recolección de perlas del Submarino #${fishId.toString().slice(0,4)}`
+        });
+
         // --- FEEDBACK VISUAL (MENSAJE) ---
-        // Usamos la URL de la perla que ya tienes definida en tus constantes
         const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
         const iconHtml = `<img src="${prlImg}" style="width:20px; height:20px; vertical-align:middle;">`;
         showToast(`¡Has recolectado ${amountToClaim.toFixed(2)} Perlas!`, iconHtml);
@@ -1166,6 +1204,14 @@ async function verifyDepositAction() {
                     <b style="color: #2ecc71;">¡DEPÓSITO DETECTADO! +${data.added} USDT</b>
                 </div>`;
             
+            // --- REGISTRO EN EL HISTORIAL (NUEVO) ---
+            await registrarLog('finanzas_logs', {
+                tipo: 'deposito',
+                monto_usdt: data.added,
+                status: 'completado',
+                detalles: 'Depósito USDT verificado en la red BEP20'
+            });
+            
             // --- ACTUALIZACIÓN AUTOMÁTICA ---
             // Llamamos a la función que ya actualizamos para que refresque el contador visual
             if (typeof loadProfile === 'function') {
@@ -1468,11 +1514,22 @@ async function confirmWithdrawal() {
         // Error devuelto específicamente por la lógica de la función (ej. Saldo insuficiente)
         if (data && data.error) throw new Error(data.error);
 
+        // --- REGISTRO EN EL HISTORIAL (NUEVO) ---
+        await registrarLog('finanzas_logs', {
+            tipo: 'retiro',
+            monto_usdt: -amount, // Se guarda en negativo porque es una salida
+            status: 'completado',
+            detalles: `Retiro enviado a: ${address.slice(0,6)}...${address.slice(-4)}`
+        });
+
         // Éxito: El dinero ya está en camino
         showToast("¡Retiro enviado con éxito!", "✅");
         
         const panel = document.getElementById('content-panel');
         if (panel) panel.style.display = 'none';
+
+        // Recargamos el perfil para actualizar el saldo visualmente tras el retiro
+        if (typeof loadProfile === 'function') await loadProfile();
 
     } catch (err) {
         // Muestra el error real (venga de Supabase o de la lógica de Deno)
