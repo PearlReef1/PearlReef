@@ -1424,40 +1424,51 @@ async function confirmWithdrawal() {
     const addressInput = document.getElementById('withdraw-address');
     const btn = document.getElementById('btn-confirm-withdraw');
 
+    if (!amountInput || !addressInput || !btn) return;
+
     const amount = parseFloat(amountInput.value);
     const address = addressInput.value.trim();
 
-    // VALIDACIÓN CORREGIDA
-    if (isNaN(amount) || amount < 0.01) {
-        return showToast("Monto mínimo 0.01 USDT", "❌");
+    // VALIDACIÓN RESTAURADA A 5 USDT
+    if (isNaN(amount) || amount < 5) {
+        return showToast("Monto mínimo 5 USDT", "❌");
     }
     
     if (!address.startsWith('0x') || address.length < 42) {
         return showToast("Billetera inválida", "❌");
     }
 
-    // Bloqueo de seguridad
+    // Bloqueo de seguridad para evitar doble gasto
     btn.disabled = true;
     btn.innerText = "PROCESANDO...";
 
     try {
-        // Invocamos tu Edge Function de Deno
+        // Invocamos la Edge Function de Deno
         const { data, error } = await supabase.functions.invoke('process-withdrawal', {
-            body: { user_id: currentUser.id, amount: amount, address: address }
+            body: { 
+                user_id: currentUser.id, 
+                amount: amount, 
+                address: address 
+            }
         });
 
+        // Error de red o de invocación
         if (error) throw error;
         
-        // Si el servidor (Deno) devuelve un error, lo lanzamos para que lo atrape el catch
+        // Error devuelto específicamente por la lógica de la función (ej. Saldo insuficiente)
         if (data && data.error) throw new Error(data.error);
 
+        // Éxito: El dinero ya está en camino
         showToast("¡Retiro enviado con éxito!", "✅");
+        
         const panel = document.getElementById('content-panel');
         if (panel) panel.style.display = 'none';
 
     } catch (err) {
-        // Aquí se mostrará el mensaje que venga de la Edge Function (ej: "Saldo insuficiente")
+        // Muestra el error real (venga de Supabase o de la lógica de Deno)
         showToast(err.message || "Error en el servidor", "❌");
+        
+        // Reactivamos el botón solo si falló para que el usuario pueda corregir
         btn.disabled = false;
         btn.innerText = "CONFIRMAR RETIRO";
     }
