@@ -258,7 +258,10 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // 1. Cálculos de totales
+    // 1. Ordenar: Los huevos (is_egg === true) van PRIMERO en la lista
+    allFish.sort((a, b) => (b.is_egg === true ? 1 : 0) - (a.is_egg === true ? 1 : 0));
+
+    // 2. Cálculos de totales
     let prodTotal = 0, claimTotal = 0, hungryCount = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
@@ -269,7 +272,7 @@ function renderInventory(container) {
         }
     });
 
-    // 2. Render del Header de estadísticas
+    // 3. Render del Header de estadísticas
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
     header.style.flexDirection = 'column';
@@ -301,18 +304,22 @@ function renderInventory(container) {
         return;
     }
 
-    // 3. Render del Wrapper y Cards
+    // 4. Render del Wrapper y Cards
     const wrapper = document.createElement('div');
     wrapper.className = isMain ? 'grid-main-wrapper' : 'lista-lateral';
     
     allFish.forEach(fish => {
         const card = document.createElement('div');
         card.className = isMain ? 'card-main-aquarium' : 'mini-card';
-        // Añadimos un identificador visual si es un huevo para debugging
-        if (fish.is_egg) card.classList.add('egg-card');
-
+        
         if (fish.is_egg) {
-            // Usamos tu función renderEggRow pasándole la card como contenedor
+            card.classList.add('egg-card');
+            // Aplicamos un padding extra para que el huevo luzca centrado y grande como el pez
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.justifyContent = 'space-between';
+            card.style.padding = '20px';
+            
             renderEggRow(card, fish, now);
         } else {
             const lastFed = new Date(fish.last_fed || 0);
@@ -390,47 +397,46 @@ function renderEggRow(container, fish, now) {
     const msLeft = hatchTime - now;
     const isReady = msLeft <= 0;
 
-    // 1. Mapeamos el tipo de huevo a los nombres REALES de tus archivos en GitHub
     const eggImages = {
-        'Arrecife': 'huevo_comun.png',    // Antes tenías huevo_arrecife.png
-        'Abisal': 'huevo_raro.png',       // Antes tenías huevo_abisal.png
-        'Ancestral': 'huevo_legendario.png' // Antes tenías huevo_ancestral.png
+        'Arrecife': 'huevo_comun.png',
+        'Abisal': 'huevo_raro.png',
+        'Ancestral': 'huevo_legendario.png'
     };
     
-    // 2. Intentamos obtener la imagen del objeto, si no, usamos la de la base de datos, 
-    // y si no, el mapeo manual.
     let currentEggImg = eggImages[fish.egg_type] || fish.image_name || 'huevo_comun.png';
-
-    // Asegurarse de que no tenga duplicado el .png si ya viene de la base de datos
-    if (!currentEggImg.endsWith('.png')) {
-        currentEggImg += '.png';
-    }
+    if (!currentEggImg.endsWith('.png')) currentEggImg += '.png';
 
     container.innerHTML = `
-        <div style="text-align: center; min-width: 70px;">
-            <img src="${RAW_BASE}${currentEggImg}?raw=true" 
-                 style="width:50px; height:50px; object-fit:contain; 
-                 filter: ${isReady ? 'drop-shadow(0 0 10px #f59e0b) brightness(1.2)' : 'grayscale(0.3)'};">
-        </div>
-        <div style="flex-grow:1;">
-            <strong style="color: #e2e8f0;">Huevo ${fish.egg_type || 'Misterioso'}</strong>
-            <div style="font-size: 0.75rem; color: ${isReady ? '#f59e0b' : '#94a3b8'}; font-weight: ${isReady ? 'bold' : 'normal'};">
-                ${isReady ? '¡LISTO PARA ABRIR!' : `Eclosiona en: ${formatTime(msLeft)}`}
+        <div style="text-align: center; padding: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <div class="egg-container" style="position: relative;">
+                <img src="${RAW_BASE}${currentEggImg}?raw=true" 
+                     style="width:80px; height:80px; object-fit:contain; 
+                     filter: ${isReady ? 'drop-shadow(0 0 15px #f59e0b) brightness(1.1)' : 'drop-shadow(0 0 5px rgba(255,255,255,0.1))'};
+                     animation: ${isReady ? 'pulse 1.5s infinite' : 'none'};">
             </div>
+
+            <div style="width: 100%;">
+                <strong style="color: #f8fafc; font-size: 0.9rem; display: block; margin-bottom: 2px;">Huevo ${fish.egg_type}</strong>
+                <div style="font-size: 0.7rem; color: ${isReady ? '#fbbf24' : '#94a3b8'}; letter-spacing: 0.5px;">
+                    ${isReady ? '✨ ¡LISTO PARA ECLOSIONAR! ✨' : `Eclosiona en: <span style="font-family:monospace;">${formatTime(msLeft)}</span>`}
+                </div>
+            </div>
+
+            <button class="btn-buy" 
+                style="width: 100%;
+                       background: ${isReady ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#1e293b'}; 
+                       color: white; 
+                       border: none; 
+                       padding: 10px; 
+                       border-radius: 8px; 
+                       font-weight: bold; 
+                       cursor: ${isReady ? 'pointer' : 'default'};
+                       box-shadow: ${isReady ? '0 4px 15px rgba(245, 158, 11, 0.4)' : 'none'};
+                       transition: transform 0.2s;" 
+                ${isReady ? `onclick="hatchFish('${fish.id}')"` : ''}>
+                ${isReady ? 'ABRIR AHORA' : 'INCUBANDO'}
+            </button>
         </div>
-        <button class="btn-buy" 
-            style="background: ${isReady ? '#f59e0b' : '#334155'}; 
-                   color: white; 
-                   border: none; 
-                   padding: 8px 15px; 
-                   border-radius: 6px; 
-                   font-weight: bold; 
-                   box-shadow: 0 4px 0 ${isReady ? '#b45309' : '#1e293b'};
-                   cursor: ${isReady ? 'pointer' : 'default'};
-                   transition: all 0.2s;" 
-            ${isReady ? `onclick="hatchFish('${fish.id}')"` : ''}>
-            ${isReady ? 'ABRIR' : 'ESPERANDO'}
-        </button>
     `;
 }
 function formatTime(ms) {
