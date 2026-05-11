@@ -205,17 +205,17 @@ async function switchTab(tab, btn) {
 
     // Lógica para mostrar la cuadrícula del Acuario o los paneles laterales
     if (tab === 'acuario') { 
-        panel.style.display = 'none'; 
+        if (panel) panel.style.display = 'none'; // Oculta el panel lateral
         if (mainGrid) {
             mainGrid.style.display = 'block';
-            renderInventory(mainGrid); // Renderizamos la nueva cuadrícula técnica
+            renderInventory(mainGrid); 
         }
         return; 
     }
 
     // Si entramos a otra pestaña (Tienda/Depósito), ocultamos la cuadrícula
     if (mainGrid) mainGrid.style.display = 'none';
-    panel.style.display = 'flex';
+    if (panel) panel.style.display = 'flex';
     
     if (tab === 'deposito') {
         title.innerText = "Depósito de USDT";
@@ -1495,4 +1495,17 @@ function updateWithdrawCalc() {
         <p style="margin: 5px 0 0 0; font-size: 1rem; color: #2ecc71;">Recibirás: <strong>${neto} USDT</strong></p>
     `;
 }
+// Forzar que el Acuario sea la vista inicial al cargar el Dashboard
+document.addEventListener('DOMContentLoaded', () => {
+    // Buscamos el botón de la navegación que abre el acuario
+    // (Asegúrate de que tu botón tenga la clase .nav-btn)
+    const aquariumBtn = Array.from(document.querySelectorAll('.nav-btn'))
+                             .find(btn => btn.innerText.toLowerCase().includes('acuario'));
 
+    if (aquariumBtn) {
+        switchTab('acuario', aquariumBtn);
+    } else {
+        // Si no encuentra el botón por el texto, ejecuta la lógica directamente
+        switchTab('acuario', null);
+    }
+});
