@@ -745,87 +745,71 @@ async function buyFood(type, cost, quantity) {
 async function buyEgg(type, cost) {
     try {
         // 1. Obtener balance del perfil
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('pearls_balance')
-            .eq('id', currentUser.id)
+        const { data: profile } = await supabase.from('profiles').select('pearls_balance').eq('id', currentUser.id).single();
+        const costoNumerico = Number(cost.toString().replace(/,/g, ''));
+        if (profile.pearls_balance < costoNumerico) return showToast("No tienes suficientes perlas ⚪", "❌");
+
+        // 2. BUSCAR LOS DATOS EN TU LIBRERÍA
+        // Buscamos por el nombre que configuramos (Huevo Arrecife, etc.)
+        const { data: libData, error: libError } = await supabase
+            .from('fish_library') // Ajusta el nombre si tu tabla se llama distinto
+            .select('*')
+            .eq('name', `Huevo ${type}`)
             .single();
 
-        if (profileError) throw profileError;
-
-        const costoNumerico = Number(cost.toString().replace(/,/g, ''));
-        if (profile.pearls_balance < costoNumerico) {
-            return showToast("No tienes suficientes perlas ⚪", "❌");
+        if (libError || !libData) {
+            console.error("No se encontró el huevo en la librería:", libError);
+            return showToast("Error: Configuración de huevo no encontrada", "❌");
         }
 
-        // 2. Configurar tiempos (3h, 6h, 12h)
+        // 3. Configurar tiempo de eclosión
         let hatchHours = (type === 'Arrecife') ? 3 : (type === 'Abisal' ? 6 : 12);
         const hatchDate = new Date();
         hatchDate.setHours(hatchDate.getHours() + hatchHours);
 
-        // 3. Ejecutar transacciones
-        // Descontar balance
-        await supabase.from('profiles')
-            .update({ pearls_balance: profile.pearls_balance - costoNumerico })
-            .eq('id', currentUser.id);
+        // 4. Descontar balance
+        await supabase.from('profiles').update({ pearls_balance: profile.pearls_balance - costoNumerico }).eq('id', currentUser.id);
 
-        // INSERTAR EL HUEVO (Ajustado a tus nombres de columna reales)
+        // 5. INSERTAR EN USER_FISH (Usando los datos de la librería)
         const { error: insertError } = await supabase.from('user_fish').insert([{
             user_id: currentUser.id,
             is_egg: true,
             egg_type: type,
             egg_hatch_time: hatchDate.toISOString(),
-            rarity: 'Huevo',            // IMPORTANTE: Esto es temporal para el renderizado
-            species_name: 'Incubando',  // IMPORTANTE: Esto es temporal
-            image_name: 'pez_huevo',    // Imagen base
+            // Aquí mapeamos las columnas de la librería a tu tabla de usuario
+            rarity: libData.rarity,         
+            species_name: libData.name,    
+            image_name: libData.image_filename, // huevo_comun, huevo_raro, etc.
             level: 1,
+            daily_yield: 0,
             current_xp: 0,
             next_level_xp: 100,
-            daily_yield: 0,
             accumulated_pearls: 0,
             total_generated: 0,
             last_fed: new Date().toISOString(),
             birth_date: new Date().toISOString()
         }]);
 
-        if (insertError) {
-            console.error("Error de Supabase:", insertError.message);
-            return showToast(`Error: ${insertError.message}`, "❌");
-        }
-
-        // 4. Historial
-        await registrarLog('acuario_logs', {
-            accion: 'tienda',
-            monto_prl: -costoNumerico,
-            descripcion: `Compró Huevo de tipo: ${type.toUpperCase()} 🥚`
-        });
+        if (insertError) throw insertError;
 
         showToast(`¡Has comprado un Huevo de ${type}!`, "🥚");
 
-        // 5. ACTUALIZACIÓN CRÍTICA: Forzamos la recarga de allFish
+        // 6. Refrescar datos y cerrar panel
         await loadProfile();
-        
-        const { data: updatedList, error: fetchError } = await supabase
-            .from('user_fish')
-            .select('*')
-            .eq('user_id', currentUser.id);
-            
-        if (!fetchError) {
-            allFish = updatedList; // Ahora allFish tiene el huevo recién creado
-        }
+        const { data: updatedFish } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
+        allFish = updatedFish;
 
-        // 6. Cerrar tienda y renderizar acuario
+        // Cerrar panel lateral
         const sidePanel = document.getElementById('side-panel');
         if (sidePanel) sidePanel.classList.remove('open');
 
+        // Renderizar acuario
         const mainGrid = document.getElementById('main-aquarium-grid');
-        if (mainGrid) {
-            renderInventory(mainGrid);
-        }
+        if (mainGrid) renderInventory(mainGrid);
 
     } catch (err) {
-        console.error("Error crítico en buyEgg:", err);
-        showToast("Error en la operación", "❌");
+        console.error("Error en buyEgg:", err);
+        showToast("Error al procesar la compra", "❌");
     }
 }
 async function claimPearls(fishId) {
