@@ -258,7 +258,7 @@ function renderInventory(container) {
 
     const PRL_ICON = `<img src="${RAW_BASE}perla_economia.png?raw=true" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">`;
 
-    // 1. Cálculos de totales (Se mantiene igual)
+    // 1. Cálculos de totales
     let prodTotal = 0, claimTotal = 0, hungryCount = 0;
     allFish.forEach(f => {
         if (!f.is_egg) {
@@ -269,7 +269,7 @@ function renderInventory(container) {
         }
     });
 
-    // 2. Render del Header de estadísticas (Se mantiene igual)
+    // 2. Render del Header de estadísticas
     const header = document.createElement('div');
     header.className = isMain ? 'stats-header-main' : 'stats-dashboard-side';
     header.style.flexDirection = 'column';
@@ -287,42 +287,34 @@ function renderInventory(container) {
     `;
     container.appendChild(header);
 
-    // --- NUEVA VALIDACIÓN PARA JUGADORES SIN PECES ---
+    // Validación de acuario vacío
     if (!allFish || allFish.length === 0) {
         const emptyState = document.createElement('div');
-        emptyState.style.cssText = `
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 60px 20px; text-align: center; color: white; width: 100%;
-        `;
+        emptyState.style.cssText = `display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; color: white; width: 100%;`;
         emptyState.innerHTML = `
             <div style="font-size: 4rem; margin-bottom: 15px;">🌊</div>
             <h2 style="margin: 0; font-size: 1.5rem; color: #ffb703;">Tu Acuario está vacío</h2>
-            <p style="color: #94a3b8; font-size: 0.9rem; margin: 10px 0 25px 0; max-width: 300px;">
-                Adquiere tu primer submarino en la tienda para empezar a producir Perlas.
-            </p>
-            <button class="nav-btn" onclick="switchTab('tienda', this)" 
-                    style="background: #3b82f6; padding: 12px 30px; border-radius: 12px; border: none; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #1d4ed8;">
-                IR A LA TIENDA 🛒
-            </button>
+            <p style="color: #94a3b8; font-size: 0.9rem; margin: 10px 0 25px 0; max-width: 300px;">Adquiere tu primer submarino en la tienda para empezar a producir Perlas.</p>
+            <button class="nav-btn" onclick="switchTab('tienda', this)" style="background: #3b82f6; padding: 12px 30px; border-radius: 12px; border: none; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #1d4ed8;">IR A LA TIENDA 🛒</button>
         `;
         container.appendChild(emptyState);
-        return; // Terminamos la función aquí si no hay peces
+        return;
     }
 
-    // 3. Render del Wrapper y Cards (Solo si hay peces)
+    // 3. Render del Wrapper y Cards
     const wrapper = document.createElement('div');
     wrapper.className = isMain ? 'grid-main-wrapper' : 'lista-lateral';
     
     allFish.forEach(fish => {
         const card = document.createElement('div');
         card.className = isMain ? 'card-main-aquarium' : 'mini-card';
+        // Añadimos un identificador visual si es un huevo para debugging
+        if (fish.is_egg) card.classList.add('egg-card');
 
-        // ... El resto de tu código original de renderizado de cards ...
-        // (Pega aquí todo el bloque de fish.is_egg y las cards que ya tenías)
         if (fish.is_egg) {
+            // Usamos tu función renderEggRow pasándole la card como contenedor
             renderEggRow(card, fish, now);
         } else {
-            // ... (resto de tu lógica de renderizado que me pasaste arriba)
             const lastFed = new Date(fish.last_fed || 0);
             const msSinceFed = now - lastFed;
             const msUntilHungry = Math.max(0, (24 * 60 * 60 * 1000) - msSinceFed);
