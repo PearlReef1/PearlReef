@@ -1234,51 +1234,89 @@ async function renderDeposit(container) {
 
 async function handleSwap(amount, direction) {
     const { data: { session } } = await window.supabase.auth.getSession();
-    if (!session) throw new Error("No hay sesión activa");
+    if (!session) {
+        showToast("No hay sesión activa", "❌");
+        return;
+    }
 
     const userId = session.user.id;
 
-    // 1. Obtener datos con el nombre de columna correcto: pearls_balance
-    const { data: profile, error: fetchError } = await window.supabase
-        .from('profiles')
-        .select('balance_usdt, pearls_balance') // Corregido a plural según el error
-        .eq('id', userId)
-        .single();
+    try {
+        // 1. Obtener datos con el nombre de columna correcto: pearls_balance
+        const { data: profile, error: fetchError } = await window.supabase
+            .from('profiles')
+            .select('balance_usdt, pearls_balance')
+            .eq('id', userId)
+            .single();
 
-    if (fetchError || !profile) {
-        console.error("Error al obtener perfil:", fetchError);
-        throw new Error("No se pudo cargar tu perfil para realizar el cambio.");
+        if (fetchError || !profile) {
+            console.error("Error al obtener perfil:", fetchError);
+            showToast("No se pudo cargar tu perfil.", "❌");
+            return;
+        }
+
+        let newUSDT = profile.balance_usdt;
+        let newPRL = profile.pearls_balance;
+        let logDescripcion = "";
+        let prlCambio = 0;
+
+        // 2. Lógica de Intercambio y preparación de Log
+        if (direction === "USDT_TO_PRL") {
+            if (newUSDT < amount) {
+                showToast("Saldo USDT insuficiente", "❌");
+                return;
+            }
+            prlCambio = amount * 100;
+            newUSDT -= amount;
+            newPRL += prlCambio;
+            logDescripcion = `Intercambio: ${amount.toFixed(2)} USDT ➔ ${prlCambio} $PRL`;
+        } else {
+            if (newPRL < amount) {
+                showToast("Saldo $PRL insuficiente", "❌");
+                return;
+            }
+            prlCambio = -amount; // Negativo para indicar salida de perlas en el historial
+            newPRL -= amount;
+            newUSDT += (amount / 100);
+            logDescripcion = `Intercambio: ${amount} $PRL ➔ ${(amount / 100).toFixed(2)} USDT`;
+        }
+
+        // 3. Actualizar en Supabase
+        const { error: updateError } = await window.supabase
+            .from('profiles')
+            .update({ 
+                balance_usdt: newUSDT, 
+                pearls_balance: newPRL 
+            })
+            .eq('id', userId);
+
+        if (updateError) throw updateError;
+
+        // --- REGISTRO EN EL HISTORIAL (LOGS) ---
+        await registrarLog('acuario_logs', {
+            accion: 'swap',
+            monto_prl: prlCambio, 
+            descripcion: logDescripcion
+        });
+
+        // 4. Actualizar la interfaz visual
+        const usdtElem = document.getElementById('usdt-balance');
+        const prlElem = document.getElementById('pearl-balance');
+        
+        if (usdtElem) usdtElem.innerText = newUSDT.toFixed(2);
+        if (prlElem) prlElem.innerText = Math.floor(newPRL);
+
+        // Feedback con Toast (Usando la perla definida en tu sistema)
+        const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
+        showToast("¡Intercambio realizado con éxito!", `<img src="${prlImg}" style="width:20px; height:20px; vertical-align:middle;">`);
+
+        // Sincronizar perfil si la función existe
+        if (typeof loadProfile === "function") await loadProfile();
+
+    } catch (err) {
+        console.error("Error en handleSwap:", err);
+        showToast("Hubo un error al procesar el cambio.", "❌");
     }
-
-    let newUSDT = profile.balance_usdt;
-    let newPRL = profile.pearls_balance; // Corregido a plural
-
-    if (direction === "USDT_TO_PRL") {
-        if (newUSDT < amount) throw new Error("Saldo USDT insuficiente");
-        newUSDT -= amount;
-        newPRL += (amount * 100);
-    } else {
-        if (newPRL < amount) throw new Error("Saldo PRL insuficiente");
-        newPRL -= amount;
-        newUSDT += (amount / 100);
-    }
-
-    // 2. Actualizar en Supabase usando pearls_balance
-    const { error: updateError } = await window.supabase
-        .from('profiles')
-        .update({ 
-            balance_usdt: newUSDT, 
-            pearls_balance: newPRL // Corregido a plural
-        })
-        .eq('id', userId);
-
-    if (updateError) throw updateError;
-
-    // 3. Actualizar la interfaz visual
-    document.getElementById('usdt-balance').innerText = newUSDT.toFixed(2);
-    document.getElementById('pearl-balance').innerText = Math.floor(newPRL);
-
-    alert("¡Intercambio realizado con éxito!");
 }
 async function verifyDepositAction() {
     const btn = document.getElementById('btn-verify-deposit');
