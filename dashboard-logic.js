@@ -1020,30 +1020,50 @@ async function finishFishing() {
         return;
     }
 
-    // 2. Determinar recompensa (Probabilidades configuradas)
+    // 2. Determinar si la pesca es exitosa y qué recompensa recibe
     const rand = Math.random() * 100;
-    let rewardCol, rewardName;
+    let rewardCol = null;
+    let rewardName = "Nada (Intento fallido)";
+    let logIcon = "💨"; // Icono por defecto para cuando no pesca nada
 
-    if (rand < 60) { 
+    // Lógica de probabilidades (incluyendo fallo)
+    if (rand < 25) { 
+        // 25% de probabilidad de NO pescar nada
+        rewardCol = null;
+        rewardName = "Nada";
+        logIcon = "❌";
+    } else if (rand < 65) { // (65-25) = 40%
         rewardCol = 'marine_trash'; 
-        rewardName = "Restos Marinos"; 
-    } else if (rand < 85) { 
+        rewardName = "Restos Marinos";
+        logIcon = "🗑️";
+    } else if (rand < 85) { // 20%
         rewardCol = 'food_plancton'; 
-        rewardName = "Plancton"; 
-    } else if (rand < 97) { 
+        rewardName = "Plancton";
+        logIcon = "🦠";
+    } else if (rand < 95) { // 10%
         rewardCol = 'food_basic'; 
-        rewardName = "Algas"; 
-    } else { 
+        rewardName = "Algas";
+        logIcon = "🌿";
+    } else { // 5%
         rewardCol = 'food_rare'; 
-        rewardName = "Cebo Raro"; 
+        rewardName = "Cebo Raro";
+        logIcon = "💎";
     }
 
-    // 3. Ejecutar actualización: Restar caña, sumar intento diario y sumar recompensa
-    const { error: updateError } = await supabase.from('profiles').update({ 
+    // 3. Preparar objeto de actualización
+    const updateData = {
         fishing_rods: Math.max(0, (profile.fishing_rods || 0) - 1),
-        fishing_attempts_today: (profile.fishing_attempts_today || 0) + 1,
-        [rewardCol]: (profile[rewardCol] || 0) + 1
-    }).eq('id', currentUser.id);
+        fishing_attempts_today: (profile.fishing_attempts_today || 0) + 1
+    };
+
+    // Si hubo premio, lo sumamos al objeto de actualización
+    if (rewardCol) {
+        updateData[rewardCol] = (profile[rewardCol] || 0) + 1;
+    }
+
+    const { error: updateError } = await supabase.from('profiles')
+        .update(updateData)
+        .eq('id', currentUser.id);
 
     if (updateError) {
         alert("Hubo un problema al guardar tu progreso.");
@@ -1051,12 +1071,26 @@ async function finishFishing() {
         return;
     }
 
+    // --- REGISTRO EN EL HISTORIAL (LOGS) ---
+    const esExito = rewardCol !== null;
+    await registrarLog('acuario_logs', {
+        accion: 'pesca',
+        monto_prl: 0, // La pesca no da perlas directamente
+        icon: logIcon,
+        descripcion: esExito 
+            ? `Pesca exitosa: Encontraste ${rewardName}` 
+            : `Pesca fallida: No has encontrado nada`
+    });
+
     // 4. Feedback al usuario y refresco de interfaz
-    alert(`¡Buena pesca! 🎣\nGastaste 1 caña y encontraste: ${rewardName}.\nIntentos hoy: ${(profile.fishing_attempts_today || 0) + 1}/4`);
+    const mensajeAlerta = esExito 
+        ? `¡Buena pesca! 🎣\nEncontraste: ${rewardName}.` 
+        : `¡Mala suerte! 🌊\nNo has pescado nada esta vez.`;
+    
+    alert(`${mensajeAlerta}\nIntentos hoy: ${(profile.fishing_attempts_today || 0) + 1}/4`);
     
     closeFishingModal();
     
-    // Recargar perfil para actualizar contadores en el inventario/tienda
     if (typeof loadProfile === "function") {
         await loadProfile();
     }
