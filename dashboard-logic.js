@@ -453,9 +453,16 @@ async function hatchFish(fishId) {
     isProcessingFeeding = true;
 
     try {
-        const { data: egg } = await supabase.from('user_fish').select('egg_type').eq('id', fishId).single();
+        // 1. Obtener el tipo de huevo
+        const { data: egg, error: eggErr } = await supabase
+            .from('user_fish')
+            .select('egg_type')
+            .eq('id', fishId)
+            .single();
         
-        // 1. Decidir la rareza según el tipo de huevo
+        if (eggErr || !egg) throw new Error("No se encontró el huevo");
+
+        // 2. Lógica del dado (Rarezas sin tildes según tu CSV)
         const roll = Math.random() * 100;
         let selectedRarity;
 
@@ -466,51 +473,46 @@ async function hatchFish(fishId) {
         } else if (egg.egg_type === 'Ancestral') {
             selectedRarity = (roll < 90) ? 'Legendario' : 'Mitico';
         } else {
-            selectedRarity = 'Comun'; // Fallback por seguridad
+            selectedRarity = 'Comun';
         }
 
-        // 2. Buscar un pez al azar de esa rareza en la biblioteca
-// Cambiamos .eq por .ilike para ser más flexibles con el texto de la base de datos
-const { data: pool, error: poolError } = await supabase
-    .from('fish_library')
-    .select('*')
-    .ilike('rarity', selectedRarity); // ilike es más seguro que eq para strings
+        // 3. Buscar en la biblioteca usando ILIKE para evitar fallos por espacios
+        const { data: pool, error: poolError } = await supabase
+            .from('fish_library') // Nombre de tu tabla catálogo
+            .select('*')
+            .ilike('rarity', `%${selectedRarity}%`); 
+        
+        if (poolError || !pool || pool.length === 0) {
+            throw new Error(`La rareza '${selectedRarity}' no devolvió resultados en fish_library`);
+        }
 
-if (poolError || !pool || pool.length === 0) {
-    // Si falla, intentamos un fallback para que el usuario no pierda el huevo
-    console.warn(`Rareza ${selectedRarity} no encontrada, buscando Comun por defecto.`);
-    const { data: fallback } = await supabase.from('fish_library').select('*').ilike('rarity', 'Comun');
-    var species = fallback[Math.floor(Math.random() * fallback.length)];
-} else {
-    var species = pool[Math.floor(Math.random() * pool.length)];
-}
-        // 3. Transformar el huevo en el pez final
-        // NOTA: Asegúrate de que los nombres de las columnas coincidan con tu tabla user_fish
+        const species = pool[Math.floor(Math.random() * pool.length)];
+
+        // 4. ACTUALIZACIÓN en user_fish (Nombres exactos de tu tabla)
         const { error: updateError } = await supabase.from('user_fish').update({
             is_egg: false,
             rarity: species.rarity,
-            species_name: species.name,           // Nombre real: ej. "Pez Payaso"
-            image_name: species.image_filename,    // Nombre archivo: ej. "pez_comun_1"
-            daily_yield: species.base_yield,
+            species_name: species.name,           // species.name (libreria) -> species_name (user_fish)
+            image_name: species.image_filename,    // species.image_filename (libreria) -> image_name (user_fish)
+            daily_yield: species.base_yield,      // species.base_yield (libreria) -> daily_yield (user_fish)
             last_fed: new Date().toISOString(),
             current_xp: 0,
             level: 1,
-            next_level_xp: 100
+            next_level_xp: 100,
+            birth_date: new Date().toISOString()
         }).eq('id', fishId);
 
         if (updateError) throw updateError;
 
-        showToast(`¡SORPRESA! Ha nacido un ${species.name} (${species.rarity})`, "✨");
+        showToast(`¡Ha nacido un ${species.name}!`, "✨");
         
-        // 4. Refrescar datos
+        // 5. Refrescar datos y renderizar
         await loadProfile();
         const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
 
-        // 5. Re-renderizar ambas vistas
         renderInventory(document.getElementById('main-aquarium-grid'));
         
-        // Limpiar el acuario visual y volver a crearlos para que aparezca el nuevo pez nadando
         const bg = document.getElementById('aquarium-bg');
         if (bg) {
             bg.innerHTML = ''; 
@@ -518,8 +520,8 @@ if (poolError || !pool || pool.length === 0) {
         }
 
     } catch (err) {
-        console.error("Error en hatchFish:", err);
-        showToast("Error al abrir el huevo", "❌");
+        console.error("Error detallado:", err);
+        showToast(err.message, "❌");
     } finally {
         isProcessingFeeding = false;
     }
