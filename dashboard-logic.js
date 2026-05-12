@@ -840,7 +840,6 @@ async function claimPearls(fishId) {
         const amountToClaim = Number(fish.accumulated_pearls);
         const newBalance = Number(profile.pearls_balance) + amountToClaim;
         
-        // Ejecutamos las actualizaciones
         await supabase.from('profiles').update({ pearls_balance: newBalance }).eq('id', currentUser.id);
         await supabase.from('user_fish').update({ 
             accumulated_pearls: 0, 
@@ -848,29 +847,24 @@ async function claimPearls(fishId) {
             last_claim: new Date().toISOString() 
         }).eq('id', fishId);
 
-        // --- DEFINICIÓN DE IMAGEN DE PERLA ---
         const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
 
-        // --- REGISTRO EN EL HISTORIAL (LOGS) ---
-        // Formato: Recolección de $PRL Pez (Rareza) (ID)
+        // --- REGISTRO EN EL HISTORIAL (SIN COLUMNA ICON) ---
         await registrarLog('acuario_logs', {
             pez_id: fishId,
             accion: 'recoleccion',
             monto_prl: amountToClaim,
-            icon: prlImg, // Guardamos la URL de la imagen de la perla como icono
+            // Quitamos 'icon' para evitar el error 400
             descripcion: `Recolección de $PRL Pez ${fish.rarity} (#${fishId.toString().slice(0,4)})`
         });
 
-        // --- FEEDBACK VISUAL (TOAST) ---
         const iconHtml = `<img src="${prlImg}" style="width:20px; height:20px; vertical-align:middle;">`;
         showToast(`¡Has recolectado ${amountToClaim.toFixed(2)} $PRL!`, iconHtml);
 
-        // Recargamos datos actualizados
         await loadProfile();
         const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
 
-        // --- ACTUALIZACIÓN DE VISTA ---
         const mainGrid = document.getElementById('main-aquarium-grid');
         const panelBody = document.getElementById('panel-body');
 
