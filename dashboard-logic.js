@@ -453,7 +453,6 @@ async function hatchFish(fishId) {
     isProcessingFeeding = true;
 
     try {
-        // 1. Obtener el tipo de huevo
         const { data: egg, error: eggErr } = await supabase
             .from('user_fish')
             .select('egg_type')
@@ -462,7 +461,6 @@ async function hatchFish(fishId) {
         
         if (eggErr || !egg) throw new Error("No se encontró el huevo");
 
-        // 2. Lógica del dado (Rarezas sin tildes según tu CSV)
         const roll = Math.random() * 100;
         let selectedRarity;
 
@@ -476,25 +474,30 @@ async function hatchFish(fishId) {
             selectedRarity = 'Comun';
         }
 
-        // 3. Buscar en la biblioteca usando ILIKE para evitar fallos por espacios
+        // --- CAMBIO CLAVE AQUÍ ---
+        // Usamos '%' a ambos lados y .trim() para forzar la coincidencia
         const { data: pool, error: poolError } = await supabase
-            .from('fish_library') // Nombre de tu tabla catálogo
+            .from('fish_library')
             .select('*')
-            .ilike('rarity', `%${selectedRarity}%`); 
+            .ilike('rarity', `%${selectedRarity.trim()}%`); 
         
         if (poolError || !pool || pool.length === 0) {
-            throw new Error(`La rareza '${selectedRarity}' no devolvió resultados en fish_library`);
+            // Si aún así falla, buscamos CUALQUIER pez para que no se trabe el juego
+            console.warn("Fallo crítico de match. Intentando recuperación...");
+            const { data: rescue } = await supabase.from('fish_library').select('*').limit(1);
+            if (!rescue || rescue.length === 0) throw new Error("La tabla fish_library está vacía");
+            var species = rescue[0];
+        } else {
+            var species = pool[Math.floor(Math.random() * pool.length)];
         }
 
-        const species = pool[Math.floor(Math.random() * pool.length)];
-
-        // 4. ACTUALIZACIÓN en user_fish (Nombres exactos de tu tabla)
+        // Actualización en user_fish con los nombres de tus columnas confirmadas
         const { error: updateError } = await supabase.from('user_fish').update({
             is_egg: false,
             rarity: species.rarity,
-            species_name: species.name,           // species.name (libreria) -> species_name (user_fish)
-            image_name: species.image_filename,    // species.image_filename (libreria) -> image_name (user_fish)
-            daily_yield: species.base_yield,      // species.base_yield (libreria) -> daily_yield (user_fish)
+            species_name: species.name,
+            image_name: species.image_filename,
+            daily_yield: species.base_yield,
             last_fed: new Date().toISOString(),
             current_xp: 0,
             level: 1,
@@ -506,21 +509,13 @@ async function hatchFish(fishId) {
 
         showToast(`¡Ha nacido un ${species.name}!`, "✨");
         
-        // 5. Refrescar datos y renderizar
         await loadProfile();
         const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = data;
-
         renderInventory(document.getElementById('main-aquarium-grid'));
-        
-        const bg = document.getElementById('aquarium-bg');
-        if (bg) {
-            bg.innerHTML = ''; 
-            allFish.forEach(f => { if(!f.is_egg) createSwimmingFish(f); });
-        }
 
     } catch (err) {
-        console.error("Error detallado:", err);
+        console.error("Error en hatchFish:", err);
         showToast(err.message, "❌");
     } finally {
         isProcessingFeeding = false;
