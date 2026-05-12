@@ -856,15 +856,17 @@ async function buyItem(column, price, qty, itemName = "Artículo") {
         }
 
         // --- REGISTRO EN EL HISTORIAL (LOGS) ---
-        const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
+        // Eliminada la columna 'icon' para evitar el error 400
         await registrarLog('acuario_logs', {
+            pez_id: null, 
             accion: 'compra',
-            monto_prl: -price, // Monto en negativo porque es un gasto
-            icon: prlImg,
+            monto_prl: -price, 
             descripcion: `Compra de ${qty}x ${itemName} en la tienda`
         });
 
-        // 4. Éxito: Feedback y Actualizar la interfaz
+        // --- FEEDBACK VISUAL (TOAST) ---
+        // Aquí sí mantenemos el icono de la perla porque es parte del script visual, no de la DB
+        const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
         const iconHtml = `<img src="${prlImg}" style="width:20px; height:20px; vertical-align:middle;">`;
         showToast(`¡Compra exitosa! Has recibido ${qty} unidad(es).`, iconHtml);
         
