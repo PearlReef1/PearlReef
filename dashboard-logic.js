@@ -848,18 +848,22 @@ async function claimPearls(fishId) {
             last_claim: new Date().toISOString() 
         }).eq('id', fishId);
 
+        // --- DEFINICIÓN DE IMAGEN DE PERLA ---
+        const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
+
         // --- REGISTRO EN EL HISTORIAL (LOGS) ---
+        // Formato: Recolección de $PRL Pez (Rareza) (ID)
         await registrarLog('acuario_logs', {
             pez_id: fishId,
             accion: 'recoleccion',
             monto_prl: amountToClaim,
-            descripcion: `Recolección de perlas del Submarino #${fishId.toString().slice(0,4)}`
+            icon: prlImg, // Guardamos la URL de la imagen de la perla como icono
+            descripcion: `Recolección de $PRL Pez ${fish.rarity} (#${fishId.toString().slice(0,4)})`
         });
 
-        // --- FEEDBACK VISUAL (MENSAJE) ---
-        const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
+        // --- FEEDBACK VISUAL (TOAST) ---
         const iconHtml = `<img src="${prlImg}" style="width:20px; height:20px; vertical-align:middle;">`;
-        showToast(`¡Has recolectado ${amountToClaim.toFixed(2)} Perlas!`, iconHtml);
+        showToast(`¡Has recolectado ${amountToClaim.toFixed(2)} $PRL!`, iconHtml);
 
         // Recargamos datos actualizados
         await loadProfile();
