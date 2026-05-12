@@ -825,6 +825,62 @@ async function buyEgg(type, cost) {
         showToast("Error al procesar la compra", "❌");
     }
 }
+async function buyItem(column, price, qty, itemName = "Artículo") {
+    try {
+        // 1. Obtener saldo actual del perfil
+        const { data: profile, error: fetchError } = await supabase.from('profiles')
+            .select('pearls_balance, ' + column)
+            .eq('id', currentUser.id)
+            .single();
+
+        if (fetchError || !profile) {
+            alert("Error al verificar tu saldo.");
+            return;
+        }
+
+        // 2. Verificar si tiene suficiente dinero
+        if (profile.pearls_balance < price) {
+            alert("❌ No tienes suficientes perlas (PRL).");
+            return;
+        }
+
+        // 3. Procesar la compra en Supabase
+        const { error: updateError } = await supabase.from('profiles').update({
+            pearls_balance: profile.pearls_balance - price,
+            [column]: (profile[column] || 0) + qty
+        }).eq('id', currentUser.id);
+
+        if (updateError) {
+            alert("Error al procesar la compra.");
+            return;
+        }
+
+        // --- REGISTRO EN EL HISTORIAL (LOGS) ---
+        const prlImg = `${RAW_BASE}perla_economia.png?raw=true`;
+        await registrarLog('acuario_logs', {
+            accion: 'compra',
+            monto_prl: -price, // Monto en negativo porque es un gasto
+            icon: prlImg,
+            descripcion: `Compra de ${qty}x ${itemName} en la tienda`
+        });
+
+        // 4. Éxito: Feedback y Actualizar la interfaz
+        const iconHtml = `<img src="${prlImg}" style="width:20px; height:20px; vertical-align:middle;">`;
+        showToast(`¡Compra exitosa! Has recibido ${qty} unidad(es).`, iconHtml);
+        
+        await checkFirstInvestment(); 
+        
+        // Recargar datos para que se vea el nuevo saldo y cantidad
+        await loadProfile();
+        
+        // Volver a renderizar la tienda para que el modal se actualice
+        const panelBody = document.getElementById('panel-body');
+        if (panelBody) renderShop(panelBody);
+
+    } catch (err) {
+        console.error("Error en buyItem:", err);
+    }
+}
 async function claimPearls(fishId) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true;
