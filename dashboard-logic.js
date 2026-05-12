@@ -1074,47 +1074,54 @@ async function finishFishing() {
         .single();
 
     if (error || !profile) {
-        alert("Error de conexión al reclamar recompensa.");
+        showToast("Error de conexión al reclamar recompensa.", "❌");
         return;
     }
 
-    // 2. Determinar si la pesca es exitosa y qué recompensa recibe
+    // 2. Determinar recompensa y asignar iconos (Usando el Ancla para restos marinos)
     const rand = Math.random() * 100;
     let rewardCol = null;
-    let rewardName = "Nada (Intento fallido)";
-    let logIcon = "💨"; // Icono por defecto para cuando no pesca nada
+    let rewardName = "";
+    let itemIcon = ""; 
 
-    // Lógica de probabilidades (incluyendo fallo)
-    if (rand < 25) { 
-        // 25% de probabilidad de NO pescar nada
-        rewardCol = null;
-        rewardName = "Nada";
-        logIcon = "❌";
-    } else if (rand < 65) { // (65-25) = 40%
-        rewardCol = 'marine_trash'; 
-        rewardName = "Restos Marinos";
-        logIcon = "🗑️";
-    } else if (rand < 85) { // 20%
-        rewardCol = 'food_plancton'; 
-        rewardName = "Plancton";
-        logIcon = "🦠";
-    } else if (rand < 95) { // 10%
-        rewardCol = 'food_basic'; 
-        rewardName = "Algas";
-        logIcon = "🌿";
-    } else { // 5%
-        rewardCol = 'food_rare'; 
-        rewardName = "Cebo Raro";
-        logIcon = "💎";
-    }
-
-    // 3. Preparar objeto de actualización
-    const updateData = {
-        fishing_rods: Math.max(0, (profile.fishing_rods || 0) - 1),
-        fishing_attempts_today: (profile.fishing_attempts_today || 0) + 1
+    // Definición de iconos basada en tu código (Ancla para marine_trash)
+    const icons = {
+        ancla: "⚓",    // Para marine_trash
+        plancton: "🦠", // Para food_plancton
+        algas: "🌿",    // Para food_basic
+        cebo: "💎",     // Para food_rare
+        nada: "🌊"      // Fallo
     };
 
-    // Si hubo premio, lo sumamos al objeto de actualización
+    if (rand < 25) { 
+        rewardCol = null;
+        rewardName = "Nada";
+        itemIcon = icons.nada;
+    } else if (rand < 65) {
+        rewardCol = 'marine_trash'; 
+        rewardName = "Restos Marinos";
+        itemIcon = icons.ancla;
+    } else if (rand < 85) {
+        rewardCol = 'food_plancton'; 
+        rewardName = "Plancton";
+        itemIcon = icons.plancton;
+    } else if (rand < 95) {
+        rewardCol = 'food_basic'; 
+        rewardName = "Algas";
+        itemIcon = icons.algas;
+    } else {
+        rewardCol = 'food_rare'; 
+        rewardName = "Cebo Raro";
+        itemIcon = icons.cebo;
+    }
+
+    // 3. Preparar actualización
+    const attemptsToday = (profile.fishing_attempts_today || 0) + 1;
+    const updateData = {
+        fishing_rods: Math.max(0, (profile.fishing_rods || 0) - 1),
+        fishing_attempts_today: attemptsToday
+    };
+
     if (rewardCol) {
         updateData[rewardCol] = (profile[rewardCol] || 0) + 1;
     }
@@ -1124,8 +1131,7 @@ async function finishFishing() {
         .eq('id', currentUser.id);
 
     if (updateError) {
-        alert("Hubo un problema al guardar tu progreso.");
-        console.error(updateError);
+        showToast("Error al guardar progreso.", "❌");
         return;
     }
 
@@ -1133,20 +1139,20 @@ async function finishFishing() {
     const esExito = rewardCol !== null;
     await registrarLog('acuario_logs', {
         accion: 'pesca',
-        monto_prl: 0, // La pesca no da perlas directamente
-        icon: logIcon,
+        monto_prl: 0,
         descripcion: esExito 
-            ? `Pesca exitosa: Encontraste ${rewardName}` 
-            : `Pesca fallida: No has encontrado nada`
+            ? `Pesca exitosa: Encontraste ${rewardName} (#${attemptsToday}/4)` 
+            : `Pesca fallida: No has encontrado nada (#${attemptsToday}/4)`
     });
 
-    // 4. Feedback al usuario y refresco de interfaz
-    const mensajeAlerta = esExito 
-        ? `¡Buena pesca! 🎣\nEncontraste: ${rewardName}.` 
-        : `¡Mala suerte! 🌊\nNo has pescado nada esta vez.`;
-    
-    alert(`${mensajeAlerta}\nIntentos hoy: ${(profile.fishing_attempts_today || 0) + 1}/4`);
-    
+    // --- FEEDBACK VISUAL CON TOAST ---
+    if (esExito) {
+        showToast(`¡Pesca exitosa! Encontraste: ${rewardName}`, itemIcon);
+    } else {
+        showToast("Mala suerte, no picó nada...", itemIcon);
+    }
+
+    // 4. Cerrar juego y refrescar
     closeFishingModal();
     
     if (typeof loadProfile === "function") {
