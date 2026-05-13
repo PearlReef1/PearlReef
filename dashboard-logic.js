@@ -1364,38 +1364,66 @@ async function getOrCreateWallet(userId) {
     return newWallet.address;
 }
 
-function openSwapModal() {
+// --- SISTEMA DE SWAP CORREGIDO ---
+
+async function openSwapModal() {
+    isProcessingFeeding = false; // Seguridad por si venimos de alimentar peces
     const modal = document.getElementById('minigame-modal');
-    const content = document.getElementById('modal-dynamic-content');
-    
-    // Obtenemos los saldos actuales directamente de lo que muestra tu interfaz
-    const currentUSDT = parseFloat(document.getElementById('usdt-balance').innerText) || 0;
-    const currentPRL = parseFloat(document.getElementById('pearl-balance').innerText) || 0;
+    if (!modal) return;
 
     modal.style.display = 'flex';
-    renderSwapContent(currentUSDT, currentPRL);
+    
+    // 1. Limpiamos y preparamos el contenedor dinámico
+    modal.innerHTML = '<div id="modal-dynamic-content"></div>';
+
+    try {
+        // 2. Obtenemos datos frescos del perfil
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('balance_usdt, pearls_balance')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (error || !profile) {
+            console.error("Error al obtener saldos:", error);
+            showToast("Error al cargar saldos", "❌");
+            return;
+        }
+
+        // 3. Enviamos los datos a la función de renderizado
+        renderSwapContent(profile.balance_usdt, profile.pearls_balance);
+        
+    } catch (err) {
+        console.error("Error en openSwapModal:", err);
+    }
 }
 
 function renderSwapContent(userUSDT, userPRL) {
+    // Protección: Si por algún motivo los valores fallan, usamos 0 para evitar el error de toFixed
+    const usdt = (typeof userUSDT === 'number') ? userUSDT : 0;
+    const prl = (typeof userPRL === 'number') ? userPRL : 0;
+
     const content = document.getElementById('modal-dynamic-content');
+    if (!content) return;
+
     const isToPRL = swapDirection === "USDT_TO_PRL";
-    
-    // Ajuste de etiquetas y tasas según la dirección
     const fromLabel = isToPRL ? "Cantidad a convertir (USDT)" : "Cantidad a convertir (PRL)";
     const toLabel = isToPRL ? "PRL" : "USDT";
     const rateText = isToPRL ? "1 USDT = 100 PRL" : "100 PRL = 1 USDT";
 
     content.innerHTML = `
-        <div style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-            <h2 style="color: #6366f1; margin-bottom: 5px;">🔄 Intercambio</h2>
+        <div style="text-align: center; font-family: 'Segoe UI', sans-serif; background: #1e293b; padding: 25px; border-radius: 20px; width: 90%; max-width: 400px; margin: auto; position: relative; border: 1px solid #334155; color: white;">
+            
+            <button onclick="document.getElementById('minigame-modal').style.display='none'" 
+                    style="position:absolute; right:15px; top:15px; background:none; border:none; color:#94a3b8; font-size:24px; cursor:pointer;">&times;</button>
+
+            <h2 style="color: #6366f1; margin-bottom: 5px; margin-top: 0;">🔄 Intercambio</h2>
             <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 20px;">Tasa: ${rateText}</p>
 
             <div style="background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 15px; position: relative;">
                 
-                <!-- Botón para invertir dirección -->
-                <button onclick="toggleSwapDirection(${userUSDT}, ${userPRL})" 
-                        style="position: absolute; right: 10px; top: -15px; background: #6366f1; border: none; border-radius: 50%; width: 32px; height: 32px; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: transform 0.2s;"
-                        onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                <button onclick="toggleSwapDirection(${usdt}, ${prl})" 
+                        style="position: absolute; right: 10px; top: -15px; background: #6366f1; border: none; border-radius: 50%; width: 32px; height: 32px; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
                     ⇅
                 </button>
 
@@ -1403,9 +1431,8 @@ function renderSwapContent(userUSDT, userPRL) {
                 <input type="number" id="swap-amount-input" placeholder="0.00" 
                        style="width: 100%; background: transparent; border: none; border-bottom: 2px solid #6366f1; color: white; font-size: 1.8rem; text-align: center; outline: none; margin-bottom: 5px;">
                 
-                <!-- Mensaje de Error de Saldo -->
                 <div id="balance-error" style="color: #ff4757; font-size: 0.75rem; font-weight: bold; display: none; margin-bottom: 10px;">
-                    ⚠️ Sin saldo disponible
+                    ⚠️ Saldo insuficiente
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
@@ -1415,18 +1442,17 @@ function renderSwapContent(userUSDT, userPRL) {
             </div>
 
             <button id="confirm-swap-btn" onclick="executeSwapAction()" 
-                    style="width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4); opacity: 0.5; pointer-events: none; transition: opacity 0.3s;">
+                    style="width: 100%; background: #6366f1; color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 12px; opacity: 0.5; pointer-events: none;">
                 CONFIRMAR CAMBIO
             </button>
             
-            <button onclick="document.getElementById('minigame-modal').style.display='none'" 
-                    style="background: transparent; border: none; color: #64748b; font-size: 0.85rem; cursor: pointer; text-decoration: underline;">
-                Cerrar Ventana
-            </button>
+            <div style="font-size: 0.75rem; color: #64748b;">
+                Tus saldos: <span style="color:#fff;">${usdt.toFixed(2)} USDT</span> | <span style="color:#fff;">${Math.floor(prl)} PRL</span>
+            </div>
         </div>
     `;
 
-    setupSwapListeners(userUSDT, userPRL);
+    setupSwapListeners(usdt, prl);
 }
 
 function toggleSwapDirection(u, p) {
