@@ -568,20 +568,19 @@ async function completeFeeding(foodType) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true; 
 
-    // 1. OBTENCIÓN DE DATOS PREVIA (ID del pez)
     const fishId = sessionStorage.getItem('feeding_fish_id');
     if (!fishId) {
         isProcessingFeeding = false;
         return;
     }
 
-    // 2. RESPUESTA VISUAL INMEDIATA (Cerrar modal y mostrar Toast)
+    // 1. RESPUESTA VISUAL INSTANTÁNEA
     document.getElementById('minigame-modal').style.display = 'none';
     const foodCfg = FOOD_TYPES[foodType];
     showToast(`Alimentando pez...`, foodCfg.icon || '🥣');
 
     try {
-        // 3. CONSULTAS EN PARALELO PARA GANAR TIEMPO
+        // 2. OBTENER DATOS (PERFIL Y PEZ) EN PARALELO
         const [profileRes, fishRes] = await Promise.all([
             supabase.from('profiles').select('*').eq('id', currentUser.id).single(),
             supabase.from('user_fish').select('*').eq('id', fishId).single()
@@ -590,11 +589,10 @@ async function completeFeeding(foodType) {
         const profile = profileRes.data;
         const fish = fishRes.data;
 
-        // --- CÁLCULOS (Tu lógica actual se mantiene) ---
+        // --- LÓGICA DE TIEMPO Y XP ---
         const now = new Date();
         const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
         
-        // Verificación de saciedad
         if ((lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime()) >= (24 * 60 * 60 * 1000)) {
             showToast("El pez ya está lleno", "❌");
             isProcessingFeeding = false;
@@ -610,18 +608,22 @@ async function completeFeeding(foodType) {
         let nextXP = fish.next_level_xp || 100;
         let leveledUp = false;
 
-        if (newLevel < 5) {
-            if (newXP >= nextXP) {
-                newLevel++;
-                newXP = newXP - nextXP; 
-                nextXP = getNextLevelXP(newLevel);
-                leveledUp = true;
-            }
-        } else if (newXP > nextXP) {
-            newXP = nextXP;
+        if (newLevel < 5 && newXP >= nextXP) {
+            newLevel++;
+            newXP -= nextXP;
+            nextXP = getNextLevelXP(newLevel);
+            leveledUp = true;
         }
 
-        // 4. ACTUALIZACIÓN OPTIMISTA DE LA VARIABLE GLOBAL
+        // --- PREPARACIÓN DE DATOS PARA EL LOG (CORRECCIÓN ID Y RAREZA) ---
+        const nombresComida = { 'plancton': 'PLANCTON 🦠', 'basic': 'ALGAS 🌿', 'rare': 'CEBO 🦐' };
+        const nombreBonito = nombresComida[foodType] || foodType.toUpperCase();
+        
+        const rarezaPez = fish.rarity ? fish.rarity.toUpperCase() : 'DESCONOCIDO';
+        // CAMBIO AQUÍ: Usamos slice(0, 4) para obtener los PRIMEROS 4 dígitos
+        const shortId = fishId.toString().slice(0, 4); 
+
+        // 3. ACTUALIZACIÓN OPTIMISTA (CLIENTE)
         const fishIndex = allFish.findIndex(f => f.id == fishId);
         if (fishIndex !== -1) {
             allFish[fishIndex].level = newLevel;
@@ -630,14 +632,14 @@ async function completeFeeding(foodType) {
             allFish[fishIndex].last_fed = newFedDate.toISOString();
         }
 
-        // Refrescar inventario visual de inmediato sin esperar a la DB
+        // Refrescar inventario visual de inmediato
         const mainGrid = document.getElementById('main-aquarium-grid');
         const panelBody = document.getElementById('panel-body');
         (mainGrid && mainGrid.style.display !== 'none') ? renderInventory(mainGrid) : renderInventory(panelBody);
 
         if (leveledUp) showToast(`¡NIVEL SUBIDO! Nivel ${newLevel}`, '🆙');
 
-        // 5. PROCESAMIENTO EN SEGUNDO PLANO (Base de Datos)
+        // 4. PROCESAMIENTO EN SEGUNDO PLANO (DB)
         const promesas = [
             supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id),
             supabase.from('user_fish').update({ 
@@ -650,7 +652,7 @@ async function completeFeeding(foodType) {
                 pez_id: fishId,
                 accion: 'comida',
                 monto_prl: 0,
-                descripcion: `Alimentado con ${foodType.toUpperCase()} (+${foodCfg.xp} XP).`
+                descripcion: `Alimentado con ${nombreBonito} (+${foodCfg.xp} XP). Pez: ${rarezaPez} [ID: #${shortId}]`
             })
         ];
 
@@ -659,12 +661,11 @@ async function completeFeeding(foodType) {
                 pez_id: fishId,
                 accion: 'subida_nivel',
                 monto_prl: 0,
-                descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}.`
+                descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}. Pez: ${rarezaPez} [ID: #${shortId}]`
             }));
         }
 
         await Promise.all(promesas);
-        // Sincronización silenciosa del perfil
         if (typeof loadProfile === "function") loadProfile();
 
     } catch (err) {
