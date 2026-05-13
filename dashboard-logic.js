@@ -1205,47 +1205,70 @@ async function handleSwap(amount, direction) {
 
     const userId = session.user.id;
 
-    // 1. Obtener datos con el nombre de columna correcto: pearls_balance
+    // 1. Obtener datos actuales
     const { data: profile, error: fetchError } = await window.supabase
         .from('profiles')
-        .select('balance_usdt, pearls_balance') // Corregido a plural según el error
+        .select('balance_usdt, pearls_balance')
         .eq('id', userId)
         .single();
 
-    if (fetchError || !profile) {
-        console.error("Error al obtener perfil:", fetchError);
-        throw new Error("No se pudo cargar tu perfil para realizar el cambio.");
-    }
+    if (fetchError || !profile) throw new Error("No se pudo cargar el perfil.");
 
+    const isToPRL = direction === "USDT_TO_PRL";
     let newUSDT = profile.balance_usdt;
-    let newPRL = profile.pearls_balance; // Corregido a plural
+    let newPRL = profile.pearls_balance;
+    const amountOut = isToPRL ? amount * 100 : amount / 100;
 
-    if (direction === "USDT_TO_PRL") {
+    // Lógica de saldos
+    if (isToPRL) {
         if (newUSDT < amount) throw new Error("Saldo USDT insuficiente");
         newUSDT -= amount;
-        newPRL += (amount * 100);
+        newPRL += amountOut;
     } else {
         if (newPRL < amount) throw new Error("Saldo PRL insuficiente");
         newPRL -= amount;
-        newUSDT += (amount / 100);
+        newUSDT += amountOut;
     }
 
-    // 2. Actualizar en Supabase usando pearls_balance
+    // 2. Actualizar Balances en Supabase
     const { error: updateError } = await window.supabase
         .from('profiles')
-        .update({ 
-            balance_usdt: newUSDT, 
-            pearls_balance: newPRL // Corregido a plural
-        })
+        .update({ balance_usdt: newUSDT, pearls_balance: newPRL })
         .eq('id', userId);
 
     if (updateError) throw updateError;
 
-    // 3. Actualizar la interfaz visual
-    document.getElementById('usdt-balance').innerText = newUSDT.toFixed(2);
-    document.getElementById('pearl-balance').innerText = Math.floor(newPRL);
+    // --- REGISTROS EN HISTORIALES ---
+    try {
+        const descLog = isToPRL 
+            ? `Canje de ${amount.toFixed(2)} USDT por Perlas`
+            : `Canje de Perlas por ${amountOut.toFixed(2)} USDT`;
 
-    alert("¡Intercambio realizado con éxito!");
+        // Registro 1: En finanzas_logs (Para que salga en Movimientos de USDT)
+        await registrarLog('finanzas_logs', {
+            tipo: 'swap',
+            monto_usdt: isToPRL ? -amount : amountOut,
+            monto_prl: isToPRL ? amountOut : -amount,
+            status: 'completado',
+            detalles: descLog
+        });
+
+        // Registro 2: En acuario_logs (Para el historial general del acuario)
+        await registrarLog('acuario_logs', {
+            accion: 'swap',
+            monto_prl: isToPRL ? amountOut : -amount,
+            descripcion: `🔄 ${descLog}`
+        });
+
+    } catch (logErr) {
+        console.error("Error al registrar los logs del swap:", logErr);
+    }
+
+    // 3. Actualizar Interfaz visual
+    if (document.getElementById('usdt-balance')) document.getElementById('usdt-balance').innerText = newUSDT.toFixed(2);
+    if (document.getElementById('pearl-balance')) document.getElementById('pearl-balance').innerText = Math.floor(newPRL);
+
+    if (typeof showToast === "function") showToast("¡Intercambio registrado!", "🔄");
 }
 async function verifyDepositAction() {
     const btn = document.getElementById('btn-verify-deposit');
@@ -1423,19 +1446,19 @@ function renderSwapContent(userUSDT, userPRL) {
 }
 
 function toggleSwapDirection(u, p) {
-    swapDirection = (swapDirection === "USDT_TO_PRL") ? "PRL_TO_USDT" : "USDT_TO_PRL";
-    renderSwapContent(u, p);
+    swapDirection = (Direction === "USDT_TO_PRL") ? "PRL_TO_USDT" : "USDT_TO_PRL";
+    renderContent(u, p);
 }
 
-function setupSwapListeners(userUSDT, userPRL) {
-    const input = document.getElementById('swap-amount-input');
-    const result = document.getElementById('swap-result-display');
+function setupListeners(userUSDT, userPRL) {
+    const input = document.getElementById('-amount-input');
+    const result = document.getElementById('-result-display');
     const errorMsg = document.getElementById('balance-error');
-    const btn = document.getElementById('confirm-swap-btn');
+    const btn = document.getElementById('confirm--btn');
 
     input.addEventListener('input', () => {
         const val = parseFloat(input.value) || 0;
-        const isToPRL = swapDirection === "USDT_TO_PRL";
+        const isToPRL = Direction === "USDT_TO_PRL";
         const maxAvailable = isToPRL ? userUSDT : userPRL;
         
         // Cálculo del resultado
@@ -1464,19 +1487,29 @@ function setupSwapListeners(userUSDT, userPRL) {
 }
 
 async function executeSwapAction() {
-    const amount = parseFloat(document.getElementById('swap-amount-input').value);
-    const isToPRL = swapDirection === "USDT_TO_PRL";
+    const input = document.getElementById('swap-amount-input');
+    const amount = parseFloat(input.value);
+    
+    if (isNaN(amount) || amount <= 0) {
+        showToast("Ingresa una cantidad válida", "⚠️");
+        return;
+    }
 
     try {
-        // Aquí llamas a tu backend/Supabase pasando el monto y la dirección
-        // Por ejemplo: await handleSwap(amount, swapDirection);
-        console.log(`Procesando cambio de ${amount} en dirección ${swapDirection}`);
+        // Mostramos un feedback de "procesando"
+        showToast("Procesando intercambio...", "⏳");
         
         await handleSwap(amount, swapDirection); 
         
         document.getElementById('minigame-modal').style.display = 'none';
+        showToast("¡Cambio realizado con éxito!", "✅");
+        
+        // Actualizamos el perfil para ver los nuevos saldos
+        if (typeof loadProfile === "function") loadProfile();
+
     } catch (err) {
-        alert("Error al procesar el cambio: " + err.message);
+        console.error("Error en Swap:", err);
+        showToast("Error: " + err.message, "❌");
     }
 }
 function showToast(message, icon = '✨') {
