@@ -523,102 +523,121 @@ async function hatchFish(fishId) {
 }
 async function startFeeding(fishId) {
     if (isProcessingFeeding) return; 
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
 
-    // Validar si tiene alguna comida
-    if ((profile.food_plancton || 0) <= 0 && (profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
-        alert("¡No tienes comida! Ve a la tienda.");
-        switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
-        return;
-    }
-
+    // Guardamos el ID de inmediato
     sessionStorage.setItem('feeding_fish_id', fishId);
     
-    // Cambiamos el contenido del modal para que sea un selector
     const modal = document.getElementById('minigame-modal');
-    modal.innerHTML = `
-        <div style="background: white; padding: 20px; border-radius: 15px; text-align: center; max-width: 300px; width: 90%;">
-            <h3 style="margin-top:0; color:#1e3a8a;">¿Qué vas a dar de comer?</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                ${profile.food_plancton > 0 ? `<button class="btn-buy" onclick="completeFeeding('plancton')" style="background:#4ade80; color:white;">🦠 Plancton (${profile.food_plancton})</button>` : ''}
-                ${profile.food_basic > 0 ? `<button class="btn-buy" onclick="completeFeeding('basic')" style="background:#3b82f6; color:white;">🌿 Algas (${profile.food_basic})</button>` : ''}
-                ${profile.food_rare > 0 ? `<button class="btn-buy" onclick="completeFeeding('rare')" style="background:#a855f7; color:white;">🦐 Cebo (${profile.food_rare})</button>` : ''}
-                <button onclick="document.getElementById('minigame-modal').style.display='none'" style="background:none; border:none; color:#64748b; cursor:pointer; margin-top:10px;">Cancelar</button>
-            </div>
-        </div>
-    `;
-    modal.style.display = 'flex';
+    const container = document.getElementById('modal-dynamic-content');
+    
+    // Mostramos el modal VACÍO con un cargando para que el usuario vea que algo pasó
+    if (modal) {
+        modal.style.display = 'flex';
+        if (container) container.innerHTML = '<div style="color:white;">Cargando inventario...</div>';
+    }
+
+    try {
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+
+        if ((profile.food_plancton || 0) <= 0 && (profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
+            showToast("¡No tienes comida! Ve a la tienda.", "🛒");
+            modal.style.display = 'none';
+            return;
+        }
+
+        // Dibujamos las opciones
+        if (container) {
+            container.innerHTML = `
+                <div style="background: white; padding: 20px; border-radius: 15px; text-align: center; margin: auto; max-width: 300px; width: 90%;">
+                    <h3 style="margin-top:0; color:#1e3a8a;">¿Qué vas a dar de comer?</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        ${profile.food_plancton > 0 ? `<button class="btn-buy" onclick="completeFeeding('plancton')" style="background:#4ade80; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;">🦠 Plancton (${profile.food_plancton})</button>` : ''}
+                        ${profile.food_basic > 0 ? `<button class="btn-buy" onclick="completeFeeding('basic')" style="background:#3b82f6; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;">🌿 Algas (${profile.food_basic})</button>` : ''}
+                        ${profile.food_rare > 0 ? `<button class="btn-buy" onclick="completeFeeding('rare')" style="background:#a855f7; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;">🦐 Cebo (${profile.food_rare})</button>` : ''}
+                        <button onclick="closeFeedingModal()" style="background:none; border:none; color:#64748b; cursor:pointer; margin-top:10px;">Cancelar</button>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (e) {
+        modal.style.display = 'none';
+    }
 }
 
 async function completeFeeding(foodType) {
     if (isProcessingFeeding) return;
     isProcessingFeeding = true; 
 
+    // 1. OBTENCIÓN DE DATOS PREVIA (ID del pez)
     const fishId = sessionStorage.getItem('feeding_fish_id');
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-    const { data: fish } = await supabase.from('user_fish').select('*').eq('id', fishId).single();
-
-    const now = new Date();
-    const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
-    let currentLifeMs = lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime();
-    
-    if (currentLifeMs >= (24 * 60 * 60 * 1000)) {
-        showToast("El pez ya está lleno", "❌");
-        document.getElementById('minigame-modal').style.display = 'none';
+    if (!fishId) {
         isProcessingFeeding = false;
         return;
     }
 
-    const foodCfg = FOOD_TYPES[foodType];
-    
-    // --- CÁLCULOS ---
-    let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
-    let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
-    let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
-
-    let newXP = (fish.current_xp || 0) + foodCfg.xp;
-    let newLevel = fish.level || 1;
-    let nextXP = fish.next_level_xp || 100;
-    let leveledUp = false;
-
-    if (newLevel < 5) {
-        if (newXP >= nextXP) {
-            newLevel++;
-            newXP = newXP - nextXP; 
-            nextXP = getNextLevelXP(newLevel);
-            leveledUp = true;
-        }
-    } else if (newXP > nextXP) {
-        newXP = nextXP;
-    }
-
-    // --- TRADUCCIÓN PARA EL LOG ---
-    const nombresComida = {
-        'plancton': 'PLANCTON 🦠',
-        'basic': 'ALGAS 🌿',
-        'rare': 'CEBO 🦐'
-    };
-    const nombreBonito = nombresComida[foodType] || foodType.toUpperCase();
-    const shortId = fishId.toString().slice(0, 4); // Recuperamos el ID corto
-
-    // --- ACTUALIZACIÓN OPTIMISTA (INSTANTÁNEA) ---
-    const fishIndex = allFish.findIndex(f => f.id == fishId);
-    if (fishIndex !== -1) {
-        allFish[fishIndex].level = newLevel;
-        allFish[fishIndex].current_xp = newXP;
-        allFish[fishIndex].next_level_xp = nextXP;
-        allFish[fishIndex].last_fed = newFedDate.toISOString();
-    }
-
-    const mainGrid = document.getElementById('main-aquarium-grid');
-    const panelBody = document.getElementById('panel-body');
-    (mainGrid && mainGrid.style.display !== 'none') ? renderInventory(mainGrid) : renderInventory(panelBody);
-    
+    // 2. RESPUESTA VISUAL INMEDIATA (Cerrar modal y mostrar Toast)
     document.getElementById('minigame-modal').style.display = 'none';
-    leveledUp ? showToast(`¡NIVEL SUBIDO! Nivel ${newLevel}`, '🆙') : showToast(`¡Pez alimentado!`, foodCfg.icon || '🥣');
+    const foodCfg = FOOD_TYPES[foodType];
+    showToast(`Alimentando pez...`, foodCfg.icon || '🥣');
 
-    // --- PROCESAMIENTO EN PARALELO ---
     try {
+        // 3. CONSULTAS EN PARALELO PARA GANAR TIEMPO
+        const [profileRes, fishRes] = await Promise.all([
+            supabase.from('profiles').select('*').eq('id', currentUser.id).single(),
+            supabase.from('user_fish').select('*').eq('id', fishId).single()
+        ]);
+
+        const profile = profileRes.data;
+        const fish = fishRes.data;
+
+        // --- CÁLCULOS (Tu lógica actual se mantiene) ---
+        const now = new Date();
+        const lastFedDate = fish.last_fed ? new Date(fish.last_fed) : new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        
+        // Verificación de saciedad
+        if ((lastFedDate.getTime() + (24 * 60 * 60 * 1000) - now.getTime()) >= (24 * 60 * 60 * 1000)) {
+            showToast("El pez ya está lleno", "❌");
+            isProcessingFeeding = false;
+            return;
+        }
+
+        let limitPast = now.getTime() - (24 * 60 * 60 * 1000); 
+        let baseTime = lastFedDate.getTime() < limitPast ? limitPast : lastFedDate.getTime();
+        let newFedDate = new Date(baseTime + (12 * 60 * 60 * 1000));
+
+        let newXP = (fish.current_xp || 0) + foodCfg.xp;
+        let newLevel = fish.level || 1;
+        let nextXP = fish.next_level_xp || 100;
+        let leveledUp = false;
+
+        if (newLevel < 5) {
+            if (newXP >= nextXP) {
+                newLevel++;
+                newXP = newXP - nextXP; 
+                nextXP = getNextLevelXP(newLevel);
+                leveledUp = true;
+            }
+        } else if (newXP > nextXP) {
+            newXP = nextXP;
+        }
+
+        // 4. ACTUALIZACIÓN OPTIMISTA DE LA VARIABLE GLOBAL
+        const fishIndex = allFish.findIndex(f => f.id == fishId);
+        if (fishIndex !== -1) {
+            allFish[fishIndex].level = newLevel;
+            allFish[fishIndex].current_xp = newXP;
+            allFish[fishIndex].next_level_xp = nextXP;
+            allFish[fishIndex].last_fed = newFedDate.toISOString();
+        }
+
+        // Refrescar inventario visual de inmediato sin esperar a la DB
+        const mainGrid = document.getElementById('main-aquarium-grid');
+        const panelBody = document.getElementById('panel-body');
+        (mainGrid && mainGrid.style.display !== 'none') ? renderInventory(mainGrid) : renderInventory(panelBody);
+
+        if (leveledUp) showToast(`¡NIVEL SUBIDO! Nivel ${newLevel}`, '🆙');
+
+        // 5. PROCESAMIENTO EN SEGUNDO PLANO (Base de Datos)
         const promesas = [
             supabase.from('profiles').update({ [foodCfg.col]: profile[foodCfg.col] - 1 }).eq('id', currentUser.id),
             supabase.from('user_fish').update({ 
@@ -631,7 +650,7 @@ async function completeFeeding(foodType) {
                 pez_id: fishId,
                 accion: 'comida',
                 monto_prl: 0,
-                descripcion: `Alimentado con ${nombreBonito} (+${foodCfg.xp} XP). Pez ID #${shortId}`
+                descripcion: `Alimentado con ${foodType.toUpperCase()} (+${foodCfg.xp} XP).`
             })
         ];
 
@@ -640,17 +659,20 @@ async function completeFeeding(foodType) {
                 pez_id: fishId,
                 accion: 'subida_nivel',
                 monto_prl: 0,
-                descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}. Pez ID #${shortId}`
+                descripcion: `¡Nivel Subido! Ahora es Nivel ${newLevel}.`
             }));
         }
 
         await Promise.all(promesas);
-        loadProfile(); 
+        // Sincronización silenciosa del perfil
+        if (typeof loadProfile === "function") loadProfile();
 
     } catch (err) {
-        console.error("Error en la sincronización:", err);
+        console.error("Error en sincronización:", err);
+        showToast("Error de conexión", "⚠️");
     } finally {
         isProcessingFeeding = false; 
+        sessionStorage.removeItem('feeding_fish_id');
     }
 }
 function updateAquariumState() {
