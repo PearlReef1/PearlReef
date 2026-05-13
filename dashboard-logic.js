@@ -523,40 +523,31 @@ async function hatchFish(fishId) {
 }
 async function startFeeding(fishId) {
     if (isProcessingFeeding) return; 
-    
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
 
+    // Validar si tiene alguna comida
     if ((profile.food_plancton || 0) <= 0 && (profile.food_basic || 0) <= 0 && (profile.food_rare || 0) <= 0) {
-        showToast("¡No tienes comida! Ve a la tienda.", "🛒");
+        alert("¡No tienes comida! Ve a la tienda.");
         switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
         return;
     }
 
     sessionStorage.setItem('feeding_fish_id', fishId);
     
+    // Cambiamos el contenido del modal para que sea un selector
     const modal = document.getElementById('minigame-modal');
-    const container = document.getElementById('modal-dynamic-content'); // Usamos el contenedor dinámico
-    
-    if (container) {
-        container.innerHTML = `
-            <div style="background: white; padding: 20px; border-radius: 15px; text-align: center; margin: auto; max-width: 300px; width: 90%;">
-                <h3 style="margin-top:0; color:#1e3a8a;">¿Qué vas a dar de comer?</h3>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    ${profile.food_plancton > 0 ? `<button class="btn-buy" onclick="completeFeeding('plancton')" style="background:#4ade80; color:white;">🦠 Plancton (${profile.food_plancton})</button>` : ''}
-                    ${profile.food_basic > 0 ? `<button class="btn-buy" onclick="completeFeeding('basic')" style="background:#3b82f6; color:white;">🌿 Algas (${profile.food_basic})</button>` : ''}
-                    ${profile.food_rare > 0 ? `<button class="btn-buy" onclick="completeFeeding('rare')" style="background:#a855f7; color:white;">🦐 Cebo (${profile.food_rare})</button>` : ''}
-                    <button onclick="closeFeedingModal()" style="background:none; border:none; color:#64748b; cursor:pointer; margin-top:10px;">Cancelar</button>
-                </div>
+    modal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 15px; text-align: center; max-width: 300px; width: 90%;">
+            <h3 style="margin-top:0; color:#1e3a8a;">¿Qué vas a dar de comer?</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                ${profile.food_plancton > 0 ? `<button class="btn-buy" onclick="completeFeeding('plancton')" style="background:#4ade80; color:white;">🦠 Plancton (${profile.food_plancton})</button>` : ''}
+                ${profile.food_basic > 0 ? `<button class="btn-buy" onclick="completeFeeding('basic')" style="background:#3b82f6; color:white;">🌿 Algas (${profile.food_basic})</button>` : ''}
+                ${profile.food_rare > 0 ? `<button class="btn-buy" onclick="completeFeeding('rare')" style="background:#a855f7; color:white;">🦐 Cebo (${profile.food_rare})</button>` : ''}
+                <button onclick="document.getElementById('minigame-modal').style.display='none'" style="background:none; border:none; color:#64748b; cursor:pointer; margin-top:10px;">Cancelar</button>
             </div>
-        `;
-        modal.style.display = 'flex';
-    }
-}
-
-// Función auxiliar para cerrar y limpiar
-function closeFeedingModal() {
-    document.getElementById('minigame-modal').style.display = 'none';
-    isProcessingFeeding = false;
+        </div>
+    `;
+    modal.style.display = 'flex';
 }
 
 async function completeFeeding(foodType) {
@@ -1384,34 +1375,9 @@ function openSwapModal() {
     modal.style.display = 'flex';
     renderSwapContent(currentUSDT, currentPRL);
 }
-function openSwapModal() {
-    isProcessingFeeding = false; // Reset de seguridad
-    const modal = document.getElementById('minigame-modal');
-    
-    if (modal) {
-        modal.style.display = 'flex';
-        // Forzamos que exista el contenedor dinámico si alimentación lo borró
-        if (!document.getElementById('modal-dynamic-content')) {
-            modal.innerHTML = `<div id="modal-dynamic-content"></div>`;
-        }
-        renderSwapContent();
-    }
-}
-function renderSwapContent(userUSDT, userPRL) {
-    // 1. SEGURIDAD: Validamos que el contenedor exista. 
-    // Si alimentación lo borró, lo recreamos dentro del modal.
-    let content = document.getElementById('modal-dynamic-content');
-    if (!content) {
-        const modal = document.getElementById('minigame-modal');
-        if (modal) {
-            modal.innerHTML = `<div id="modal-dynamic-content"></div>`;
-            content = document.getElementById('modal-dynamic-content');
-        } else {
-            console.error("No se encontró el modal principal");
-            return;
-        }
-    }
 
+function renderSwapContent(userUSDT, userPRL) {
+    const content = document.getElementById('modal-dynamic-content');
     const isToPRL = swapDirection === "USDT_TO_PRL";
     
     // Ajuste de etiquetas y tasas según la dirección
@@ -1420,18 +1386,16 @@ function renderSwapContent(userUSDT, userPRL) {
     const rateText = isToPRL ? "1 USDT = 100 PRL" : "100 PRL = 1 USDT";
 
     content.innerHTML = `
-        <div style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e293b; padding: 25px; border-radius: 20px; width: 90%; max-width: 400px; margin: auto; position: relative; border: 1px solid #334155;">
-            
-            <button onclick="document.getElementById('minigame-modal').style.display='none'" 
-                    style="position:absolute; right:15px; top:15px; background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">&times;</button>
-
-            <h2 style="color: #6366f1; margin-bottom: 5px; margin-top: 0;">🔄 Intercambio</h2>
+        <div style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            <h2 style="color: #6366f1; margin-bottom: 5px;">🔄 Intercambio</h2>
             <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 20px;">Tasa: ${rateText}</p>
 
             <div style="background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 15px; position: relative;">
                 
+                <!-- Botón para invertir dirección -->
                 <button onclick="toggleSwapDirection(${userUSDT}, ${userPRL})" 
-                        style="position: absolute; right: 10px; top: -15px; background: #6366f1; border: none; border-radius: 50%; width: 32px; height: 32px; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: transform 0.2s;">
+                        style="position: absolute; right: 10px; top: -15px; background: #6366f1; border: none; border-radius: 50%; width: 32px; height: 32px; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                     ⇅
                 </button>
 
@@ -1439,8 +1403,9 @@ function renderSwapContent(userUSDT, userPRL) {
                 <input type="number" id="swap-amount-input" placeholder="0.00" 
                        style="width: 100%; background: transparent; border: none; border-bottom: 2px solid #6366f1; color: white; font-size: 1.8rem; text-align: center; outline: none; margin-bottom: 5px;">
                 
+                <!-- Mensaje de Error de Saldo -->
                 <div id="balance-error" style="color: #ff4757; font-size: 0.75rem; font-weight: bold; display: none; margin-bottom: 10px;">
-                    ⚠️ Saldo insuficiente
+                    ⚠️ Sin saldo disponible
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
@@ -1454,13 +1419,13 @@ function renderSwapContent(userUSDT, userPRL) {
                 CONFIRMAR CAMBIO
             </button>
             
-            <div style="font-size: 0.75rem; color: #64748b;">
-                Tus saldos: <span style="color:#fff;">${userUSDT.toFixed(2)} USDT</span> | <span style="color:#fff;">${Math.floor(userPRL)} PRL</span>
-            </div>
+            <button onclick="document.getElementById('minigame-modal').style.display='none'" 
+                    style="background: transparent; border: none; color: #64748b; font-size: 0.85rem; cursor: pointer; text-decoration: underline;">
+                Cerrar Ventana
+            </button>
         </div>
     `;
 
-    // Inicializamos los listeners para que el cálculo sea en tiempo real
     setupSwapListeners(userUSDT, userPRL);
 }
 
