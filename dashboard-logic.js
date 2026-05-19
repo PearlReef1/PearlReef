@@ -2002,25 +2002,40 @@ async function executeCraft(recipeType) {
         } else if (recipeType === 'huevo_comun') {
             if ((profile.fragmentos_huevo || 0) < 100) return alert("No tienes suficientes Fragmentos de Huevo.");
             
-            // 1. Restamos los 100 fragmentos del perfil del usuario
-            updateData.fragmentos_huevo = profile.fragmentos_huevo - 100;
-            
-            // 2. Insertamos el pez directamente en estado de huevo en tu tabla user_fish
+            // Configurar tiempo de eclosión (3 horas para el tipo Arrecife/Común según tu tienda)
+            const hatchDate = new Date();
+            hatchDate.setHours(hatchDate.getHours() + 3);
+
+            // 1. Insertamos el huevo con la estructura exacta que valida tu base de datos
             const { error: eggError } = await supabase.from('user_fish').insert([{
                 user_id: currentUser.id,
-                rarity: 'common',
+                is_egg: true,
+                egg_type: 'Arrecife', // 'Arrecife' mapea la probabilidad Común/Poco Común en hatchFish
+                egg_hatch_time: hatchDate.toISOString(),
+                rarity: 'Comun',
+                species_name: 'Huevo Arrecife',
+                image_name: 'huevo_comun', // Mapea a huevo_comun.png automáticamente en tu render
                 level: 1,
+                daily_yield: 0,
                 current_xp: 0,
                 next_level_xp: 100,
-                is_egg: true, // Se crea como huevo listo para incubar
-                last_fed: new Date().toISOString()
+                accumulated_pearls: 0,
+                total_generated: 0,
+                last_fed: new Date().toISOString(),
+                birth_date: new Date().toISOString()
             }]);
 
-            if (eggError) throw eggError;
+            if (eggError) {
+                console.error("❌ Error de Supabase al insertar Huevo desde Laboratorio:", eggError);
+                throw eggError;
+            }
 
-            toastText = "¡PROGRESO COMPLETADO! Reclamaste un Huevo de Pez Común 🥚";
+            // 2. Si la inserción fue exitosa, restamos los 100 fragmentos del perfil
+            updateData.fragmentos_huevo = profile.fragmentos_huevo - 100;
+            
+            toastText = "¡PROGRESO COMPLETADO! Reclamaste un Huevo Arrecife 🥚";
             toastIcon = "🥚";
-            logText = "Laboratorio: Canjeó 100x Fragmentos por un Huevo Común";
+            logText = "Laboratorio: Canjeó 100x Fragmentos por un Huevo Arrecife";
         }
 
         // Aplicamos los cambios de inventario en la tabla profiles
@@ -2039,14 +2054,20 @@ async function executeCraft(recipeType) {
             });
         }
 
-        // Mostramos notificación y refrescamos todo el laboratorio e interfaz
+        // Mostramos notificación y refrescamos la interfaz
         if (typeof showToast === "function") showToast(toastText, toastIcon);
         
-        // Volvemos a abrir para pintar los nuevos saldos actualizados y recalcular los botones deshabilitados
-        openCraftingMenu(); 
+        // Cierra o actualiza el menú de crafteo si tienes la función abierta
+        if (typeof openCraftingMenu === "function") openCraftingMenu(); 
 
-        if (typeof loadProfile === "function") await loadProfile();
-        if (typeof initAquarium === "function") initAquarium(); // Refresca el acuario por si nació el huevo
+        await loadProfile();
+        
+        // Recargar los peces locales y actualizar la vista
+        const { data: updatedFish } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
+        allFish = updatedFish || [];
+        
+        const mainGrid = document.getElementById('main-aquarium-grid');
+        if (mainGrid) renderInventory(mainGrid); 
 
     } catch (err) {
         console.error("Error en executeCraft:", err);
