@@ -2108,16 +2108,17 @@ async function loadReferralPanelData() {
     try {
         if (!currentUser) return;
 
-        // 1. Mostrar tu propio enlace de referido en el input
-        // Asumimos que tienes una columna 'referral_code' en tu tabla profiles
-        const myLink = `${window.location.origin}/index.html?ref=${currentUser.referral_code}`;
+        // 1. Mostrar tu propio enlace de referido (validamos que exista el código)
+        const refCode = currentUser.referral_code || "GENERANDO..."; 
+        const myLink = `${window.location.origin}/index.html?ref=${refCode}`;
         const inputLink = document.getElementById('referral-link-input');
         if (inputLink) inputLink.value = myLink;
 
         // 2. Consultar cuánta gente te ha usado como referido
+        // Usamos 'total_referral_earnings' que es el nombre de tu columna real
         const { data: referrals, error } = await supabase
             .from('profiles')
-            .select('username, created_at, total_earned_from_ref') // Asegúrate de tener una columna para ganancias
+            .select('username, created_at, total_referral_earnings') 
             .eq('referred_by', currentUser.id);
 
         if (error) throw error;
@@ -2129,8 +2130,8 @@ async function loadReferralPanelData() {
 
         if (countDisplay) countDisplay.innerText = referrals ? referrals.length : 0;
         
-        // Calcular total ganado (suma de la columna total_earned_from_ref)
-        const totalEarned = referrals ? referrals.reduce((sum, ref) => sum + (ref.total_earned_from_ref || 0), 0) : 0;
+        // Calcular total ganado (suma de la columna total_referral_earnings)
+        const totalEarned = referrals ? referrals.reduce((sum, ref) => sum + (ref.total_referral_earnings || 0), 0) : 0;
         if (earningsDisplay) earningsDisplay.innerText = totalEarned.toFixed(2);
 
         // 4. Dibujar la tabla
@@ -2139,11 +2140,11 @@ async function loadReferralPanelData() {
                 <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
                     <td style="padding: 12px 8px; color: #f8fafc;">${ref.username}</td>
                     <td style="padding: 12px 8px; color: #64748b;">${new Date(ref.created_at).toLocaleDateString()}</td>
-                    <td style="padding: 12px 8px; text-align: right; color: #10b981; font-weight: bold;">${(ref.total_earned_from_ref || 0).toFixed(2)} PRL</td>
+                    <td style="padding: 12px 8px; text-align: right; color: #10b981; font-weight: bold;">${(ref.total_referral_earnings || 0).toFixed(2)} PRL</td>
                 </tr>
             `).join('');
         } else {
-            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 30px 0;">Aún no tienes referidos. ¡Comparte tu link!</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 30px 0;">Aún no tienes referidos. ¡Comparte tu link para empezar!</td></tr>`;
         }
 
     } catch (err) {
@@ -2154,7 +2155,11 @@ async function loadReferralPanelData() {
 // Función para copiar el link al portapapeles
 function copyReferralLink() {
     const copyText = document.getElementById("referral-link-input");
+    if (!copyText || copyText.value === "GENERANDO...") return;
+    
     copyText.select();
+    copyText.setSelectionRange(0, 99999); // Para móviles
     document.execCommand("copy");
-    alert("¡Link copiado al portapapeles!");
+    
+    alert("¡Link de referido copiado al portapapeles!");
 }
