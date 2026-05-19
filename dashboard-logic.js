@@ -1885,3 +1885,171 @@ async function renderHistory(container) {
         container.innerHTML = `<div style="padding:20px; color:red;">Error al cargar el historial.</div>`;
     }
 }
+// ==========================================
+//        SISTEMA DE CRAFTEO / INTERCAMBIO
+// ==========================================
+
+async function openCraftingMenu() {
+    const modal = document.getElementById('minigame-modal'); // Reutilizamos tu modal dinámico
+    const container = document.getElementById('modal-dynamic-content');
+
+    if (!modal || !container) return;
+
+    // 1. Obtener los saldos reales y frescos del jugador
+    const { data: profile, error } = await supabase.from('profiles')
+        .select('marine_trash, fragmentos_huevo, food_rare, food_plancton')
+        .eq('id', currentUser.id)
+        .single();
+
+    if (error || !profile) {
+        alert("Error al cargar los materiales del laboratorio.");
+        return;
+    }
+
+    const restos = profile.marine_trash || 0;
+    const fragmentos = profile.fragmentos_huevo || 0;
+
+    // 2. Inyectar la interfaz del Laboratorio de Intercambio
+    container.innerHTML = `
+        <div style="width:100%; max-width:400px; background:#0f172a; border-radius:15px; border:3px solid #3b82f6; padding:20px; margin: 0 auto; font-family:sans-serif; color:#f8fafc;">
+            
+            <div style="text-align:center; margin-bottom:20px;">
+                <h2 style="margin:0; color:#3b82f6; font-size:1.5rem; font-weight:bold;">🧪 Laboratorio Marino</h2>
+                <p style="margin:5px 0 0 0; color:#64748b; font-size:0.8rem;">Transforma tus recursos recolectados en objetos útiles</p>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-bottom:20px; background:#1e293b; padding:10px; border-radius:10px; border:1px solid #334155; justify-content: space-around;">
+                <div style="text-align:center;">
+                    <span style="font-size:1.2rem;">⚓</span>
+                    <div style="font-size:0.65rem; color:#94a3b8;">Tus Restos</div>
+                    <div style="font-weight:bold; color:#f8fafc;">${restos}</div>
+                </div>
+                <div style="width:1px; background:#334155; height:30px; align-self:center;"></div>
+                <div style="text-align:center;">
+                    <span style="font-size:1.2rem;">🥚</span>
+                    <div style="font-size:0.65rem; color:#94a3b8;">Tus Fragmentos</div>
+                    <div style="font-weight:bold; color:#f8fafc;">${fragmentos}</div>
+                </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:12px; max-height:260px; overflow-y:auto; padding-right:4px;">
+                
+                <div style="background:rgba(30,41,59,0.7); border:1px solid #334155; border-radius:12px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.8rem;">🦐</span>
+                        <div>
+                            <div style="font-size:0.85rem; font-weight:bold; color:#f8fafc;">Fabricar Cebo Raro</div>
+                            <div style="font-size:0.7rem; color:#94a3b8;">Requisito: 15x Restos Marinos ⚓</div>
+                        </div>
+                    </div>
+                    <button onclick="executeCraft('cebo_raro')" ${restos < 15 ? 'disabled style="background:#334155; color:#64748b; cursor:not-allowed;"' : ''} style="background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:0.75rem; cursor:pointer; transition:background 0.2s;">
+                        Fabricar
+                    </button>
+                </div>
+
+                <div style="background:rgba(30,41,59,0.7); border:1px solid #334155; border-radius:12px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.8rem;">🐟🥚</span>
+                        <div>
+                            <div style="font-size:0.85rem; font-weight:bold; color:#4ade80;">Reclamar Huevo Común</div>
+                            <div style="font-size:0.7rem; color:#94a3b8;">Requisito: 100x Fragmentos 🥚</div>
+                        </div>
+                    </div>
+                    <button onclick="executeCraft('huevo_comun')" ${fragmentos < 100 ? 'disabled style="background:#334155; color:#64748b; cursor:not-allowed;"' : ''} style="background:#22c55e; color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:0.75rem; cursor:pointer; transition:background 0.2s;">
+                        Reclamar
+                    </button>
+                </div>
+
+            </div>
+
+            <div style="text-align:center; margin-top:20px;">
+                <button onclick="document.getElementById('minigame-modal').style.display='none'" style="background:#ef4444; color:white; border:none; padding:8px 25px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:0.85rem;">
+                    Salir del Laboratorio
+                </button>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+}
+
+// LÓGICA DE EJECUCIÓN DEL CRAFTEO
+async function executeCraft(recipeType) {
+    try {
+        // Volvemos a consultar para evitar exploits de doble clic rápido
+        const { data: profile, error } = await supabase.from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (error || !profile) return showToast("Error de sincronización.", "❌");
+
+        let updateData = {};
+        let logText = "";
+        let toastText = "";
+        let toastIcon = "";
+
+        if (recipeType === 'cebo_raro') {
+            if ((profile.marine_trash || 0) < 15) return alert("No tienes suficientes Restos Marinos.");
+            
+            updateData.marine_trash = profile.marine_trash - 15;
+            updateData.food_rare = (profile.food_rare || 0) + 1;
+            
+            toastText = "¡Crafteo Exitoso! Fabricaste 1x Cebo Raro 🦐";
+            toastIcon = "🦐";
+            logText = "Laboratorio: Intercambió 15x Restos Marinos por 1x Cebo Raro";
+
+        } else if (recipeType === 'huevo_comun') {
+            if ((profile.fragmentos_huevo || 0) < 100) return alert("No tienes suficientes Fragmentos de Huevo.");
+            
+            // 1. Restamos los 100 fragmentos del perfil del usuario
+            updateData.fragmentos_huevo = profile.fragmentos_huevo - 100;
+            
+            // 2. Insertamos el pez directamente en estado de huevo en tu tabla user_fish
+            const { error: eggError } = await supabase.from('user_fish').insert([{
+                user_id: currentUser.id,
+                rarity: 'common',
+                level: 1,
+                current_xp: 0,
+                next_level_xp: 100,
+                is_egg: true, // Se crea como huevo listo para incubar
+                last_fed: new Date().toISOString()
+            }]);
+
+            if (eggError) throw eggError;
+
+            toastText = "¡PROGRESO COMPLETADO! Reclamaste un Huevo de Pez Común 🥚";
+            toastIcon = "🥚";
+            logText = "Laboratorio: Canjeó 100x Fragmentos por un Huevo Común";
+        }
+
+        // Aplicamos los cambios de inventario en la tabla profiles
+        const { error: updateError } = await supabase.from('profiles')
+            .update(updateData)
+            .eq('id', currentUser.id);
+
+        if (updateError) throw updateError;
+
+        // Auditoría e Historial (Logs)
+        if (typeof registrarLog === "function") {
+            await registrarLog('acuario_logs', {
+                accion: 'laboratorio_craft',
+                monto_prl: 0,
+                descripcion: `🧪 ${logText}`
+            });
+        }
+
+        // Mostramos notificación y refrescamos todo el laboratorio e interfaz
+        if (typeof showToast === "function") showToast(toastText, toastIcon);
+        
+        // Volvemos a abrir para pintar los nuevos saldos actualizados y recalcular los botones deshabilitados
+        openCraftingMenu(); 
+
+        if (typeof loadProfile === "function") await loadProfile();
+        if (typeof initAquarium === "function") initAquarium(); // Refresca el acuario por si nació el huevo
+
+    } catch (err) {
+        console.error("Error en executeCraft:", err);
+        if (typeof showToast === "function") showToast("Error al procesar el intercambio.", "❌");
+    }
+}
