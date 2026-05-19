@@ -73,7 +73,6 @@
             text-align: center;
         }
 
-        /* Título Principal con Brillo de Neón Marino */
         .auth-container h1 {
             font-size: 2.3rem;
             font-weight: 800;
@@ -92,7 +91,6 @@
             font-weight: 600;
         }
 
-        /* Formularios Internos */
         .form-box h2 {
             font-size: 1.3rem;
             color: #f8fafc;
@@ -100,7 +98,6 @@
             font-weight: 400;
         }
 
-        /* Estilización Estricta de Inputs */
         .input-group {
             position: relative;
             margin-bottom: 18px;
@@ -137,7 +134,6 @@
             color: #64748b;
         }
 
-        /* Botón de Entrada Neón */
         .btn-auth {
             width: 100%;
             padding: 14px;
@@ -161,11 +157,6 @@
             filter: brightness(1.1);
         }
 
-        .btn-auth:active {
-            transform: translateY(0);
-        }
-
-        /* Enlaces de cambio de pestaña */
         .auth-switch {
             margin-top: 25px;
             font-size: 0.85rem;
@@ -176,16 +167,8 @@
             color: #38bdf8;
             text-decoration: none;
             font-weight: 600;
-            transition: color 0.2s;
-            margin-left: 3px;
         }
 
-        .auth-switch a:hover {
-            text-decoration: underline;
-            color: #22d3ee;
-        }
-
-        /* Mensajes de Alerta y Error */
         .error-msg {
             color: #f87171;
             font-size: 0.8rem;
@@ -211,42 +194,37 @@
         <div id="auth-forms">
             <div id="login-form" class="form-box">
                 <h2>Bienvenido de nuevo</h2>
-                
                 <div class="input-group">
                     <span>✉️</span>
                     <input type="email" id="login-email" placeholder="Correo electrónico">
                 </div>
-                
                 <div class="input-group">
                     <span>🔒</span>
                     <input type="password" id="login-password" placeholder="Contraseña">
                 </div>
-                
                 <button class="btn-auth" onclick="handleLogin()">Entrar al Arrecife</button>
-                
                 <p class="auth-switch">¿No tienes cuenta? <a href="#" onclick="toggleAuth()">Regístrate aquí</a></p>
             </div>
 
             <div id="register-form" class="form-box" style="display: none;">
                 <h2>Crea tu cuenta de Buzo</h2>
-                
                 <div class="input-group">
                     <span>👤</span>
                     <input type="text" id="reg-username" placeholder="Nombre de usuario">
                 </div>
-                
                 <div class="input-group">
                     <span>✉️</span>
                     <input type="email" id="reg-email" placeholder="Correo electrónico">
                 </div>
-                
                 <div class="input-group">
                     <span>🔒</span>
                     <input type="password" id="reg-password" placeholder="Contraseña">
                 </div>
-                
+                <div class="input-group">
+                    <span>🎁</span>
+                    <input type="text" id="reg-ref-code" placeholder="Código de invitado (opcional)">
+                </div>
                 <button class="btn-auth" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onclick="handleRegister()">Registrarse</button>
-                
                 <p class="auth-switch">¿Ya tienes cuenta? <a href="#" onclick="toggleAuth()">Inicia sesión</a></p>
             </div>
         </div>
@@ -255,13 +233,15 @@
     </div>
 
     <script>
-        // 1. Capturador de Referidos: Detecta "?ref=CODIGO" en la URL
+        // 1. Capturador de Referidos: Detecta "?ref=CODIGO" en la URL y rellena el input
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get('ref');
-            if (refCode) {
-                localStorage.setItem('pending_referral_code', refCode.trim().toUpperCase());
-                console.log("📌 Código de invitado detectado y listo para el registro:", refCode);
+            const refInput = document.getElementById('reg-ref-code');
+            
+            if (refCode && refInput) {
+                refInput.value = refCode.trim().toUpperCase();
+                console.log("📌 Código de invitado detectado y cargado:", refCode);
             }
         });
 
