@@ -935,7 +935,7 @@ async function openFishingGame() {
 
     if (!modal || !container) return;
 
-    // 1. Obtener datos frescos del perfil (Intentos, Cañas y Fragmentos)
+    // 1. Obtener datos frescos del perfil
     const { data: profile, error } = await supabase.from('profiles')
         .select('fishing_rods, fishing_attempts_today, last_fishing_date, marine_trash, food_basic, fragmentos_huevo')
         .eq('id', currentUser.id)
@@ -947,7 +947,6 @@ async function openFishingGame() {
     let attempts = profile.fishing_attempts_today || 0;
     
     if (profile.last_fishing_date !== today) {
-        // Es un nuevo día, reseteamos el contador localmente y en la DB de forma limpia
         attempts = 0;
         const { error: resetError } = await supabase.from('profiles').update({ 
             fishing_attempts_today: 0, 
@@ -962,7 +961,6 @@ async function openFishingGame() {
         return;
     }
 
-    // 3. Verificación de Cañas (Pack de 2 en tienda)
     if ((profile.fishing_rods || 0) <= 0) {
         alert("¡No tienes Cañas de Pescar! Compra un pack en la tienda.");
         if (typeof switchTab === "function") {
@@ -971,7 +969,7 @@ async function openFishingGame() {
         return;
     }
 
-    // 4. Inyección del Diseño Corregido
+    // 3. Inyección del Diseño con Tabla de Probabilidades Integrada
     container.innerHTML = `
         <div id="fishing-scene" style="position:relative; width:100%; max-width:400px; height:450px; background: url('${RAW_BASE}fondo_acuario.jpg'); background-size:cover; border-radius:15px; overflow:hidden; border:4px solid #1e3a8a; margin: 0 auto;">
             <div style="position:absolute; width:100%; height:100%; background:rgba(30, 58, 138, 0.2); pointer-events:none;"></div>
@@ -984,10 +982,45 @@ async function openFishingGame() {
                 <div id="fishing-progress-fill" style="position:absolute; bottom:0; width:100%; height:0%; background:#4ade80; transition: height 0.2s;"></div>
             </div>
 
+            <div id="fishing-result-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.85); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:10; color:white; padding:20px; text-align:center;">
+                <div id="result-icon" style="font-size:4rem; margin-bottom:10px; animation: bounce 1s infinite;">✨</div>
+                <h3 id="result-title" style="margin:5px 0; color:#4ade80; font-size:1.4rem;">¡Pesca Completada!</h3>
+                <p id="result-text" style="font-size:0.95rem; color:#94a3b8; margin-bottom:20px; padding:0 10px;"></p>
+                <button onclick="closeFishingModal()" style="background:#22c55e; color:white; border:none; padding:12px 35px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:1rem; box-shadow: 0 4px 10px rgba(34,197,94,0.3);">Continuar</button>
+            </div>
+
             <div style="position:absolute; bottom:20px; width:100%; text-align:center;">
                 <button id="btn-fish-action" class="btn-buy" style="padding:15px 30px; font-size:1.2rem; width:80%;">¡JALAR!</button>
             </div>
         </div>
+
+        <div style="max-width:400px; margin:12px auto 0 auto; background:#1e293b; border-radius:12px; padding:12px; border:1px solid #334155; font-family:sans-serif;">
+            <div style="font-size:0.75rem; font-weight:bold; color:#6366f1; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; text-align:center;">📋 Probabilidades de Captura</div>
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align:center;">
+                <div style="background:rgba(15,23,42,0.4); padding:6px; border-radius:8px;">
+                    <div style="font-size:1.1rem;">🌿</div>
+                    <div style="font-size:0.7rem; color:#94a3b8; font-weight:bold;">40%</div>
+                    <div style="font-size:0.6rem; color:#64748b;">Algas</div>
+                </div>
+                <div style="background:rgba(15,23,42,0.4); padding:6px; border-radius:8px;">
+                    <div style="font-size:1.1rem;">⚓</div>
+                    <div style="font-size:0.7rem; color:#94a3b8; font-weight:bold;">25%</div>
+                    <div style="font-size:0.6rem; color:#64748b;">Restos</div>
+                </div>
+                <div style="background:rgba(15,23,42,0.4); padding:6px; border-radius:8px;">
+                    <div style="font-size:1.1rem;">🥚</div>
+                    <div style="font-size:0.7rem; color:#94a3b8; font-weight:bold;">14%</div>
+                    <div style="font-size:0.6rem; color:#64748b;">Frag. Huevo</div>
+                </div>
+                <div style="background:rgba(15,23,42,0.4); padding:6px; border-radius:8px;">
+                    <div style="font-size:1.1rem;">🎁</div>
+                    <div style="font-size:0.7rem; color:#a855f7; font-weight:bold;">1%</div>
+                    <div style="font-size:0.6rem; color:#a855f7;">Súper Caja</div>
+                </div>
+            </div>
+            <div style="font-size:0.65rem; color:#f43f5e; text-align:center; margin-top:8px; font-weight:500;">⚠️ Hay un 20% de probabilidad de que el pez escape de la línea.</div>
+        </div>
+
         <div style="text-align:center; margin-top:10px;">
             <span style="color:#64748b; font-size:0.85rem;">Sesiones hoy: ${attempts}/4 | Cañas: ${profile.fishing_rods}</span><br>
             <button onclick="closeFishingModal()" style="margin-top:10px; background:#ef4444; color:white; border:none; padding:8px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">Cancelar y Salir</button>
@@ -999,7 +1032,7 @@ async function openFishingGame() {
 }
 
 function closeFishingModal() {
-    clearInterval(fishingInterval); // Detiene el juego inmediatamente de forma global
+    clearInterval(fishingInterval); // Detiene el bucle de físicas por completo
     const modal = document.getElementById('minigame-modal');
     if (modal) modal.style.display = 'none';
 }
@@ -1033,21 +1066,20 @@ function startFishingMinigame() {
         if (progressFill) progressFill.style.height = progress + '%';
 
         if (progress >= 100) {
-            clearInterval(fishingInterval);
-            finishFishing();
+            clearInterval(fishingInterval); // Congela las físicas de inmediato
+            finishFishing(); // Llama a procesar la recompensa
         }
     }, 50);
 
     if (btn) {
         btn.onmousedown = (e) => { e.preventDefault(); hookPos = Math.min(410, hookPos + 45); };
-        // Soporte extra para pantallas táctiles en Telegram móvil
         btn.ontouchstart = (e) => { e.preventDefault(); hookPos = Math.min(410, hookPos + 45); };
     }
 }
 
 async function finishFishing() {
     try {
-        // 1. Obtener datos actuales del perfil para asegurar sincronización analítica
+        // 1. Obtener datos actuales del perfil para sincronización analítica
         const { data: profile, error } = await supabase.from('profiles')
             .select('*')
             .eq('id', currentUser.id)
@@ -1058,7 +1090,7 @@ async function finishFishing() {
             return;
         }
 
-        // 2. Determinar recompensas basadas en la nueva tabla de probabilidades balanceada
+        // 2. Determinar recompensas basadas en la tabla exacta
         const rand = Math.random();
         let rewardCol = null;
         let rewardName = "";
@@ -1067,46 +1099,40 @@ async function finishFishing() {
         let seEscapo = false;
 
         if (rand < 0.40) {
-            // 40% Probabilidad: Comida Básica (Algas)
             rewardCol = "food_basic";
-            rewardName = "Algas";
+            rewardName = "Algas 🌿";
             itemIcon = "🌿";
         } else if (rand < 0.65) {
-            // 25% Probabilidad: Restos Marinos
             rewardCol = "marine_trash";
-            rewardName = "Restos Marinos";
+            rewardName = "Restos Marinos ⚓";
             itemIcon = "⚓";
         } else if (rand < 0.85) {
-            // 20% Probabilidad: Pérdida total
             seEscapo = true;
             rewardName = "Nada";
             itemIcon = "🌊";
         } else if (rand < 0.99) {
-            // 14% Probabilidad: 1x Fragmento de Huevo (int4)
             rewardCol = "fragmentos_huevo";
-            rewardName = "Fragmento de Huevo";
+            rewardName = "Fragmento de Huevo 🥚";
             itemIcon = "🥚";
         } else {
-            // 1% Probabilidad: Súper cofre de Fragmentos de Huevo
             rewardCol = "fragmentos_huevo";
-            rewardName = "5x Fragmentos de Huevo";
+            rewardName = "5x Fragmentos de Huevo 🎁";
             itemIcon = "🎁";
             cantidadSumar = 5;
         }
 
-        // 3. Preparar el objeto de actualización unificado
+        // 3. Preparar el objeto de actualización de balances
         const attemptsToday = (profile.fishing_attempts_today || 0) + 1;
         const updateData = {
             fishing_rods: Math.max(0, (profile.fishing_rods || 0) - 1),
             fishing_attempts_today: attemptsToday
         };
 
-        // Si no se escapó el pez, le sumamos el ítem correspondiente al inventario
         if (!seEscapo && rewardCol) {
             updateData[rewardCol] = (profile[rewardCol] || 0) + cantidadSumar;
         }
 
-        // Guardamos todo en un único viaje a Supabase (Seguro y atómico)
+        // Guardamos todo en Supabase
         const { error: updateError } = await supabase.from('profiles')
             .update(updateData)
             .eq('id', currentUser.id);
@@ -1116,7 +1142,7 @@ async function finishFishing() {
             return;
         }
 
-        // 4. Registro Contable e Historial (Logs)
+        // 4. Registro Contable en el Historial (Logs)
         if (typeof registrarLog === "function") {
             await registrarLog('acuario_logs', {
                 accion: seEscapo ? 'pesca_intento' : 'pesca_recompensa',
@@ -1127,18 +1153,41 @@ async function finishFishing() {
             });
         }
 
-        // 5. Feedback Visual con Toast en Pantalla
+        // =======================================================
+        // 5. CAMBIO CLAVE: MOSTRAR MENSAJE SIN SALIR DE LA PANTALLA
+        // =======================================================
+        const overlay = document.getElementById('fishing-result-overlay');
+        const resIcon = document.getElementById('result-icon');
+        const resTitle = document.getElementById('result-title');
+        const resText = document.getElementById('result-text');
+
+        if (overlay && resIcon && resTitle && resText) {
+            resIcon.innerText = itemIcon;
+            
+            if (!seEscapo) {
+                resTitle.innerText = "¡PESCA EXITOSA!";
+                resTitle.style.color = "#4ade80";
+                resText.innerText = `Excelente trabajo, has logrado subir el anzuelo a tiempo y recuperaste: ${rewardName}. ¡Ha sido guardado en tu inventario!`;
+            } else {
+                resTitle.innerText = "¡SE HA ESCAPADO!";
+                resTitle.style.color = "#f43f5e";
+                resText.innerText = "El pez dio un fuerte tirón al final y logró soltarse del anzuelo. Tu caña consumió energía pero la línea regresó vacía.";
+            }
+
+            // Mostramos el panel bloqueando la escena de pesca de fondo
+            overlay.style.display = "flex";
+        }
+
+        // Lanzamos el toast tradicional en paralelo de soporte visual
         if (typeof showToast === "function") {
             if (!seEscapo) {
-                showToast(`¡Pesca exitosa! Conseguiste: ${rewardName}`, itemIcon);
+                showToast(`¡Conseguiste: ${rewardName}!`, itemIcon);
             } else {
-                showToast("Mala suerte, el pez se soltó de la línea...", itemIcon);
+                showToast("El pez logró escapar...", itemIcon);
             }
         }
 
-        // 6. Cerrar modal y refrescar la información visual en el dashboard
-        closeFishingModal();
-        
+        // Ejecutamos la actualización del perfil para refrescar datos de fondo (pero no cerramos el modal)
         if (typeof loadProfile === "function") {
             await loadProfile();
         }
