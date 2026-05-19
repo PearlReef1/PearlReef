@@ -12,64 +12,64 @@
     <div id="main-aquarium-grid" style="position: fixed; top: 0; left: 260px; right: 0; bottom: 0; z-index: 10; overflow-y: auto; display: none; padding: 40px; background: rgba(0,0,0,0.2);">
     </div>
 
-  <aside class="sidebar">
+ <aside class="sidebar" style="display: flex; flex-direction: column; height: 100vh; overflow: hidden; justify-content: space-between; padding: 15px 10px;">
     <div class="sidebar-header">
-        <h2 class="logo-text" style="margin-bottom: 20px;">Pearl Reef</h2>
+        <h2 class="logo-text" style="margin-bottom: 12px; font-size: 1.35rem; text-align: center;">Pearl Reef</h2>
         
-        <div class="user-profile-box" style="background: rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div class="user-profile-box" style="background: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                <div style="background: #3b82f6; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <div style="background: #3b82f6; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);">
                     👤
                 </div>
-                <span id="user-name" style="font-weight: 600; font-size: 0.95rem; color: #f8fafc; letter-spacing: 0.5px;">...</span>
+                <span id="user-name" style="font-weight: 600; font-size: 0.85rem; color: #f8fafc; letter-spacing: 0.5px;">...</span>
             </div>
 
-            <div style="background: rgba(46, 204, 113, 0.15); padding: 10px; border-radius: 12px; border: 1px solid rgba(46, 204, 113, 0.2); margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                    <span style="font-size: 1.2rem;">💵</span>
+            <div style="background: rgba(46, 204, 113, 0.15); padding: 6px 8px; border-radius: 10px; border: 1px solid rgba(46, 204, 113, 0.2); margin-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-size: 1rem;">💵</span>
                     <div>
-                        <span id="usdt-balance" style="font-size: 1.1rem; font-weight: 800; color: #2ecc71; display: block; line-height: 1;">0.00</span>
-                        <span style="font-size: 0.6rem; color: #2ecc71; text-transform: uppercase; font-weight: bold;">USDT (BEP20)</span>
+                        <span id="usdt-balance" style="font-size: 0.95rem; font-weight: 800; color: #2ecc71; display: block; line-height: 1;">0.00</span>
+                        <span style="font-size: 0.55rem; color: #2ecc71; text-transform: uppercase; font-weight: bold;">USDT (BEP20)</span>
                     </div>
                 </div>
-                <button onclick="openWithdrawModal()" style="width: 100%; background: #ef4444; color: white; border: none; padding: 6px; border-radius: 8px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase;">
+                <button onclick="openWithdrawModal()" style="width: 100%; background: #ef4444; color: white; border: none; padding: 4px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.3px;">
                     📤 Retirar Fondos
                 </button>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 10px; background: rgba(0, 0, 0, 0.2); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
-                <img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" alt="Perla" style="width: 24px; height: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; background: rgba(0, 0, 0, 0.2); padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                <img src="https://github.com/PearlReef1/PearlReef/blob/main/assets/perla_economia.png?raw=true" alt="Perla" style="width: 18px; height: 18px;">
                 <div>
-                    <span id="pearl-balance" style="font-size: 1.1rem; font-weight: 800; color: #fff; display: block; line-height: 1;">0</span>
-                    <span style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase; font-weight: bold;">$PRL Tokens</span>
+                    <span id="pearl-balance" style="font-size: 0.95rem; font-weight: 800; color: #fff; display: block; line-height: 1;">0</span>
+                    <span style="font-size: 0.55rem; color: #94a3b8; text-transform: uppercase; font-weight: bold;">$PRL Tokens</span>
                 </div>
             </div>
 
-            <button onclick="openSwapModal()" style="width: 100%; margin-top: 10px; background: #6366f1; color: white; border: none; padding: 6px; border-radius: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;">
+            <button onclick="openSwapModal()" style="width: 100%; margin-top: 6px; background: #6366f1; color: white; border: none; padding: 5px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; letter-spacing: 0.3px;">
                 🔄 CAMBIAR MONEDAS
             </button>
             
-            <div class="food-inventory-mini" style="margin-top: 15px; display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-                <span title="Plancton" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">🦠 <span id="food-plancton-count">0</span></span>
-                <span title="Algas" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">🌿 <span id="food-basic-count">0</span></span>
-                <span title="Cebos" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">🦐 <span id="food-rare-count">0</span></span>
-                <span title="Restos Marinos" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">⚓ <span id="marine-trash-count">0</span></span>
-                <span title="Fragmentos de Huevo" style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">🥚 <span id="fragmentos-huevo-count">0</span></span>
+            <div class="food-inventory-mini" style="margin-top: 8px; display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                <span title="Plancton" style="display: flex; align-items: center; gap: 3px; font-size: 0.75rem;">🦠 <span id="food-plancton-count">0</span></span>
+                <span title="Algas" style="display: flex; align-items: center; gap: 3px; font-size: 0.75rem;">🌿 <span id="food-basic-count">0</span></span>
+                <span title="Cebos" style="display: flex; align-items: center; gap: 3px; font-size: 0.75rem;">🦐 <span id="food-rare-count">0</span></span>
+                <span title="Restos Marinos" style="display: flex; align-items: center; gap: 3px; font-size: 0.75rem;">⚓ <span id="marine-trash-count">0</span></span>
+                <span title="Fragmentos de Huevo" style="display: flex; align-items: center; gap: 3px; font-size: 0.75rem;">🥚 <span id="fragmentos-huevo-count">0</span></span>
             </div>
         </div>
     </div>
 
-    <nav class="sidebar-nav">
-        <button class="nav-btn active" onclick="switchTab('acuario', this)">🌊 Acuario</button>
-        <button class="nav-btn" onclick="switchTab('tienda', this)">🛒 Tienda</button>
-        <button class="nav-btn" onclick="switchTab('deposito', this)" style="color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); margin-top: 5px;">💰 Depósito</button>
-        <button class="nav-btn" onclick="switchTab('historial', this)">📜 Historial</button>
-        <button class="nav-btn" onclick="openCraftingMenu()" style="color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); margin-top: 5px;">🧪 Laboratorio</button>
-        <button class="nav-btn" onclick="openFishingGame()" style="color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); margin-top: 5px;">🎣 Pescar</button>
+    <nav class="sidebar-nav" style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px; width: 100%;">
+        <button class="nav-btn active" onclick="switchTab('acuario', this)" style="padding: 8px 12px; font-size: 0.85rem;">🌊 Acuario</button>
+        <button class="nav-btn" onclick="switchTab('tienda', this)" style="padding: 8px 12px; font-size: 0.85rem;">🛒 Tienda</button>
+        <button class="nav-btn" onclick="switchTab('deposito', this)" style="color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); padding: 8px 12px; font-size: 0.85rem;">💰 Depósito</button>
+        <button class="nav-btn" onclick="switchTab('historial', this)" style="padding: 8px 12px; font-size: 0.85rem;">📜 Historial</button>
+        <button class="nav-btn" onclick="openCraftingMenu()" style="color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); padding: 8px 12px; font-size: 0.85rem; font-weight: bold;">🧪 Laboratorio</button>
+        <button class="nav-btn" onclick="openFishingGame()" style="color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); padding: 8px 12px; font-size: 0.85rem;">🎣 Pescar</button>
     </nav>
 
-    <button onclick="handleLogout()" class="btn-logout">Salir del Mar</button>
+    <button onclick="handleLogout()" class="btn-logout" style="width: 100%; padding: 8px 0; font-size: 0.8rem; margin-top: 10px;">Salir del Mar</button>
 </aside>
     <main class="content-panel" id="content-panel" style="display: none;">
         <div class="panel-header">
