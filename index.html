@@ -7,8 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* ==========================================================================
-           ESTILOS MAESTROS - INTERFAZ DE AUTENTICACIÓN PEARL REEF
-           ========================================================================== */
+            ESTILOS MAESTROS - INTERFAZ DE AUTENTICACIÓN PEARL REEF
+            ========================================================================== */
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 
         * {
@@ -196,7 +196,7 @@
             padding: 8px;
             border-radius: 8px;
             border: 1px solid rgba(248, 113, 113, 0.2);
-            display: none; /* Se activa dinámicamente */
+            display: none;
         }
     </style>
 </head>
@@ -255,32 +255,35 @@
     </div>
 
     <script>
+        // 1. Capturador de Referidos: Detecta "?ref=CODIGO" en la URL
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+            if (refCode) {
+                localStorage.setItem('pending_referral_code', refCode.trim().toUpperCase());
+                console.log("📌 Código de invitado detectado y listo para el registro:", refCode);
+            }
+        });
+
+        // 2. Animación de Burbujas
         function createBubbles() {
             const bg = document.getElementById('ocean-bg');
-            const bubbleCount = 15; // Cantidad simultánea de burbujas
+            const bubbleCount = 15;
             
             for(let i = 0; i < bubbleCount; i++) {
                 const bubble = document.createElement('div');
                 bubble.classList.add('bubble');
-                
-                // Tamaños aleatorios realistas
                 const size = Math.random() * 25 + 8;
                 bubble.style.width = `${size}px`;
                 bubble.style.height = `${size}px`;
-                
-                // Distribución horizontal aleatoria
                 bubble.style.left = `${Math.random() * 100}%`;
-                
-                // Variación de tiempos de animación para que no salgan juntas
                 bubble.style.animationDelay = `${Math.random() * 10}s`;
                 bubble.style.animationDuration = `${Math.random() * 6 + 8}s`;
-                
                 bg.appendChild(bubble);
             }
         }
         createBubbles();
 
-        // Pequeño extra opcional para mostrar el bloque de error si tu script.js cambia el texto
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.target.id === 'auth-error') {
