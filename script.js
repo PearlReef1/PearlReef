@@ -42,7 +42,6 @@ async function handleRegister() {
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const username = document.getElementById('reg-username').value.trim();
-    const errorEl = document.getElementById('auth-error');
     const btnSubmit = document.querySelector('#register-form .btn-auth');
 
     if (!email || !password || !username) {
@@ -51,6 +50,50 @@ async function handleRegister() {
     }
 
     setLoadingState(btnSubmit, true, "Registrando...");
+
+    // 1. Buscar el ID del patrocinador ANTES de crear el usuario
+    let sponsorId = null;
+    const refCode = localStorage.getItem('pending_referral_code');
+
+    if (refCode) {
+        const { data: sponsor } = await client
+            .from('profiles')
+            .select('id')
+            .eq('referral_code', refCode)
+            .single();
+
+        if (sponsor) {
+            sponsorId = sponsor.id;
+        }
+        localStorage.removeItem('pending_referral_code');
+    }
+
+    // 2. Crear el usuario
+    const { data, error } = await client.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+            data: { 
+                username: username,
+                referred_by: sponsorId // Guardamos el vínculo aquí para que el Trigger lo use
+            }
+        }
+    });
+
+    if (error) {
+        showAuthError(error.message);
+        setLoadingState(btnSubmit, false, "Registrarse");
+        return;
+    }
+
+    // --- IMPORTANTE ---
+    // Si tu Trigger de Supabase crea el perfil automáticamente, NO hagas el .insert() aquí.
+    // Si tu Trigger NO crea el perfil, mantén tu código de inserción como estaba.
+    
+    setLoadingState(btnSubmit, false, "Registrarse");
+    alert('¡Registro exitoso! Inicia sesión.');
+    toggleAuth();
+}
 
     // 1. Crear el usuario en Supabase Auth
     const { data, error } = await client.auth.signUp({
