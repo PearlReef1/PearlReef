@@ -164,25 +164,39 @@ async function switchTab(tab, btn) {
     
     const panel = document.getElementById('content-panel');
     const mainGrid = document.getElementById('main-aquarium-grid');
+    const tabReferidos = document.getElementById('tab-referidos'); // Agregamos esta referencia
 
+    // 2. Lógica para el Acuario (el modo especial)
     if (tab === 'acuario') { 
         if (panel) panel.style.display = 'none'; 
+        if (tabReferidos) tabReferidos.style.display = 'none'; // Ocultar referidos si existiera
+        
         if (mainGrid) {
             mainGrid.style.display = 'block'; 
-            
-            // LOGICA CRÍTICA: Esperar a que allFish tenga datos
             if (allFish && allFish.length > 0) {
                 renderInventory(mainGrid); 
             } else {
-                console.log("Esperando a que carguen los peces...");
-                // Reintentamos en medio segundo si la DB está lenta
                 setTimeout(() => renderInventory(mainGrid), 800);
             }
         }
         return; 
     }
 
+    // 3. LOGICA PARA REFERIDOS (La nueva pestaña independiente)
+    if (tab === 'referidos') {
+        if (mainGrid) mainGrid.style.display = 'none';
+        if (panel) panel.style.display = 'none'; // Ocultamos el panel lateral normal
+        
+        if (tabReferidos) {
+            tabReferidos.style.display = 'block'; // Mostramos nuestra nueva pantalla
+            loadReferralPanelData(); // ¡Aquí llamamos a la función que creamos!
+        }
+        return;
+    }
+
+    // 4. Lógica para paneles normales (Tienda, Depósito, Historial)
     if (mainGrid) mainGrid.style.display = 'none';
+    if (tabReferidos) tabReferidos.style.display = 'none'; // Asegurar ocultar referidos
     if (panel) panel.style.display = 'flex';
     
     const body = document.getElementById('panel-body');
@@ -196,7 +210,7 @@ async function switchTab(tab, btn) {
         renderShop(body);
     } else if (tab === 'historial') {
         title.innerText = "Historial de Actividad";
-        renderHistory(body); // Llama a la función que renderiza las tablas de logs
+        renderHistory(body);
     }
 }
 function renderInventory(container) {
@@ -2088,4 +2102,59 @@ async function executeCraft(recipeType) {
         console.error("Error en executeCraft:", err);
         if (typeof showToast === "function") showToast("Error al procesar el intercambio.", "❌");
     }
+}
+// Función para cargar y mostrar los referidos en el panel
+async function loadReferralPanelData() {
+    try {
+        if (!currentUser) return;
+
+        // 1. Mostrar tu propio enlace de referido en el input
+        // Asumimos que tienes una columna 'referral_code' en tu tabla profiles
+        const myLink = `${window.location.origin}/index.html?ref=${currentUser.referral_code}`;
+        const inputLink = document.getElementById('referral-link-input');
+        if (inputLink) inputLink.value = myLink;
+
+        // 2. Consultar cuánta gente te ha usado como referido
+        const { data: referrals, error } = await supabase
+            .from('profiles')
+            .select('username, created_at, total_earned_from_ref') // Asegúrate de tener una columna para ganancias
+            .eq('referred_by', currentUser.id);
+
+        if (error) throw error;
+
+        // 3. Actualizar contadores
+        const countDisplay = document.getElementById('ref-count-display');
+        const earningsDisplay = document.getElementById('ref-earnings-display');
+        const tableBody = document.getElementById('referrals-table-body');
+
+        if (countDisplay) countDisplay.innerText = referrals ? referrals.length : 0;
+        
+        // Calcular total ganado (suma de la columna total_earned_from_ref)
+        const totalEarned = referrals ? referrals.reduce((sum, ref) => sum + (ref.total_earned_from_ref || 0), 0) : 0;
+        if (earningsDisplay) earningsDisplay.innerText = totalEarned.toFixed(2);
+
+        // 4. Dibujar la tabla
+        if (referrals && referrals.length > 0) {
+            tableBody.innerHTML = referrals.map(ref => `
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <td style="padding: 12px 8px; color: #f8fafc;">${ref.username}</td>
+                    <td style="padding: 12px 8px; color: #64748b;">${new Date(ref.created_at).toLocaleDateString()}</td>
+                    <td style="padding: 12px 8px; text-align: right; color: #10b981; font-weight: bold;">${(ref.total_earned_from_ref || 0).toFixed(2)} PRL</td>
+                </tr>
+            `).join('');
+        } else {
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 30px 0;">Aún no tienes referidos. ¡Comparte tu link!</td></tr>`;
+        }
+
+    } catch (err) {
+        console.error("Error al cargar referidos:", err);
+    }
+}
+
+// Función para copiar el link al portapapeles
+function copyReferralLink() {
+    const copyText = document.getElementById("referral-link-input");
+    copyText.select();
+    document.execCommand("copy");
+    alert("¡Link copiado al portapapeles!");
 }
