@@ -132,6 +132,10 @@ async function loadProfile() {
         // Actualizar contador de restos marinos
         if (document.getElementById('marine-trash-count'))
             document.getElementById('marine-trash-count').innerText = data.marine_trash || 0;
+
+        // --- ACTUALIZAR CONTADOR DE FRAGMENTOS DE HUEVO ---
+        if (document.getElementById('fragmentos-huevo-count'))
+            document.getElementById('fragmentos-huevo-count').innerText = data.fragmentos_huevo || 0;
     }
 }
 
