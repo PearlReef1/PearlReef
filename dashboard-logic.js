@@ -924,14 +924,20 @@ function getNextLevelXP(currentLevel) {
     return xpRequirements[currentLevel] || 0;
 }
 
+// ==========================================
+//          SISTEMA DE MINIJUEGO DE PESCA
+// ==========================================
+
 async function openFishingGame() {
     const modal = document.getElementById('minigame-modal');
     const container = document.getElementById('modal-dynamic-content');
     const today = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
 
-    // 1. Obtener datos frescos del perfil (Intentos y Cañas)
+    if (!modal || !container) return;
+
+    // 1. Obtener datos frescos del perfil (Intentos, Cañas y Fragmentos)
     const { data: profile, error } = await supabase.from('profiles')
-        .select('fishing_rods, fishing_attempts_today, last_fishing_date')
+        .select('fishing_rods, fishing_attempts_today, last_fishing_date, marine_trash, food_basic, fragmentos_huevo')
         .eq('id', currentUser.id)
         .single();
 
@@ -941,12 +947,14 @@ async function openFishingGame() {
     let attempts = profile.fishing_attempts_today || 0;
     
     if (profile.last_fishing_date !== today) {
-        // Es un nuevo día, reseteamos el contador en la DB
+        // Es un nuevo día, reseteamos el contador localmente y en la DB de forma limpia
         attempts = 0;
-        await supabase.from('profiles').update({ 
+        const { error: resetError } = await supabase.from('profiles').update({ 
             fishing_attempts_today: 0, 
             last_fishing_date: today 
         }).eq('id', currentUser.id);
+        
+        if (resetError) console.error("Error al resetear intentos diarios:", resetError);
     }
 
     if (attempts >= 4) {
@@ -957,7 +965,9 @@ async function openFishingGame() {
     // 3. Verificación de Cañas (Pack de 2 en tienda)
     if ((profile.fishing_rods || 0) <= 0) {
         alert("¡No tienes Cañas de Pescar! Compra un pack en la tienda.");
-        switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
+        if (typeof switchTab === "function") {
+            switchTab('tienda', document.querySelector('[onclick*="tienda"]'));
+        }
         return;
     }
 
@@ -989,8 +999,9 @@ async function openFishingGame() {
 }
 
 function closeFishingModal() {
-    clearInterval(fishingInterval); // Detiene el juego inmediatamente
-    document.getElementById('minigame-modal').style.display = 'none';
+    clearInterval(fishingInterval); // Detiene el juego inmediatamente de forma global
+    const modal = document.getElementById('minigame-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 function startFishingMinigame() {
@@ -1009,9 +1020,9 @@ function startFishingMinigame() {
         targetPos += (Math.random() - 0.5) * 20;
         targetPos = Math.max(40, Math.min(380, targetPos));
 
-        hook.style.bottom = hookPos + 'px';
-        line.style.height = (450 - hookPos - 30) + 'px';
-        fish.style.bottom = targetPos + 'px';
+        if (hook) hook.style.bottom = hookPos + 'px';
+        if (line) line.style.height = (450 - hookPos - 30) + 'px';
+        if (fish) fish.style.bottom = targetPos + 'px';
 
         if (Math.abs(hookPos - targetPos) < 35) {
             progress = Math.min(100, progress + 1.5);
@@ -1019,7 +1030,7 @@ function startFishingMinigame() {
             progress = Math.max(0, progress - 0.8);
         }
 
-        progressFill.style.height = progress + '%';
+        if (progressFill) progressFill.style.height = progress + '%';
 
         if (progress >= 100) {
             clearInterval(fishingInterval);
@@ -1027,100 +1038,114 @@ function startFishingMinigame() {
         }
     }, 50);
 
-    btn.onmousedown = (e) => { e.preventDefault(); hookPos = Math.min(410, hookPos + 45); };
+    if (btn) {
+        btn.onmousedown = (e) => { e.preventDefault(); hookPos = Math.min(410, hookPos + 45); };
+        // Soporte extra para pantallas táctiles en Telegram móvil
+        btn.ontouchstart = (e) => { e.preventDefault(); hookPos = Math.min(410, hookPos + 45); };
+    }
 }
 
 async function finishFishing() {
-    // 1. Obtener datos actuales para asegurar sincronización
-    const { data: profile, error } = await supabase.from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single();
+    try {
+        // 1. Obtener datos actuales del perfil para asegurar sincronización analítica
+        const { data: profile, error } = await supabase.from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
 
-    if (error || !profile) {
-        showToast("Error de conexión al reclamar recompensa.", "❌");
-        return;
-    }
+        if (error || !profile) {
+            if (typeof showToast === "function") showToast("Error de conexión al reclamar recompensa.", "❌");
+            return;
+        }
 
-    // 2. Determinar recompensa y asignar iconos (Usando el Ancla para restos marinos)
-    const rand = Math.random() * 100;
-    let rewardCol = null;
-    let rewardName = "";
-    let itemIcon = ""; 
+        // 2. Determinar recompensas basadas en la nueva tabla de probabilidades balanceada
+        const rand = Math.random();
+        let rewardCol = null;
+        let rewardName = "";
+        let itemIcon = ""; 
+        let cantidadSumar = 1;
+        let seEscapo = false;
 
-    // Definición de iconos basada en tu código (Ancla para marine_trash)
-    const icons = {
-        ancla: "⚓",    // Para marine_trash
-        plancton: "🦠", // Para food_plancton
-        algas: "🌿",    // Para food_basic
-        cebo: "💎",     // Para food_rare
-        nada: "🌊"      // Fallo
-    };
+        if (rand < 0.40) {
+            // 40% Probabilidad: Comida Básica (Algas)
+            rewardCol = "food_basic";
+            rewardName = "Algas";
+            itemIcon = "🌿";
+        } else if (rand < 0.65) {
+            // 25% Probabilidad: Restos Marinos
+            rewardCol = "marine_trash";
+            rewardName = "Restos Marinos";
+            itemIcon = "⚓";
+        } else if (rand < 0.85) {
+            // 20% Probabilidad: Pérdida total
+            seEscapo = true;
+            rewardName = "Nada";
+            itemIcon = "🌊";
+        } else if (rand < 0.99) {
+            // 14% Probabilidad: 1x Fragmento de Huevo (int4)
+            rewardCol = "fragmentos_huevo";
+            rewardName = "Fragmento de Huevo";
+            itemIcon = "🥚";
+        } else {
+            // 1% Probabilidad: Súper cofre de Fragmentos de Huevo
+            rewardCol = "fragmentos_huevo";
+            rewardName = "5x Fragmentos de Huevo";
+            itemIcon = "🎁";
+            cantidadSumar = 5;
+        }
 
-    if (rand < 25) { 
-        rewardCol = null;
-        rewardName = "Nada";
-        itemIcon = icons.nada;
-    } else if (rand < 65) {
-        rewardCol = 'marine_trash'; 
-        rewardName = "Restos Marinos";
-        itemIcon = icons.ancla;
-    } else if (rand < 85) {
-        rewardCol = 'food_plancton'; 
-        rewardName = "Plancton";
-        itemIcon = icons.plancton;
-    } else if (rand < 95) {
-        rewardCol = 'food_basic'; 
-        rewardName = "Algas";
-        itemIcon = icons.algas;
-    } else {
-        rewardCol = 'food_rare'; 
-        rewardName = "Cebo Raro";
-        itemIcon = icons.cebo;
-    }
+        // 3. Preparar el objeto de actualización unificado
+        const attemptsToday = (profile.fishing_attempts_today || 0) + 1;
+        const updateData = {
+            fishing_rods: Math.max(0, (profile.fishing_rods || 0) - 1),
+            fishing_attempts_today: attemptsToday
+        };
 
-    // 3. Preparar actualización
-    const attemptsToday = (profile.fishing_attempts_today || 0) + 1;
-    const updateData = {
-        fishing_rods: Math.max(0, (profile.fishing_rods || 0) - 1),
-        fishing_attempts_today: attemptsToday
-    };
+        // Si no se escapó el pez, le sumamos el ítem correspondiente al inventario
+        if (!seEscapo && rewardCol) {
+            updateData[rewardCol] = (profile[rewardCol] || 0) + cantidadSumar;
+        }
 
-    if (rewardCol) {
-        updateData[rewardCol] = (profile[rewardCol] || 0) + 1;
-    }
+        // Guardamos todo en un único viaje a Supabase (Seguro y atómico)
+        const { error: updateError } = await supabase.from('profiles')
+            .update(updateData)
+            .eq('id', currentUser.id);
 
-    const { error: updateError } = await supabase.from('profiles')
-        .update(updateData)
-        .eq('id', currentUser.id);
+        if (updateError) {
+            if (typeof showToast === "function") showToast("Error al guardar progreso.", "❌");
+            return;
+        }
 
-    if (updateError) {
-        showToast("Error al guardar progreso.", "❌");
-        return;
-    }
+        // 4. Registro Contable e Historial (Logs)
+        if (typeof registrarLog === "function") {
+            await registrarLog('acuario_logs', {
+                accion: seEscapo ? 'pesca_intento' : 'pesca_recompensa',
+                monto_prl: 0,
+                descripcion: !seEscapo 
+                    ? `Pesca exitosa: Encontraste ${rewardName} (+${cantidadSumar}) (#${attemptsToday}/4)` 
+                    : `Pesca fallida: El objetivo logró escapar y la línea volvió vacía (#${attemptsToday}/4)`
+            });
+        }
 
-    // --- REGISTRO EN EL HISTORIAL (LOGS) ---
-    const esExito = rewardCol !== null;
-    await registrarLog('acuario_logs', {
-        accion: 'pesca',
-        monto_prl: 0,
-        descripcion: esExito 
-            ? `Pesca exitosa: Encontraste ${rewardName} (#${attemptsToday}/4)` 
-            : `Pesca fallida: No has encontrado nada (#${attemptsToday}/4)`
-    });
+        // 5. Feedback Visual con Toast en Pantalla
+        if (typeof showToast === "function") {
+            if (!seEscapo) {
+                showToast(`¡Pesca exitosa! Conseguiste: ${rewardName}`, itemIcon);
+            } else {
+                showToast("Mala suerte, el pez se soltó de la línea...", itemIcon);
+            }
+        }
 
-    // --- FEEDBACK VISUAL CON TOAST ---
-    if (esExito) {
-        showToast(`¡Pesca exitosa! Encontraste: ${rewardName}`, itemIcon);
-    } else {
-        showToast("Mala suerte, no picó nada...", itemIcon);
-    }
+        // 6. Cerrar modal y refrescar la información visual en el dashboard
+        closeFishingModal();
+        
+        if (typeof loadProfile === "function") {
+            await loadProfile();
+        }
 
-    // 4. Cerrar juego y refrescar
-    closeFishingModal();
-    
-    if (typeof loadProfile === "function") {
-        await loadProfile();
+    } catch (err) {
+        console.error("Error crítico en finishFishing:", err);
+        if (typeof showToast === "function") showToast("Error al finalizar la sesión de pesca.", "❌");
     }
 }
 async function renderDeposit(container) {
