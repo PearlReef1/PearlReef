@@ -4,6 +4,16 @@ const SUPABASE_KEY = 'sb_publishable_q5fCEu3VFtZs8cvmdLSoRQ__4USW-cl';
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Detectar código de referido de la URL y guardarlo
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    
+    if (refCode) {
+        localStorage.setItem('pending_referral_code', refCode);
+        console.log("Referido detectado y guardado:", refCode);
+    }
+});
 // Alternar entre login y registro de forma fluida
 function toggleAuth() {
     const login = document.getElementById('login-form');
