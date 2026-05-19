@@ -234,7 +234,7 @@
 
     <script>
         // 1. Capturador de Referidos: Detecta "?ref=CODIGO" en la URL y rellena el input
-        window.addEventListener('DOMContentLoaded', () => {
+        window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get('ref');
             const refInput = document.getElementById('reg-ref-code');
@@ -242,8 +242,14 @@
             if (refCode && refInput) {
                 refInput.value = refCode.trim().toUpperCase();
                 console.log("📌 Código de invitado detectado y cargado:", refCode);
+                
+                // Si detectamos un referido, mostramos el registro automáticamente
+                if (document.getElementById('register-form').style.display === 'none') {
+                    toggleAuth();
+                }
             }
-        });
+            createBubbles();
+        };
 
         // 2. Animación de Burbujas
         function createBubbles() {
@@ -262,7 +268,6 @@
                 bg.appendChild(bubble);
             }
         }
-        createBubbles();
 
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
