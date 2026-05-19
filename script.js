@@ -4,17 +4,18 @@ const SUPABASE_KEY = 'sb_publishable_q5fCEu3VFtZs8cvmdLSoRQ__4USW-cl';
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Detectar código de referido de la URL y guardarlo
+// 1. Detectar código de referido de la URL al cargar la página
 window.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
     
     if (refCode) {
         localStorage.setItem('pending_referral_code', refCode);
-        console.log("Referido detectado y guardado:", refCode);
+        console.log("📌 Código de invitado detectado y listo:", refCode);
     }
 });
-// Alternar entre login y registro de forma fluida
+
+// 2. Alternar entre login y registro
 function toggleAuth() {
     const login = document.getElementById('login-form');
     const register = document.getElementById('register-form');
@@ -37,12 +38,13 @@ function toggleAuth() {
     }
 }
 
-// Lógica de Registro
+// 3. Lógica ÚNICA de Registro
 async function handleRegister() {
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const username = document.getElementById('reg-username').value.trim();
     const btnSubmit = document.querySelector('#register-form .btn-auth');
+    const errorEl = document.getElementById('auth-error');
 
     if (!email || !password || !username) {
         showAuthError("Por favor, rellena todos los campos.");
@@ -51,7 +53,7 @@ async function handleRegister() {
 
     setLoadingState(btnSubmit, true, "Registrando...");
 
-    // 1. Buscar el ID del patrocinador ANTES de crear el usuario
+    // Buscar patrocinador
     let sponsorId = null;
     const refCode = localStorage.getItem('pending_referral_code');
 
@@ -62,20 +64,18 @@ async function handleRegister() {
             .eq('referral_code', refCode)
             .single();
 
-        if (sponsor) {
-            sponsorId = sponsor.id;
-        }
+        if (sponsor) sponsorId = sponsor.id;
         localStorage.removeItem('pending_referral_code');
     }
 
-    // 2. Crear el usuario
+    // Registrar en Auth
     const { data, error } = await client.auth.signUp({
         email: email,
         password: password,
         options: {
             data: { 
                 username: username,
-                referred_by: sponsorId // Guardamos el vínculo aquí para que el Trigger lo use
+                referred_by: sponsorId // Esto será leído por el trigger en Supabase
             }
         }
     });
@@ -86,69 +86,24 @@ async function handleRegister() {
         return;
     }
 
-    // --- IMPORTANTE ---
-    // Si tu Trigger de Supabase crea el perfil automáticamente, NO hagas el .insert() aquí.
-    // Si tu Trigger NO crea el perfil, mantén tu código de inserción como estaba.
-    
+    // Inserción manual de perfil (si no usas Trigger, descomenta esto)
+    /*
+    await client.from('profiles').insert([{ 
+        id: data.user.id, 
+        username: username, 
+        referred_by: sponsorId 
+    }]);
+    */
+
     setLoadingState(btnSubmit, false, "Registrarse");
-    alert('¡Registro exitoso! Inicia sesión.');
+    alert('¡Registro exitoso! Revisa tu correo y luego inicia sesión.');
     toggleAuth();
 }
 
-    // 1. Crear el usuario en Supabase Auth
-    const { data, error } = await client.auth.signUp({
-        email: email,
-        password: password,
-        options: { data: { username: username } }
-    });
-
-    if (error) {
-        showAuthError(error.message);
-        setLoadingState(btnSubmit, false, "Registrarse");
-        return;
-    }
-
-    // 🚀 NUEVA LÓGICA DE REFERIDOS: Buscar patrocinador
-    let sponsorId = null;
-    const refCode = localStorage.getItem('pending_referral_code');
-
-    if (refCode) {
-        const { data: sponsor } = await client
-            .from('profiles')
-            .select('id')
-            .eq('referral_code', refCode)
-            .single();
-
-        if (sponsor) {
-            sponsorId = sponsor.id;
-        }
-        localStorage.removeItem('pending_referral_code'); // Limpiamos tras usarlo
-    }
-
-    // 2. Creamos el perfil con el posible referido (referred_by)
-    const { error: profileError } = await client
-        .from('profiles')
-        .insert([{ 
-            id: data.user.id, 
-            username: username, 
-            pearl_balance: 0,
-            referred_by: sponsorId // Guardamos el vínculo
-        }]);
-    
-    if (profileError) {
-        console.error("Error al crear perfil:", profileError);
-    }
-
-    setLoadingState(btnSubmit, false, "Registrarse");
-    alert('¡Registro exitoso! Revisa tu correo para confirmar y luego inicia sesión.');
-    toggleAuth();
-}
-
-// Lógica de Login
+// 4. Lógica de Login
 async function handleLogin() {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-    const errorEl = document.getElementById('auth-error');
     const btnSubmit = document.querySelector('#login-form .btn-auth');
 
     if (!email || !password) {
@@ -171,10 +126,7 @@ async function handleLogin() {
     }
 }
 
-// ==========================================
-//        FUNCIONES AUXILIARES
-// ==========================================
-
+// 5. FUNCIONES AUXILIARES
 function showAuthError(message) {
     const errorEl = document.getElementById('auth-error');
     if (errorEl) {
