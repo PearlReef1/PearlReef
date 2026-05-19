@@ -146,12 +146,9 @@ async function initAquarium() {
         container.style.backgroundSize = 'cover';
         container.style.backgroundPosition = 'center';
 
-        allFish.forEach(fish => {
-            if (!fish.is_egg) createSwimmingFish(fish);
-        });
+        // Se removió el bucle forEach de createSwimmingFish para corregir el ReferenceError y quitar el lag de fondo.
     }
 }
-
 async function switchTab(tab, btn) {
     // 1. Manejo de clases activas
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -1354,7 +1351,9 @@ async function getOrCreateWallet(userId) {
     return newWallet.address;
 }
 
-// --- SISTEMA DE SWAP CORREGIDO ---
+// ==========================================
+//           SISTEMA DE SWAP CORREGIDO
+// ==========================================
 
 async function openSwapModal() {
     isProcessingFeeding = false; // Seguridad por si venimos de alimentar peces
@@ -1376,7 +1375,7 @@ async function openSwapModal() {
 
         if (error || !profile) {
             console.error("Error al obtener saldos:", error);
-            showToast("Error al cargar saldos", "❌");
+            if (typeof showToast === "function") showToast("Error al cargar saldos", "❌");
             return;
         }
 
@@ -1446,19 +1445,21 @@ function renderSwapContent(userUSDT, userPRL) {
 }
 
 function toggleSwapDirection(u, p) {
-    swapDirection = (Direction === "USDT_TO_PRL") ? "PRL_TO_USDT" : "USDT_TO_PRL";
-    renderContent(u, p);
+    swapDirection = (swapDirection === "USDT_TO_PRL") ? "PRL_TO_USDT" : "USDT_TO_PRL";
+    renderSwapContent(u, p);
 }
 
-function setupListeners(userUSDT, userPRL) {
-    const input = document.getElementById('-amount-input');
-    const result = document.getElementById('-result-display');
+function setupSwapListeners(userUSDT, userPRL) {
+    const input = document.getElementById('swap-amount-input');
+    const result = document.getElementById('swap-result-display');
     const errorMsg = document.getElementById('balance-error');
-    const btn = document.getElementById('confirm--btn');
+    const btn = document.getElementById('confirm-swap-btn');
+
+    if (!input || !result || !errorMsg || !btn) return;
 
     input.addEventListener('input', () => {
         const val = parseFloat(input.value) || 0;
-        const isToPRL = Direction === "USDT_TO_PRL";
+        const isToPRL = swapDirection === "USDT_TO_PRL";
         const maxAvailable = isToPRL ? userUSDT : userPRL;
         
         // Cálculo del resultado
@@ -1488,6 +1489,7 @@ function setupListeners(userUSDT, userPRL) {
 
 async function executeSwapAction() {
     const input = document.getElementById('swap-amount-input');
+    if (!input) return;
     const amount = parseFloat(input.value);
     
     if (isNaN(amount) || amount <= 0) {
@@ -1512,6 +1514,7 @@ async function executeSwapAction() {
         showToast("Error: " + err.message, "❌");
     }
 }
+
 function showToast(message, icon = '✨') {
     let container = document.getElementById('toast-container');
     if (!container) {
