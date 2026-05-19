@@ -2,7 +2,6 @@
 const SUPABASE_URL = 'https://hqmwdcfbqhugokqhxfhd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_q5fCEu3VFtZs8cvmdLSoRQ__4USW-cl';
 
-// Usamos 'client' para evitar el error de "ya declarado"
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Alternar entre login y registro de forma fluida
@@ -11,13 +10,11 @@ function toggleAuth() {
     const register = document.getElementById('register-form');
     const errorEl = document.getElementById('auth-error');
 
-    // Limpiar errores y ocultar caja de alerta al cambiar
     if (errorEl) {
         errorEl.innerText = "";
         errorEl.style.display = 'none';
     }
 
-    // Limpiar campos de texto al alternar formularios
     const inputs = document.querySelectorAll('.input-group input');
     inputs.forEach(input => input.value = "");
 
@@ -43,38 +40,55 @@ async function handleRegister() {
         return;
     }
 
-    // Efecto de carga en el botón
     setLoadingState(btnSubmit, true, "Registrando...");
 
+    // 1. Crear el usuario en Supabase Auth
     const { data, error } = await client.auth.signUp({
         email: email,
         password: password,
-        options: { 
-            data: { username: username } 
-        }
+        options: { data: { username: username } }
     });
 
     if (error) {
         showAuthError(error.message);
         setLoadingState(btnSubmit, false, "Registrarse");
-    } else {
-        // Creamos el perfil en la tabla de Supabase
-        const { error: profileError } = await client
-            .from('profiles')
-            .insert([{ 
-                id: data.user.id, 
-                username: username, 
-                pearl_balance: 0 // Ajustado de perlas_balance para mantener coherencia con dashboard
-            }]);
-        
-        if (profileError) {
-            console.error("Error al crear perfil:", profileError);
-        }
-
-        setLoadingState(btnSubmit, false, "Registrarse");
-        alert('¡Registro enviado! Revisa tu correo electrónico para confirmar tu cuenta y luego inicia sesión.');
-        toggleAuth();
+        return;
     }
+
+    // 🚀 NUEVA LÓGICA DE REFERIDOS: Buscar patrocinador
+    let sponsorId = null;
+    const refCode = localStorage.getItem('pending_referral_code');
+
+    if (refCode) {
+        const { data: sponsor } = await client
+            .from('profiles')
+            .select('id')
+            .eq('referral_code', refCode)
+            .single();
+
+        if (sponsor) {
+            sponsorId = sponsor.id;
+        }
+        localStorage.removeItem('pending_referral_code'); // Limpiamos tras usarlo
+    }
+
+    // 2. Creamos el perfil con el posible referido (referred_by)
+    const { error: profileError } = await client
+        .from('profiles')
+        .insert([{ 
+            id: data.user.id, 
+            username: username, 
+            pearl_balance: 0,
+            referred_by: sponsorId // Guardamos el vínculo
+        }]);
+    
+    if (profileError) {
+        console.error("Error al crear perfil:", profileError);
+    }
+
+    setLoadingState(btnSubmit, false, "Registrarse");
+    alert('¡Registro exitoso! Revisa tu correo para confirmar y luego inicia sesión.');
+    toggleAuth();
 }
 
 // Lógica de Login
@@ -89,7 +103,6 @@ async function handleLogin() {
         return;
     }
 
-    // Efecto de carga en el botón
     setLoadingState(btnSubmit, true, "Entrando...");
 
     const { data, error } = await client.auth.signInWithPassword({
@@ -106,10 +119,9 @@ async function handleLogin() {
 }
 
 // ==========================================
-//       FUNCIONES AUXILIARES DE INTERFAZ
+//        FUNCIONES AUXILIARES
 // ==========================================
 
-// Muestra los errores haciendo visible el contenedor estilizado
 function showAuthError(message) {
     const errorEl = document.getElementById('auth-error');
     if (errorEl) {
@@ -118,18 +130,10 @@ function showAuthError(message) {
     }
 }
 
-// Controla el estado visual de carga en los botones de acción
 function setLoadingState(buttonElement, isLoading, text) {
     if (!buttonElement) return;
-    if (isLoading) {
-        buttonElement.disabled = true;
-        buttonElement.innerText = text;
-        buttonElement.style.opacity = "0.7";
-        buttonElement.style.cursor = "not-allowed";
-    } else {
-        buttonElement.disabled = false;
-        buttonElement.innerText = text;
-        buttonElement.style.opacity = "1";
-        buttonElement.style.cursor = "pointer";
-    }
+    buttonElement.disabled = isLoading;
+    buttonElement.innerText = text;
+    buttonElement.style.opacity = isLoading ? "0.7" : "1";
+    buttonElement.style.cursor = isLoading ? "not-allowed" : "pointer";
 }
