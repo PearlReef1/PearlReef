@@ -65,17 +65,9 @@ const YIELD_CONFIG = {
 
 const AQUARIUM_BG_IMG = 'fondo_acuario.jpg';
 
-window.onload = async () => {
-    const { data: { user } } = await client.auth.getUser();
-    if (!user) { window.location.href = 'index.html'; return; }
-    currentUser = user;
-    
-    await loadProfile();
-    await initAquarium();
-    
-    setInterval(updateAquariumState, 1000);
-};
-
+// ==========================================
+//   BLOQUE DE INICIALIZACIÓN UNIFICADO (FIX)
+// ==========================================
 window.onload = async () => {
     // Usamos 'supabase' en lugar de 'client' para coincidir con el HTML
     const { data: { user } } = await supabase.auth.getUser();
@@ -87,15 +79,17 @@ window.onload = async () => {
     
     currentUser = user;
     
+    // 1. Cargamos balances e inventario del Perfil
     await loadProfile();
+    
+    // 2. Cargamos los peces y renderizamos la vista de inmediato
     await initAquarium();
     
-    // Inicia el ciclo del acuario
+    // 3. Inicia el ciclo del acuario estable y sincronizado
     setInterval(updateAquariumState, 1000);
 };
 
 async function loadProfile() {
-    // También cambiamos 'client' por 'supabase' aquí
     const { data, error } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
     
     if (error) {
@@ -105,7 +99,6 @@ async function loadProfile() {
     
     if (data) {
         // --- ACTUALIZACIÓN DE USDT (BEP20) ---
-        // Buscamos el ID que pusimos en el HTML y le pasamos balance_usdt
         if (document.getElementById('usdt-balance')) {
             const balanceUSDT = parseFloat(data.balance_usdt || 0);
             document.getElementById('usdt-balance').innerText = balanceUSDT.toFixed(2);
@@ -140,7 +133,13 @@ async function loadProfile() {
 }
 
 async function initAquarium() {
-    const { data } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
+    // Descargamos de forma asíncrona y segura los peces del usuario
+    const { data, error } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
+    
+    if (error) {
+        console.error("Error al inicializar peces en acuario:", error);
+    }
+
     allFish = data || [];
     
     const container = document.getElementById('aquarium-bg');
@@ -149,8 +148,13 @@ async function initAquarium() {
         container.style.backgroundImage = `url('${RAW_BASE}${AQUARIUM_BG_IMG}')`;
         container.style.backgroundSize = 'cover';
         container.style.backgroundPosition = 'center';
+    }
 
-        // Se removió el bucle forEach de createSwimmingFish para corregir el ReferenceError y quitar el lag de fondo.
+    // CORRECCIÓN CRUCIAL: Forzar el dibujado del inventario apenas carguen los datos
+    // Esto asegura que la cuadrícula se pinte en milisegundos con tus peces o huevos reales
+    const mainGrid = document.getElementById('main-aquarium-grid');
+    if (mainGrid) {
+        renderInventory(mainGrid);
     }
 }
 async function switchTab(tab, btn) {
