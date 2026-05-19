@@ -246,7 +246,7 @@ function renderInventory(container) {
         emptyState.innerHTML = `
             <div style="font-size: 4rem; margin-bottom: 15px;">🌊</div>
             <h2 style="margin: 0; font-size: 1.5rem; color: #ffb703;">Tu Acuario está vacío</h2>
-            <p style="color: #94a3b8; font-size: 0.9rem; margin: 10px 0 25px 0; max-width: 300px;">Adquiere tu primer submarino en la tienda para empezar a producir Perlas.</p>
+            <p style="color: #94a3b8; font-size: 0.9rem; margin: 10px 0 25px 0; max-width: 300px;">Adquiere tu primer Huevo en la tienda para empezar a producir Perlas.</p>
             <button class="nav-btn" onclick="switchTab('tienda', this)" style="background: #3b82f6; padding: 12px 30px; border-radius: 12px; border: none; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #1d4ed8;">IR A LA TIENDA 🛒</button>
         `;
         container.appendChild(emptyState);
