@@ -4,32 +4,297 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pearl Reef - Iniciar Sesión</title>
-    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* ==========================================================================
+           ESTILOS MAESTROS - INTERFAZ DE AUTENTICACIÓN PEARL REEF
+           ========================================================================== */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Fondo Animado de Burbujas Marinas */
+        .ocean-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .bubble {
+            position: absolute;
+            bottom: -50px;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 50%;
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3);
+            animation: rise 12s infinite linear;
+        }
+
+        @keyframes rise {
+            0% { transform: translateY(0) scale(1); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { transform: translateY(-105vh) scale(1.2); opacity: 0; }
+        }
+
+        /* Contenedor Principal Estilo Cristal */
+        .auth-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            padding: 40px 30px;
+            background: rgba(30, 41, 59, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 
+                        inset 0 1px 2px rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        /* Título Principal con Brillo de Neón Marino */
+        .auth-container h1 {
+            font-size: 2.3rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+            margin-bottom: 5px;
+        }
+
+        .auth-subtitle {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 35px;
+            font-weight: 600;
+        }
+
+        /* Formularios Internos */
+        .form-box h2 {
+            font-size: 1.3rem;
+            color: #f8fafc;
+            margin-bottom: 22px;
+            font-weight: 400;
+        }
+
+        /* Estilización Estricta de Inputs */
+        .input-group {
+            position: relative;
+            margin-bottom: 18px;
+        }
+
+        .input-group span {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.1rem;
+            opacity: 0.7;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px 14px 44px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            outline: none;
+            color: #ffffff;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: #38bdf8;
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+        }
+
+        .input-group input::placeholder {
+            color: #64748b;
+        }
+
+        /* Botón de Entrada Neón */
+        .btn-auth {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-auth:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+            filter: brightness(1.1);
+        }
+
+        .btn-auth:active {
+            transform: translateY(0);
+        }
+
+        /* Enlaces de cambio de pestaña */
+        .auth-switch {
+            margin-top: 25px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .auth-switch a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+            margin-left: 3px;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+            color: #22d3ee;
+        }
+
+        /* Mensajes de Alerta y Error */
+        .error-msg {
+            color: #f87171;
+            font-size: 0.8rem;
+            margin-top: 15px;
+            min-height: 20px;
+            font-weight: 500;
+            background: rgba(248, 113, 113, 0.1);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(248, 113, 113, 0.2);
+            display: none; /* Se activa dinámicamente */
+        }
+    </style>
 </head>
 <body>
+
+    <div class="ocean-bg" id="ocean-bg"></div>
+
     <div class="auth-container">
         <h1>PEARL REEF</h1>
+        <div class="auth-subtitle">Play-to-Earn Aquarium</div>
+        
         <div id="auth-forms">
-            <div id="login-form">
+            <div id="login-form" class="form-box">
                 <h2>Bienvenido de nuevo</h2>
-                <input type="email" id="login-email" placeholder="Correo electrónico">
-                <input type="password" id="login-password" placeholder="Contraseña">
-                <button onclick="handleLogin()">Entrar al Arrecife</button>
-                <p>¿No tienes cuenta? <a href="#" onclick="toggleAuth()">Regístrate aquí</a></p>
+                
+                <div class="input-group">
+                    <span>✉️</span>
+                    <input type="email" id="login-email" placeholder="Correo electrónico">
+                </div>
+                
+                <div class="input-group">
+                    <span>🔒</span>
+                    <input type="password" id="login-password" placeholder="Contraseña">
+                </div>
+                
+                <button class="btn-auth" onclick="handleLogin()">Entrar al Arrecife</button>
+                
+                <p class="auth-switch">¿No tienes cuenta? <a href="#" onclick="toggleAuth()">Regístrate aquí</a></p>
             </div>
 
-            <div id="register-form" style="display: none;">
-                <h2>Crea tu cuenta</h2>
-                <input type="text" id="reg-username" placeholder="Nombre de usuario">
-                <input type="email" id="reg-email" placeholder="Correo electrónico">
-                <input type="password" id="reg-password" placeholder="Contraseña">
-                <button onclick="handleRegister()">Registrarse</button>
-                <p>¿Ya tienes cuenta? <a href="#" onclick="toggleAuth()">Inicia sesión</a></p>
+            <div id="register-form" class="form-box" style="display: none;">
+                <h2>Crea tu cuenta de Buzo</h2>
+                
+                <div class="input-group">
+                    <span>👤</span>
+                    <input type="text" id="reg-username" placeholder="Nombre de usuario">
+                </div>
+                
+                <div class="input-group">
+                    <span>✉️</span>
+                    <input type="email" id="reg-email" placeholder="Correo electrónico">
+                </div>
+                
+                <div class="input-group">
+                    <span>🔒</span>
+                    <input type="password" id="reg-password" placeholder="Contraseña">
+                </div>
+                
+                <button class="btn-auth" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onclick="handleRegister()">Registrarse</button>
+                
+                <p class="auth-switch">¿Ya tienes cuenta? <a href="#" onclick="toggleAuth()">Inicia sesión</a></p>
             </div>
         </div>
+        
         <p id="auth-error" class="error-msg"></p>
     </div>
+
+    <script>
+        function createBubbles() {
+            const bg = document.getElementById('ocean-bg');
+            const bubbleCount = 15; // Cantidad simultánea de burbujas
+            
+            for(let i = 0; i < bubbleCount; i++) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('bubble');
+                
+                // Tamaños aleatorios realistas
+                const size = Math.random() * 25 + 8;
+                bubble.style.width = `${size}px`;
+                bubble.style.height = `${size}px`;
+                
+                // Distribución horizontal aleatoria
+                bubble.style.left = `${Math.random() * 100}%`;
+                
+                // Variación de tiempos de animación para que no salgan juntas
+                bubble.style.animationDelay = `${Math.random() * 10}s`;
+                bubble.style.animationDuration = `${Math.random() * 6 + 8}s`;
+                
+                bg.appendChild(bubble);
+            }
+        }
+        createBubbles();
+
+        // Pequeño extra opcional para mostrar el bloque de error si tu script.js cambia el texto
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.target.id === 'auth-error') {
+                    if(mutation.target.innerText.trim() !== "") {
+                        mutation.target.style.display = 'block';
+                    } else {
+                        mutation.target.style.display = 'none';
+                    }
+                }
+            });
+        });
+        const errorLabel = document.getElementById('auth-error');
+        if(errorLabel) observer.observe(errorLabel, { childList: true, characterData: true, subtree: true });
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
