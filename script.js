@@ -4,17 +4,6 @@ const SUPABASE_KEY = 'sb_publishable_q5fCEu3VFtZs8cvmdLSoRQ__4USW-cl';
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 1. Detectar código de referido de la URL al cargar la página
-window.addEventListener('DOMContentLoaded', () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const refCode = urlParams.get('ref');
-    
-    if (refCode) {
-        localStorage.setItem('pending_referral_code', refCode);
-        console.log("📌 Código de invitado detectado y listo:", refCode);
-    }
-});
-
 // 2. Alternar entre login y registro
 function toggleAuth() {
     const login = document.getElementById('login-form');
@@ -38,13 +27,13 @@ function toggleAuth() {
     }
 }
 
-// 3. Lógica ÚNICA de Registro
+// 3. Lógica ÚNICA de Registro (Actualizada para leer el input)
 async function handleRegister() {
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const username = document.getElementById('reg-username').value.trim();
+    const refCode = document.getElementById('reg-ref-code').value.trim(); // Leemos directamente del input
     const btnSubmit = document.querySelector('#register-form .btn-auth');
-    const errorEl = document.getElementById('auth-error');
 
     if (!email || !password || !username) {
         showAuthError("Por favor, rellena todos los campos.");
@@ -53,10 +42,8 @@ async function handleRegister() {
 
     setLoadingState(btnSubmit, true, "Registrando...");
 
-    // Buscar patrocinador
+    // Buscar patrocinador basado en el código ingresado en el formulario
     let sponsorId = null;
-    const refCode = localStorage.getItem('pending_referral_code');
-
     if (refCode) {
         const { data: sponsor } = await client
             .from('profiles')
@@ -64,8 +51,13 @@ async function handleRegister() {
             .eq('referral_code', refCode)
             .single();
 
-        if (sponsor) sponsorId = sponsor.id;
-        localStorage.removeItem('pending_referral_code');
+        if (sponsor) {
+            sponsorId = sponsor.id;
+        } else {
+            showAuthError("Código de referido inválido.");
+            setLoadingState(btnSubmit, false, "Registrarse");
+            return;
+        }
     }
 
     // Registrar en Auth
@@ -85,15 +77,6 @@ async function handleRegister() {
         setLoadingState(btnSubmit, false, "Registrarse");
         return;
     }
-
-    // Inserción manual de perfil (si no usas Trigger, descomenta esto)
-    /*
-    await client.from('profiles').insert([{ 
-        id: data.user.id, 
-        username: username, 
-        referred_by: sponsorId 
-    }]);
-    */
 
     setLoadingState(btnSubmit, false, "Registrarse");
     alert('¡Registro exitoso! Revisa tu correo y luego inicia sesión.');
