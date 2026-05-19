@@ -1976,7 +1976,7 @@ async function openCraftingMenu() {
 // LÓGICA DE EJECUCIÓN DEL CRAFTEO
 async function executeCraft(recipeType) {
     try {
-        // Volvemos a consultar para evitar exploits de doble clic rápido
+        // Volvemos a consultar para evitar exploits de doble clic rápido o desincronización
         const { data: profile, error } = await supabase.from('profiles')
             .select('*')
             .eq('id', currentUser.id)
@@ -2002,19 +2002,31 @@ async function executeCraft(recipeType) {
         } else if (recipeType === 'huevo_comun') {
             if ((profile.fragmentos_huevo || 0) < 100) return alert("No tienes suficientes Fragmentos de Huevo.");
             
-            // Configurar tiempo de eclosión (3 horas para el tipo Arrecife/Común según tu tienda)
+            // CONSULTA COMPATIBLE: Buscamos la plantilla exacta del huevo en tu fish_library
+            const { data: libData, error: libError } = await supabase
+                .from('fish_library')
+                .select('*')
+                .eq('name', 'Huevo Arrecife')
+                .single();
+
+            if (libError || !libData) {
+                console.error("No se encontró el Huevo Arrecife en la librería:", libError);
+                return showToast("Error: Configuración de Huevo Arrecife no encontrada en biblioteca", "❌");
+            }
+
+            // Calcular tiempo de eclosión (3 horas reglamentarias para Arrecife)
             const hatchDate = new Date();
             hatchDate.setHours(hatchDate.getHours() + 3);
 
-            // 1. Insertamos el huevo con la estructura exacta que valida tu base de datos
+            // 1. Insertamos el huevo heredando la rareza y campos validados de la librería ('Comun')
             const { error: eggError } = await supabase.from('user_fish').insert([{
                 user_id: currentUser.id,
                 is_egg: true,
-                egg_type: 'Arrecife', // 'Arrecife' mapea la probabilidad Común/Poco Común en hatchFish
+                egg_type: 'Arrecife', 
                 egg_hatch_time: hatchDate.toISOString(),
-                rarity: 'Comun',
-                species_name: 'Huevo Arrecife',
-                image_name: 'huevo_comun', // Mapea a huevo_comun.png automáticamente en tu render
+                rarity: libData.rarity, // Extrae 'Comun' automáticamente pasando el check constraint        
+                species_name: libData.name,    
+                image_name: libData.image_filename, 
                 level: 1,
                 daily_yield: 0,
                 current_xp: 0,
@@ -2026,7 +2038,7 @@ async function executeCraft(recipeType) {
             }]);
 
             if (eggError) {
-                console.error("❌ Error de Supabase al insertar Huevo desde Laboratorio:", eggError);
+                console.error("❌ Error de restricción al insertar huevo:", eggError);
                 throw eggError;
             }
 
@@ -2054,15 +2066,14 @@ async function executeCraft(recipeType) {
             });
         }
 
-        // Mostramos notificación y refrescamos la interfaz
+        // Mostramos notificación y refrescamos la interfaz del laboratorio
         if (typeof showToast === "function") showToast(toastText, toastIcon);
         
-        // Cierra o actualiza el menú de crafteo si tienes la función abierta
         if (typeof openCraftingMenu === "function") openCraftingMenu(); 
 
         await loadProfile();
         
-        // Recargar los peces locales y actualizar la vista
+        // Sincronizar array local de peces y redibujar la cuadrícula del acuario
         const { data: updatedFish } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
         allFish = updatedFish || [];
         
