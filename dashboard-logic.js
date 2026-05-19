@@ -90,7 +90,16 @@ window.onload = async () => {
 };
 
 async function loadProfile() {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+    // 1. Obtener el ID del usuario autenticado actual
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 2. Consulta explícita incluyendo referral_code
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*') // Esto trae todas las columnas
+        .eq('id', user.id)
+        .single();
     
     if (error) {
         console.error("Error cargando perfil:", error);
@@ -98,21 +107,22 @@ async function loadProfile() {
     }
     
     if (data) {
-        // --- ACTUALIZACIÓN DE USDT (BEP20) ---
+        // --- GUARDAR EN LA VARIABLE GLOBAL ---
+        currentUser = data; 
+        console.log("Perfil cargado. Código de referido detectado:", currentUser.referral_code);
+
+        // --- ACTUALIZACIÓN DE INTERFAZ ---
         if (document.getElementById('usdt-balance')) {
             const balanceUSDT = parseFloat(data.balance_usdt || 0);
             document.getElementById('usdt-balance').innerText = balanceUSDT.toFixed(2);
         }
 
-        // Actualizar balance de perlas ($PRL)
         if (document.getElementById('pearl-balance'))
             document.getElementById('pearl-balance').innerText = Math.floor(data.pearls_balance) || 0;
             
-        // Actualizar nombre de usuario
         if (document.getElementById('user-name'))
             document.getElementById('user-name').innerText = data.username || "Jugador";
         
-        // Actualizar contadores de comida
         if (document.getElementById('food-plancton-count')) 
             document.getElementById('food-plancton-count').innerText = data.food_plancton || 0;
             
@@ -122,16 +132,18 @@ async function loadProfile() {
         if (document.getElementById('food-rare-count')) 
             document.getElementById('food-rare-count').innerText = data.food_rare || 0;
         
-        // Actualizar contador de restos marinos
         if (document.getElementById('marine-trash-count'))
             document.getElementById('marine-trash-count').innerText = data.marine_trash || 0;
 
-        // --- ACTUALIZAR CONTADOR DE FRAGMENTOS DE HUEVO ---
         if (document.getElementById('fragmentos-huevo-count'))
             document.getElementById('fragmentos-huevo-count').innerText = data.fragmentos_huevo || 0;
+            
+        // Si ya tenías cargada la pantalla de referidos, refrescamos el dato
+        if (typeof loadReferralPanelData === 'function') {
+            loadReferralPanelData();
+        }
     }
 }
-
 async function initAquarium() {
     // Descargamos de forma asíncrona y segura los peces del usuario
     const { data, error } = await supabase.from('user_fish').select('*').eq('user_id', currentUser.id);
