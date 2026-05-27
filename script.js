@@ -30,16 +30,12 @@ function toggleAuth() {
     }
 }
 
-// 3. Lógica ÚNICA de Registro
 async function handleRegister() {
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const username = document.getElementById('reg-username').value.trim();
-    
-    // Obtener el valor del referido desde el campo del formulario
     const refInput = document.getElementById('reg-ref-code');
-    const refCode = refInput ? refInput.value.trim() : "";
-    
+    const refCode = refInput ? refInput.value.trim().toUpperCase() : "";
     const btnSubmit = document.querySelector('#register-form .btn-auth');
 
     if (!email || !password || !username) {
@@ -49,32 +45,14 @@ async function handleRegister() {
 
     setLoadingState(btnSubmit, true, "Registrando...");
 
-    // Buscar patrocinador
-    let sponsorId = null;
-    if (refCode !== "") {
-        const { data: sponsor, error: sponsorError } = await client
-            .from('profiles')
-            .select('id')
-            .eq('referral_code', refCode.toUpperCase())
-            .maybeSingle(); // Usamos maybeSingle para evitar errores si no encuentra nada
-
-        if (sponsor) {
-            sponsorId = sponsor.id;
-        } else {
-            showAuthError("Código de referido no válido.");
-            setLoadingState(btnSubmit, false, "Registrarse");
-            return;
-        }
-    }
-
-    // Registrar en Auth
+    // ENVIAMOS SOLO EL CÓDIGO DE TEXTO. La base de datos hará el resto.
     const { data, error } = await client.auth.signUp({
         email: email,
         password: password,
         options: {
             data: { 
                 username: username,
-                referred_by: sponsorId // El trigger usará esto
+                referral_code: refCode // Enviamos el texto, no el ID
             }
         }
     });
@@ -86,12 +64,7 @@ async function handleRegister() {
     }
 
     setLoadingState(btnSubmit, false, "Registrarse");
-    alert('¡Registro exitoso! Revisa tu correo y luego inicia sesión.');
-    
-    // Limpiar campos y volver a login
-    document.getElementById('reg-email').value = "";
-    document.getElementById('reg-password').value = "";
-    document.getElementById('reg-username').value = "";
+    alert('¡Registro exitoso!');
     toggleAuth();
 }
 
