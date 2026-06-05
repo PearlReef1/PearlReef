@@ -30,12 +30,16 @@ function toggleAuth() {
     }
 }
 
+// 3. Lógica ÚNICA de Registro
 async function handleRegister() {
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
     const username = document.getElementById('reg-username').value.trim();
+    
+    // Obtenemos el código de referido del input (si existe)
     const refInput = document.getElementById('reg-ref-code');
     const refCode = refInput ? refInput.value.trim().toUpperCase() : "";
+    
     const btnSubmit = document.querySelector('#register-form .btn-auth');
 
     if (!email || !password || !username) {
@@ -45,14 +49,14 @@ async function handleRegister() {
 
     setLoadingState(btnSubmit, true, "Registrando...");
 
-    // ENVIAMOS SOLO EL CÓDIGO DE TEXTO. La base de datos hará el resto.
+    // Registro enviando el username y el código de referido como texto
     const { data, error } = await client.auth.signUp({
         email: email,
         password: password,
         options: {
             data: { 
                 username: username,
-                referral_code: refCode // Enviamos el texto, no el ID
+                referral_code: refCode // Este código es el que tu Trigger en Supabase leerá
             }
         }
     });
@@ -63,8 +67,16 @@ async function handleRegister() {
         return;
     }
 
+    // Si todo sale bien
     setLoadingState(btnSubmit, false, "Registrarse");
-    alert('¡Registro exitoso!');
+    alert('¡Registro exitoso! Ya puedes iniciar sesión.');
+    
+    // Limpiamos los campos después del éxito
+    document.getElementById('reg-email').value = "";
+    document.getElementById('reg-password').value = "";
+    document.getElementById('reg-username').value = "";
+    if(refInput) refInput.value = "";
+    
     toggleAuth();
 }
 
