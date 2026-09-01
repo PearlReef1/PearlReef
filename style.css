@@ -407,17 +407,11 @@ body {
     filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.7)) brightness(1.2);
 }
 /* ==========================================================================
-   MEJORA DE DISEÑO MÓVIL - PEARL REEF (APP EXPERIENCIE)
+   CORRECCIÓN DEFINITIVA MÓVIL - PEARL REEF (APP STYLE)
    ========================================================================== */
 
 @media (max-width: 768px) {
-    /* 1. Ocultar scrollbars laterales y asegurar pantalla completa limpia */
-    body, html {
-        overflow-x: hidden !important;
-        background-color: #0b1329 !important;
-    }
-
-    /* 2. Barra de navegación inferior elegante y compacta */
+    /* 1. Barra de navegación inferior totalmente horizontal y limpia */
     .sidebar {
         position: fixed !important;
         bottom: 0 !important;
@@ -425,20 +419,19 @@ body {
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
-        height: 60px !important;
+        height: 65px !important;
+        display: flex !important;
         flex-direction: row !important;
         justify-content: space-around !important;
         align-items: center !important;
-        background: rgba(11, 19, 41, 0.95) !important;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        background: #0b1329 !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
         padding: 0 5px !important;
-        z-index: 99999 !important;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+        z-index: 999999 !important;
+        box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.6);
     }
 
-    /* Ocultar elementos de escritorio que no caben en la barra inferior */
+    /* Ocultar elementos de escritorio sobrantes en la barra */
     .sidebar-header, 
     .user-profile-box, 
     .sidebar-footer,
@@ -446,58 +439,84 @@ body {
         display: none !important;
     }
 
-    /* Estilo limpio para los botones de navegación inferior */
+    /* Forzar los botones de la barra inferior en línea horizontal compacta */
     .sidebar button, 
     .sidebar .nav-btn,
     .sidebar a {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        flex: 1;
-        display: flex flex-direction;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 4px 2px !important;
-        font-size: 0.65rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 1 !important;
+        height: 100% !important;
+        padding: 2px !important;
+        font-size: 0.6rem !important;
         color: #94a3b8 !important;
-        text-align: center;
-        white-space: nowrap;
+        text-align: center !important;
+        white-space: nowrap !important;
         margin: 0 !important;
     }
 
-    /* Resaltar el botón activo en la barra inferior */
     .sidebar button.active, 
     .sidebar .nav-btn.active {
         color: #38bdf8 !important;
-        font-weight: bold;
     }
 
-    /* 3. Ajuste de contenedor principal para que no quede detrás de la barra inferior */
+    /* 2. Cuadrícula de peces a 2 columnas para que se vea ordenado */
     #main-aquarium-grid, 
-    .main-content-container,
-    .dashboard-container {
-        position: absolute !important;
-        top: 10px !important;
-        left: 10px !important;
-        right: 10px !important;
-        bottom: 75px !important; /* Espacio libre exacto para la barra inferior */
-        overflow-y: auto !important;
-        padding-bottom: 20px !important;
-    }
-
-    /* 4. Tarjetas de peces / acuario perfectamente escaladas */
-    .fish-card, .aquarium-card {
+    .aquarium-grid,
+    .fish-container {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        position: relative !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
         width: 100% !important;
-        max-width: 100% !important;
-        margin-bottom: 15px !important;
+        padding: 10px 10px 90px 10px !important;
         box-sizing: border-box !important;
     }
 
-    /* 5. Botones de acción principales (Recolectar / Alimentar) más cómodos al tacto */
-    .fish-card button, .action-btn {
-        padding: 12px !important;
-        font-size: 0.95rem !important;
-        border-radius: 12px !important;
+    /* Tarjetas individuales de peces adaptadas a la columna */
+    .fish-card, .aquarium-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        font-size: 0.8rem !important;
+        padding: 10px !important;
+    }
+
+    .fish-card img, .fish-card .fish-img {
+        max-width: 80px !important;
+        height: auto !important;
+        margin: 0 auto !important;
+    }
+
+    /* 3. Modales (Historial, Depósito, Tienda) con espacio para no ser tapados */
+    .content-panel, 
+    .modal-content, 
+    .modal-container {
+        position: fixed !important;
+        top: 10px !important;
+        left: 5% !important;
+        width: 90% !important;
+        max-height: 82vh !important;
+        bottom: 80px !important;
+        overflow-y: auto !important;
+        z-index: 9999999 !important;
+        border-radius: 16px !important;
+        padding: 15px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Asegurar que las tablas y listas en los modales no se desborden */
+    table, .table-container {
+        width: 100% !important;
+        overflow-x: auto !important;
+        display: block !important;
     }
 }
