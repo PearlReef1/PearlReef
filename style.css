@@ -411,85 +411,71 @@ body {
 /* ========================================== */
 
 @media screen and (max-width: 768px) {
-    /* 1. Ocultar la barra lateral de PC */
+    /* Ocultar barra lateral de PC */
     .sidebar {
         display: none !important;
     }
 
-    /* 2. Expandir el canvas del acuario y el grid principal a toda la pantalla */
+    /* Contenedor principal a pantalla completa con espacio para la barra inferior y barra del navegador */
     .aquarium-canvas,
     #main-aquarium-grid,
-    #tab-referidos {
+    #tab-referidos,
+    .content-panel {
         left: 0 !important;
         right: 0 !important;
-        bottom: 60px !important; /* Deja espacio para la barra móvil inferior */
-        padding: 15px !important;
+        top: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box;
+        padding: 10px !important;
+        /* Deja espacio dinámico para la barra inferior + barra nativa del móvil */
+        bottom: calc(70px + env(safe-area-inset-bottom)) !important;
     }
 
-    /* 3. Adaptar el panel de contenido (Tienda, Depósito, etc.) a pantalla completa */
-    .content-panel {
-        left: 10px !important;
-        right: 10px !important;
-        top: 10px !important;
-        bottom: 70px !important;
-        width: auto !important;
-    }
-
-    /* 4. Mostrar la barra de navegación inferior exclusiva para móviles */
+    /* Barra de navegación inferior adaptada y elevada sobre el menú del navegador */
     .mobile-bottom-nav {
         display: flex !important;
+        position: fixed;
+        bottom: env(safe-area-inset-bottom, 15px);
+        left: 10px;
+        right: 10px;
+        width: auto;
+        height: 60px;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 16px;
+        z-index: 9999;
+        justify-content: space-around;
+        align-items: center;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     }
 
-    /* 5. Ajustar la cuadrícula de tarjetas en la tienda y acuario para móviles */
+    /* Optimizar la barra superior de estadísticas (Prod Total, Acumulado, Hambrientos) */
+    .stats-header-main, 
+    .top-stats-container {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        gap: 8px !important;
+        padding: 8px !important;
+        font-size: 0.85rem;
+        justify-content: space-between;
+        background: rgba(15, 23, 42, 0.8);
+        border-radius: 12px;
+        margin-bottom: 12px !important;
+    }
+
+    /* Forzar una sola columna o mejor distribución en tarjetas de peces para evitar cortes */
     .grid-main-wrapper {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
-        gap: 10px !important;
-        padding: 10px 0 !important;
+        grid-template-columns: 1fr !important; /* Una columna para que la tarjeta respire y se vea completa */
+        gap: 15px !important;
+        padding-bottom: 20px !important;
     }
 
-    .stats-header-main {
-        flex-direction: column !important;
-        padding: 10px !important;
-        margin-bottom: 20px !important;
+    /* Ajustes internos de las tarjetas de peces en móvil */
+    .fish-card, .card-item {
+        max-width: 100% !important;
+        margin: 0 auto;
+        width: 100%;
     }
-}
-
-/* Estilos por defecto de la barra inferior móvil (oculta en PC) */
-.mobile-bottom-nav {
-    display: none;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 1000;
-    justify-content: space-around;
-    align-items: center;
-    box-sizing: border-box;
-    padding: 0 5px;
-}
-
-.mobile-nav-btn {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    font-size: 0.65rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    cursor: pointer;
-    flex: 1;
-}
-
-.mobile-nav-btn span {
-    font-size: 1.2rem;
-}
-
-.mobile-nav-btn.active {
-    color: var(--accent);
-    font-weight: bold;
 }
