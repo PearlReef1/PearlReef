@@ -406,3 +406,69 @@ body {
 .egg-ready-glow {
     filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.7)) brightness(1.2);
 }
+@media (max-width: 768px) {
+    /* Cuerpo general sin scroll horizontal */
+    body {
+        overflow-y: auto;
+    }
+
+    /* Transformar la barra lateral fija en un menú inferior estilo app móvil */
+    .sidebar {
+        position: fixed !important;
+        bottom: 0 !important;
+        top: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        height: 65px !important;
+        flex-direction: row !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        background: rgba(15, 23, 42, 0.95) !important;
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 5px !important;
+        z-index: 9999 !important;
+        overflow: visible !important;
+    }
+
+    /* Ocultar elementos pesados de la barra lateral en móvil para ahorrar espacio */
+    .sidebar-header, 
+    .user-profile-box, 
+    .sidebar-footer,
+    #random-tip-display {
+        display: none !important;
+    }
+
+    /* Ajustar los botones de navegación inferior */
+    .sidebar button, .sidebar .nav-btn {
+        padding: 8px 12px !important;
+        font-size: 0.8rem !important;
+        flex: 1;
+        margin: 0 2px;
+        text-align: center;
+    }
+
+    /* Acuario principal adaptado a pantalla completa móvil */
+    #main-aquarium-grid {
+        left: 0 !important;
+        right: 0 !important;
+        top: 0 !important;
+        bottom: 70px !important; /* Espacio para la barra de navegación inferior */
+        padding: 15px !important;
+    }
+
+    /* Paneles deslizantes o modales a pantalla completa en móviles */
+    .content-panel, #minigame-modal .modal-content {
+        width: 95% !important;
+        max-width: 100% !important;
+        height: 80vh !important;
+        bottom: 70px !important;
+        border-radius: 20px 20px 0 0 !important;
+    }
+
+    /* Tablas de referidos y estadísticas con desplazamiento fluido */
+    table {
+        font-size: 0.85rem;
+    }
+}
