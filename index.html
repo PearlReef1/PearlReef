@@ -231,7 +231,27 @@
         
         <p id="auth-error" class="error-msg"></p>
     </div>
-
+<!-- BARRA DE NAVEGACIÓN INFERIOR MÓVIL -->
+    <nav class="mobile-bottom-nav">
+        <button class="mobile-nav-btn active" onclick="switchTab('acuario', this)">
+            <span>🌊</span> Acuario
+        </button>
+        <button class="mobile-nav-btn" onclick="switchTab('tienda', this)">
+            <span>🛒</span> Tienda
+        </button>
+        <button class="mobile-nav-btn" onclick="openFishingGame()">
+            <span>🎣</span> Pesca
+        </button>
+        <button class="mobile-nav-btn" onclick="openCraftingMenu()">
+            <span>🧪</span> Lab
+        </button>
+        <button class="mobile-nav-btn" onclick="switchTab('referidos', this)">
+            <span>🧬</span> Referidos
+        </button>
+        <button class="mobile-nav-btn" onclick="switchTab('deposito', this)">
+            <span>💰</span> Depósito
+        </button>
+    </nav>
     <script>
         // 1. Capturador de Referidos: Detecta "?ref=CODIGO" en la URL y rellena el input
         window.onload = () => {
