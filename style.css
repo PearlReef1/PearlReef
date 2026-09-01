@@ -406,13 +406,18 @@ body {
 .egg-ready-glow {
     filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.7)) brightness(1.2);
 }
+/* ==========================================================================
+   MEJORA DE DISEÑO MÓVIL - PEARL REEF (APP EXPERIENCIE)
+   ========================================================================== */
+
 @media (max-width: 768px) {
-    /* Cuerpo general sin scroll horizontal */
-    body {
-        overflow-y: auto;
+    /* 1. Ocultar scrollbars laterales y asegurar pantalla completa limpia */
+    body, html {
+        overflow-x: hidden !important;
+        background-color: #0b1329 !important;
     }
 
-    /* Transformar la barra lateral fija en un menú inferior estilo app móvil */
+    /* 2. Barra de navegación inferior elegante y compacta */
     .sidebar {
         position: fixed !important;
         bottom: 0 !important;
@@ -420,19 +425,20 @@ body {
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
-        height: 65px !important;
+        height: 60px !important;
         flex-direction: row !important;
         justify-content: space-around !important;
         align-items: center !important;
-        background: rgba(15, 23, 42, 0.95) !important;
-        backdrop-filter: blur(10px);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 5px !important;
-        z-index: 9999 !important;
-        overflow: visible !important;
+        background: rgba(11, 19, 41, 0.95) !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 0 5px !important;
+        z-index: 99999 !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
     }
 
-    /* Ocultar elementos pesados de la barra lateral en móvil para ahorrar espacio */
+    /* Ocultar elementos de escritorio que no caben en la barra inferior */
     .sidebar-header, 
     .user-profile-box, 
     .sidebar-footer,
@@ -440,35 +446,58 @@ body {
         display: none !important;
     }
 
-    /* Ajustar los botones de navegación inferior */
-    .sidebar button, .sidebar .nav-btn {
-        padding: 8px 12px !important;
-        font-size: 0.8rem !important;
+    /* Estilo limpio para los botones de navegación inferior */
+    .sidebar button, 
+    .sidebar .nav-btn,
+    .sidebar a {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
         flex: 1;
-        margin: 0 2px;
+        display: flex flex-direction;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 2px !important;
+        font-size: 0.65rem !important;
+        color: #94a3b8 !important;
         text-align: center;
+        white-space: nowrap;
+        margin: 0 !important;
     }
 
-    /* Acuario principal adaptado a pantalla completa móvil */
-    #main-aquarium-grid {
-        left: 0 !important;
-        right: 0 !important;
-        top: 0 !important;
-        bottom: 70px !important; /* Espacio para la barra de navegación inferior */
-        padding: 15px !important;
+    /* Resaltar el botón activo en la barra inferior */
+    .sidebar button.active, 
+    .sidebar .nav-btn.active {
+        color: #38bdf8 !important;
+        font-weight: bold;
     }
 
-    /* Paneles deslizantes o modales a pantalla completa en móviles */
-    .content-panel, #minigame-modal .modal-content {
-        width: 95% !important;
+    /* 3. Ajuste de contenedor principal para que no quede detrás de la barra inferior */
+    #main-aquarium-grid, 
+    .main-content-container,
+    .dashboard-container {
+        position: absolute !important;
+        top: 10px !important;
+        left: 10px !important;
+        right: 10px !important;
+        bottom: 75px !important; /* Espacio libre exacto para la barra inferior */
+        overflow-y: auto !important;
+        padding-bottom: 20px !important;
+    }
+
+    /* 4. Tarjetas de peces / acuario perfectamente escaladas */
+    .fish-card, .aquarium-card {
+        width: 100% !important;
         max-width: 100% !important;
-        height: 80vh !important;
-        bottom: 70px !important;
-        border-radius: 20px 20px 0 0 !important;
+        margin-bottom: 15px !important;
+        box-sizing: border-box !important;
     }
 
-    /* Tablas de referidos y estadísticas con desplazamiento fluido */
-    table {
-        font-size: 0.85rem;
+    /* 5. Botones de acción principales (Recolectar / Alimentar) más cómodos al tacto */
+    .fish-card button, .action-btn {
+        padding: 12px !important;
+        font-size: 0.95rem !important;
+        border-radius: 12px !important;
     }
 }
