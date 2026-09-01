@@ -407,134 +407,144 @@ body {
     filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.7)) brightness(1.2);
 }
 /* ==========================================================================
-   DISEÑO NATIVO MÓVIL PROFESIONAL (MENÚ DESPLEGABLE Y PECES COMPACTOS)
+   INTERFAZ MÓVIL NATIVA DEFINITIVA - PEARL REEF
    ========================================================================== */
 
 @media (max-width: 768px) {
-    /* 1. Reset general de la vista móvil */
+    /* 1. Reset general de la pantalla móvil */
     html, body {
         background-color: #070d1d !important;
         overflow-x: hidden !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
     }
 
-    /* 2. Convertir la barra lateral en un panel flotante / menú oculto desplegable */
+    /* 2. Transformar la barra lateral en un menú desplegable flotante oculto por defecto */
     .sidebar {
         position: fixed !important;
-        top: 15px !important;
-        right: 15px !important;
-        bottom: auto !important;
+        top: 10px !important;
+        right: 10px !important;
         left: auto !important;
-        width: auto !important;
-        height: auto !important;
-        background: rgba(11, 19, 41, 0.95) !important;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 12px !important;
-        padding: 8px 12px !important;
-        z-index: 999999 !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
-        display: flex !important;
-        flex-direction: column !important;
-        max-width: 200px !important;
+        bottom: auto !important;
+        width: 260px !important;
+        max-height: 85vh !important;
+        overflow-y: auto !important;
+        background: rgba(11, 19, 41, 0.98) !important;
+        backdrop-filter: blur(15px) !important;
+        -webkit-backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 16px !important;
+        padding: 15px !important;
+        z-index: 9999999 !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+        
+        /* Ocultar el menú de forma elegante si tu app usa clases de estado, 
+           o dejarlo compacto si se despliega. Si prefieres que se oculte 
+           completamente hasta abrirse, descomenta la siguiente línea: */
+        /* display: none !important; */
     }
 
-    /* Ocultar elementos innecesarios del menú flotante */
+    /* Si el menú está abierto o activo, aseguramos que se muestre bien ordenado */
+    .sidebar.active, .sidebar.open {
+        display: block !important;
+    }
+
+    /* Alinear los elementos internos del panel de usuario y botones de forma limpia */
+    .sidebar .user-profile-box, 
     .sidebar-header, 
-    .user-profile-box, 
-    .sidebar-footer,
-    #random-tip-display {
-        display: none !important;
+    .sidebar-footer {
+        display: block !important;
+        text-align: center !important;
+        margin-bottom: 10px !important;
     }
 
-    /* Estilo limpio para los enlaces del menú desplegado */
-    .sidebar *, 
     .sidebar a, 
     .sidebar button, 
     .sidebar .nav-btn {
         display: block !important;
         width: 100% !important;
-        text-align: left !important;
-        background: transparent !important;
-        border: none !important;
-        color: #e2e8f0 !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
         font-size: 0.8rem !important;
-        padding: 8px 10px !important;
-        margin: 2px 0 !important;
+        padding: 10px !important;
+        margin: 6px 0 !important;
+        border-radius: 10px !important;
+        text-align: center !important;
         text-decoration: none !important;
-        white-space: nowrap !important;
+        box-sizing: border-box !important;
     }
 
-    .sidebar a.active, 
-    .sidebar button.active {
-        color: #38bdf8 !important;
-        font-weight: bold;
-    }
-
-    /* 3. Cuadrícula de peces compacta (2 columnas para ver más sin tanto scroll) */
+    /* 3. Cuadrícula del acuario en 2 columnas para que los peces sean compactos */
     #main-aquarium-grid, 
     .aquarium-container,
     .fish-list-container {
         display: grid !important;
         grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
+        gap: 10px !important;
         width: 100% !important;
-        padding: 10px 8px 40px 8px !important;
+        max-width: 100% !important;
+        padding: 10px !important;
         box-sizing: border-box !important;
+        margin: 0 !important;
     }
 
-    /* Reducir el tamaño de las tarjetas de los peces considerablemente */
+    /* Tarjetas de peces reducidas y ordenadas a dos columnas */
     .fish-card, .aquarium-card {
         width: 100% !important;
         max-width: 100% !important;
         margin: 0 !important;
-        padding: 8px !important;
-        font-size: 0.65rem !important;
-        border-radius: 10px !important;
+        padding: 10px !important;
+        font-size: 0.7rem !important;
+        border-radius: 12px !important;
         box-sizing: border-box !important;
-        background: rgba(15, 23, 42, 0.85) !important;
+        background: rgba(15, 23, 42, 0.9) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
     }
 
-    /* Hacer la imagen del pez más pequeña */
+    /* Miniaturas de los peces más pequeñas */
     .fish-card img, .fish-card .fish-img {
-        max-width: 50px !important;
+        max-width: 65px !important;
         height: auto !important;
         margin: 0 auto 5px auto !important;
         display: block !important;
     }
 
-    /* Reducir tamaño de textos y botones dentro de las tarjetas mini */
+    /* Textos y botones dentro de las tarjetas ajustados para móvil */
     .fish-card h3, .fish-card .fish-title {
         font-size: 0.75rem !important;
-        margin: 2px 0 !important;
+        text-align: center !important;
+        margin: 4px 0 !important;
     }
 
     .fish-card button, .fish-card .action-btn {
-        padding: 6px !important;
-        font-size: 0.7rem !important;
-        border-radius: 6px !important;
-        margin-top: 5px !important;
+        width: 100% !important;
+        padding: 8px !important;
+        font-size: 0.75rem !important;
+        border-radius: 8px !important;
+        margin-top: 6px !important;
     }
 
-    /* Ocultar elementos largos innecesarios en vista móvil compacta si estorban */
-    .fish-card .extra-stats {
-        display: none !important;
-    }
-
-    /* 4. Modales de Depósito / Tienda ajustados a pantalla completa móvil */
+    /* 4. Modales (Retiro, Depósito, Historial) perfectamente centrados y seguros */
     .content-panel, 
     .modal-content, 
     .modal-container {
         position: fixed !important;
-        top: 10px !important;
-        left: 2% !important;
-        width: 96% !important;
-        max-height: 90vh !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 92% !important;
+        max-width: 400px !important;
+        max-height: 85vh !important;
         overflow-y: auto !important;
         z-index: 99999999 !important;
-        border-radius: 14px !important;
-        padding: 12px !important;
+        border-radius: 16px !important;
+        padding: 15px !important;
         box-sizing: border-box !important;
+        background: #0b1329 !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
     }
 }
