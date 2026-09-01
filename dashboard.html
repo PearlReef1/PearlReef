@@ -143,5 +143,30 @@
         window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
     <script src="dashboard-logic.js"></script>
+    <script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            // Transformamos la barra lateral en un menú flotante colapsable o la adaptamos
+            sidebar.style.position = 'fixed';
+            sidebar.style.bottom = '0';
+            sidebar.style.top = 'auto';
+            sidebar.style.left = '0';
+            sidebar.style.width = '100%';
+            sidebar.style.height = '60px';
+            sidebar.style.zIndex = '999999';
+            sidebar.style.display = 'flex';
+            sidebar.style.flexDirection = 'row';
+            sidebar.style.overflowX = 'auto';
+            sidebar.style.background = '#0b1329';
+            
+            // Ocultamos elementos pesados de perfil dentro de la barra móvil para ganar espacio
+            const profileBox = sidebar.querySelector('.user-profile-box');
+            if (profileBox) profileBox.style.display = 'none';
+        }
+    }
+});
+</script>
 </body>
 </html>
